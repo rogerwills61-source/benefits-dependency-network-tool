@@ -35,7 +35,7 @@
 
         /* Minimalist 3-Zone Top HUD */
         #topHud {
-            position: fixed; top: 8px; left: 8px; right: 8px; min-height: 44px;
+            position: fixed; top: 8px; left: 8px; right: 8px; min-height: 42px;
             display: flex; align-items: center; justify-content: space-between; gap: 6px;
             z-index: 50; pointer-events: none; flex-wrap: nowrap;
         }
@@ -45,13 +45,17 @@
             border: 1px solid var(--border-hud); border-radius: 10px;
             display: flex; align-items: center; gap: 4px; padding: 4px 7px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+            flex-shrink: 0;
+        }
+        #centerIsland {
+            flex: 0 1 auto; min-width: 0; overflow: hidden; justify-content: center;
         }
         .hud-btn {
             background: rgba(148, 163, 184, 0.08); color: var(--text-primary);
             border: 1px solid var(--border-hud); border-radius: 7px;
             height: 32px; padding: 0 9px; font-size: 12px; font-weight: 500; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-            transition: all 0.14s ease; touch-action: manipulation;
+            transition: all 0.14s ease; touch-action: manipulation; flex-shrink: 0;
         }
         .hud-btn.icon-only { width: 32px; padding: 0; }
         .hud-btn:hover:not(:disabled) { background: rgba(56, 189, 248, 0.16); border-color: var(--accent); }
@@ -62,29 +66,34 @@
         #docTitleBtn {
             font-weight: 700; font-size: 13px; color: var(--text-primary);
             padding: 4px 6px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
-            max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         #docTitleBtn:hover { border-color: var(--border-hud); background: rgba(148, 163, 184, 0.08); }
         .status-pill {
             font-size: 11px; color: var(--text-secondary); padding: 4px 8px;
             border-radius: 999px; background: rgba(148, 163, 184, 0.07); border: 1px solid var(--border-hud);
-            white-space: nowrap;
+            white-space: nowrap; flex-shrink: 0;
         }
         .status-pill.live { color: #10b981; border-color: rgba(16, 185, 129, 0.35); }
 
+        /* Mobile Top Toolbar Compaction — Ensures Left, Center, AND Right (Tidy/Fit) fit 100% on narrow phones */
         @media (max-width: 760px) {
+            #topHud { left: 4px; right: 4px; gap: 4px; }
+            .hud-island { padding: 3px 4px; gap: 3px; border-radius: 8px; }
+            .hud-btn { height: 28px; padding: 0 6px; font-size: 11px; }
+            .hud-btn.icon-only { width: 27px; padding: 0; }
             #btnMenu span { display: none; }
-            #btnMenu { width: 32px; padding: 0; }
-            #docTitleBtn { max-width: 110px; font-size: 12px; }
-            .status-pill { font-size: 10px; padding: 3px 6px; }
+            #btnMenu { width: 27px; padding: 0; }
+            #docTitleBtn { max-width: 68px; font-size: 11px; padding: 2px 3px; }
+            .status-pill { font-size: 9.5px; padding: 2px 5px; }
             #btnHelp { display: none; }
         }
 
-        /* Canvas Viewport — CRITICAL: touch-action: none prevents browser scroll hijacking! */
+        /* Canvas Viewport */
         #canvasContainer { width: 100vw; height: 100dvh; position: relative; overflow: hidden; touch-action: none; }
         canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-        /* Mobile Thumb-Zone Contextual Action Dock (ThoughtTree Standard) */
+        /* Mobile Thumb-Zone Contextual Action Dock */
         #mobileActionDock {
             position: fixed; bottom: max(12px, env(safe-area-inset-bottom, 12px)); left: 50%;
             transform: translateX(-50%); z-index: 60;
@@ -171,7 +180,7 @@
         .help-row kbd { background: rgba(148,163,184,0.15); color: var(--text-primary); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
 
         #modeBanner {
-            position: fixed; top: 108px; left: 50%; transform: translateX(-50%);
+            position: fixed; top: 106px; left: 50%; transform: translateX(-50%);
             background: rgba(56, 189, 248, 0.95); color: #090d16; font-weight: 700;
             font-size: 12px; padding: 6px 14px; border-radius: 999px; z-index: 90;
             display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4); white-space: nowrap;
@@ -182,43 +191,43 @@
 
     <div id="topHud">
         <div class="hud-island">
-            <button class="hud-btn" id="btnMenu" title="File & Document Menu">
+            <button class="hud-btn" id="btnMenu" title="File & Document Menu" type="button">
                 <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 <span>Menu</span>
             </button>
-            <button class="hud-btn icon-only" id="btnSettings" title="Appearance & Workspace Settings">
+            <button class="hud-btn icon-only" id="btnSettings" title="Appearance & Workspace Settings" type="button">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
-            <button class="hud-btn icon-only" id="btnUndo" title="Undo (Ctrl+Z)" disabled>
+            <button class="hud-btn icon-only" id="btnUndo" title="Undo (Ctrl+Z)" type="button" disabled>
                 <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
             </button>
-            <button class="hud-btn icon-only" id="btnRedo" title="Redo (Ctrl+Y)" disabled>
+            <button class="hud-btn icon-only" id="btnRedo" title="Redo (Ctrl+Y)" type="button" disabled>
                 <svg viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
             </button>
-            <button class="hud-btn" id="btnAddBox" style="display:none;" title="Add Box in Centre of View (Enter)">+ Box</button>
-            <button class="hud-btn" id="btnAddCol" style="display:none;" title="Insert New Column">+ Col</button>
+            <button class="hud-btn" id="btnAddBox" style="display:none;" title="Add Box in Centre of View (Enter)" type="button">+ Box</button>
+            <button class="hud-btn" id="btnAddCol" style="display:none;" title="Insert New Column" type="button">+ Col</button>
         </div>
 
-        <div class="hud-island">
+        <div class="hud-island" id="centerIsland">
             <span id="docTitleBtn" title="Tap/Click to rename BDN document">Service Transformation BDN</span>
             <span class="status-pill" id="saveStatus" title="Local & Same-File Multi-Device Sync Status">✓ Saved</span>
         </div>
 
         <div class="hud-island">
-            <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Idempotent — Keeps Pinned 📌 Boxes Fixed)">Tidy</button>
-            <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen">Fit</button>
-            <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" style="border-radius:50%; font-weight:700;">?</button>
+            <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Idempotent — Keeps Pinned 📌 Boxes Fixed)" type="button">Tidy</button>
+            <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
+            <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%; font-weight:700;">?</button>
         </div>
     </div>
 
     <!-- Mobile Thumb-Zone Action Dock -->
     <div id="mobileActionDock">
-        <button class="hud-btn" id="mobAddBox">+ Box</button>
-        <button class="hud-btn" id="mobAddLeft">+ Left</button>
-        <button class="hud-btn" id="mobLink">🔗 Link</button>
-        <button class="hud-btn" id="mobEdit">✎ Edit</button>
-        <button class="hud-btn" id="mobPin">📌 Pin</button>
-        <button class="hud-btn" id="mobDel" style="color:#f87171;">🗑</button>
+        <button class="hud-btn" id="mobAddBox" type="button">+ Box</button>
+        <button class="hud-btn" id="mobAddLeft" type="button">+ Left</button>
+        <button class="hud-btn" id="mobLink" type="button">🔗 Link</button>
+        <button class="hud-btn" id="mobEdit" type="button">✎ Edit</button>
+        <button class="hud-btn" id="mobPin" type="button">📌 Pin</button>
+        <button class="hud-btn" id="mobDel" type="button" style="color:#f87171;">🗑</button>
     </div>
 
     <div id="modeBanner">Link Mode: Tap target box to connect (Tap empty space to cancel)</div>
@@ -299,8 +308,8 @@
                 A straight horizontal link cannot be routed between these boxes because manual locks or an intermediate box block the horizontal corridor. How would you like to resolve this?
             </p>
             <div class="modal-actions">
-                <button class="hud-btn" id="btnConflictSplit">Use Split Link Stubs (①—①)</button>
-                <button class="hud-btn active" id="btnConflictAuto">Revert Blocking Boxes to Auto-Layout</button>
+                <button class="hud-btn" id="btnConflictSplit" type="button">Use Split Link Stubs (①—①)</button>
+                <button class="hud-btn active" id="btnConflictAuto" type="button">Revert Blocking Boxes to Auto-Layout</button>
             </div>
         </div>
     </div>
@@ -329,11 +338,11 @@
 
     <script>
         /* ============================================================================
-         * BDN STUDIO v2.2 — FULL MOBILE TOUCH, PINCH-ZOOM & WIDTH-AWARE FIT
+         * BDN STUDIO v2.3 — SINGLE-BOX SPAWN FIX, MOBILE HUD FIT & LIVE FILE SYNC
          * ============================================================================ */
-        const STORAGE_KEY_STATE = 'bdn_studio_state_v12';
-        const STORAGE_KEY_DEFAULT_COLS = 'bdn_studio_default_cols_v12';
-        const STORAGE_KEY_SETTINGS = 'bdn_studio_settings_v12';
+        const STORAGE_KEY_STATE = 'bdn_studio_state_v13';
+        const STORAGE_KEY_DEFAULT_COLS = 'bdn_studio_default_cols_v13';
+        const STORAGE_KEY_SETTINGS = 'bdn_studio_settings_v13';
 
         const FACTORY_COLUMNS = [
             { id: 'col_enablers', title: 'Enablers', color: '#38bdf8' },
@@ -375,7 +384,7 @@
         const BOX_MIN_HEIGHT = 54;
         const SUBLANE_GAP = 42;
         const COL_SIDE_PADDING = 36;
-        const STICKY_HEADER_SCREEN_TOP = 60;
+        const STICKY_HEADER_SCREEN_TOP = 58;
         const STICKY_HEADER_HEIGHT = 40;
         const INITIAL_SPAWN_Y = 140;
         const VERTICAL_BOX_GAP = 38;
@@ -384,7 +393,7 @@
         const RESIZE_HANDLE_ZONE = 9;
         const STUB_LENGTH = 28;
         const STUB_RADIUS = 11;
-        const MIN_ZOOM = 0.18; // Allows full 4+ column BDN to fit comfortably on a 360px portrait phone screen!
+        const MIN_ZOOM = 0.18;
         const MAX_ZOOM = 2.4;
 
         let settings = {
@@ -433,13 +442,14 @@
         let crossDeviceEventSource = null;
         let syncPushTimer = null;
 
-        // Pointer & Multi-Touch Pinch-Zoom State
-        const activePointers = new Map(); // pointerId -> { x, y }
+        const activePointers = new Map();
         let pinchStartDist = 0;
         let pinchStartZoom = 1;
         let pinchWorldCenter = { x: 0, y: 0 };
         let longPressTimer = null;
         let lastTapTime = 0;
+        let lastEditorCloseTime = 0;
+        let lastSpawnTimestamp = 0;
 
         let linkingFromNodeId = null;
         let draggingGroup = null;
@@ -726,7 +736,7 @@
                 runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
                 saveState();
                 fitScreen();
-                updateStatusPill('✓ Sync Active', true);
+                updateStatusPill('⚡ Sync Active', true);
             } catch (err) {
                 alert('Could not parse BDN JSON file.');
             }
@@ -853,7 +863,7 @@
         }
 
         /* ----------------------------------------------------------------------------
-         * COLUMN GEOMETRY (FIXED FOR MOBILE & DESKTOP SO ZOOMING OUT SHRINKS CLEANLY!)
+         * COLUMN GEOMETRY
          * ---------------------------------------------------------------------------- */
         function getDefaultColumns() {
             try {
@@ -872,10 +882,6 @@
             const zoom = state.camera.zoom || 1;
             const isMobileScreen = window.innerWidth <= 820;
 
-            // CRITICAL MOBILE FIX:
-            // On mobile screens, do NOT inflate world column width by `window.innerWidth / zoom` when zooming out—
-            // otherwise zooming out makes columns wider in world-space so the diagram refuses to shrink onto the phone screen!
-            // On desktop, only expand world column width if the total unzoomed columns are narrower than the monitor.
             const minDesktopColW = isMobileScreen
                 ? 258
                 : Math.max(258, Math.floor((window.innerWidth / Math.min(1, zoom)) / colCount));
@@ -921,7 +927,6 @@
             const totalScreenW = (colGeom._totalWorldWidth || window.innerWidth) * state.camera.zoom;
 
             if (totalScreenW <= window.innerWidth) {
-                // Center horizontally when zoomed out so all 4 columns sit balanced on screen
                 state.camera.x = (window.innerWidth - totalScreenW) / 2;
             } else {
                 const minX = window.innerWidth - totalScreenW;
@@ -1053,7 +1058,11 @@
             const now = new Date();
             const hh = String(now.getHours()).padStart(2, '0');
             const mm = String(now.getMinutes()).padStart(2, '0');
-            pill.textContent = `${prefix} · ${hh}:${mm}`;
+            if (window.innerWidth <= 760) {
+                pill.textContent = isLive ? `⚡ ${hh}:${mm}` : `✓ ${hh}:${mm}`;
+            } else {
+                pill.textContent = `${prefix} · ${hh}:${mm}`;
+            }
             pill.classList.toggle('live', !!isLive);
         }
 
@@ -2286,9 +2295,6 @@
             settingsPanel.style.display = 'none';
         }
 
-        /* ----------------------------------------------------------------------------
-         * POINTER, MULTI-TOUCH PINCH-TO-ZOOM & LONG-PRESS EVENTS
-         * ---------------------------------------------------------------------------- */
         canvas.addEventListener('pointerdown', (e) => {
             hideAllMenus();
             if (e.button === 2) return;
@@ -2296,7 +2302,6 @@
             try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
             activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-            // Two-finger Pinch-to-Zoom on Mobile / Trackpad
             if (activePointers.size === 2) {
                 clearTimeout(longPressTimer);
                 stopEdgeAutoScrollLoop();
@@ -2318,7 +2323,6 @@
             const world = screenToWorld(e.clientX, e.clientY);
             const hit = hitTest(e.clientX, e.clientY);
 
-            // Double-tap on mobile touch to edit box/column/link
             const now = Date.now();
             if (e.pointerType === 'touch' && now - lastTapTime < 300 && hit) {
                 lastTapTime = 0;
@@ -2335,7 +2339,6 @@
             }
             lastTapTime = now;
 
-            // 480ms Long-Press on touch opens the full Context Menu!
             if (e.pointerType === 'touch') {
                 const startX = e.clientX;
                 const startY = e.clientY;
@@ -2478,7 +2481,6 @@
                 activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             }
 
-            // Handle 2-Finger Pinch-to-Zoom & Pan on Mobile
             if (activePointers.size === 2) {
                 const pts = Array.from(activePointers.values());
                 const dist = Math.max(10, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
@@ -2567,7 +2569,6 @@
                 pinchStartDist = 0;
             }
             if (activePointers.size === 1) {
-                // Smoothly resume 1-finger panning after lifting one finger from a pinch
                 const remaining = Array.from(activePointers.values())[0];
                 isPanning = true;
                 panStart = { x: remaining.x - state.camera.x, y: remaining.y - state.camera.y };
@@ -2653,9 +2654,17 @@
         }, { passive: false });
 
         /* ----------------------------------------------------------------------------
-         * BOX CREATION & INLINE EDITING
+         * BOX CREATION & INLINE EDITING (FIXED DOUBLE-SPAWN GUARD)
          * ---------------------------------------------------------------------------- */
         function addBoxAtWorldPoint(wx, wy, customColId = null) {
+            const now = Date.now();
+            if (now - lastSpawnTimestamp < 350 || now - lastEditorCloseTime < 350) return;
+            lastSpawnTimestamp = now;
+
+            if (document.activeElement && document.activeElement !== document.body) {
+                try { document.activeElement.blur(); } catch (e) {}
+            }
+
             pushUndoState();
             const colGeom = computeColumnGeometries();
             const targetCol = customColId
@@ -2681,7 +2690,11 @@
             openInlineEditor('node', newNode.id, screenPos.x, screenPos.y, newNode.text);
         }
 
-        function addBoxInViewportCenter() {
+        function addBoxInViewportCenter(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             const centerWorld = screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
             spawnCascadeCounter = (spawnCascadeCounter + 1) % 5;
             addBoxAtWorldPoint(centerWorld.x, centerWorld.y + spawnCascadeCounter * 22);
@@ -2698,12 +2711,15 @@
             inlineEditor.style.left = clampedX + 'px';
             inlineEditor.style.top = clampedY + 'px';
             inlineEditor.style.width = '230px';
-            inlineEditor.focus();
-            inlineEditor.select();
+            setTimeout(() => {
+                inlineEditor.focus();
+                inlineEditor.select();
+            }, 15);
         }
 
         function commitInlineEditor() {
             if (!editingTarget) return;
+            lastEditorCloseTime = Date.now();
             const val = inlineEditor.value.trim();
             if (val !== editingTarget.initialText) {
                 pushUndoState();
@@ -2734,10 +2750,13 @@
 
         inlineEditor.addEventListener('blur', commitInlineEditor);
         inlineEditor.addEventListener('keydown', (e) => {
+            e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 commitInlineEditor();
             } else if (e.key === 'Escape') {
+                e.preventDefault();
+                lastEditorCloseTime = Date.now();
                 editingTarget = null;
                 inlineEditor.style.display = 'none';
             }
@@ -2755,7 +2774,7 @@
         });
 
         /* ----------------------------------------------------------------------------
-         * CONTEXT MENU (RIGHT-CLICK OR MOBILE LONG-PRESS)
+         * CONTEXT MENU
          * ---------------------------------------------------------------------------- */
         function placeFloatingElement(el, anchorX, anchorY) {
             el.style.left = '0px';
@@ -2913,7 +2932,7 @@
         });
 
         /* ----------------------------------------------------------------------------
-         * MUTATION HELPERS & WIDTH-AWARE FIT SCREEN (WORKS ON MOBILE & DESKTOP!)
+         * MUTATION HELPERS & WIDTH-AWARE FIT SCREEN
          * ---------------------------------------------------------------------------- */
         function clearManualOnNode(nodeId) {
             const n = state.nodesById[nodeId];
@@ -2961,6 +2980,14 @@
         }
 
         function addConnectedLeftNode(sourceNode) {
+            const now = Date.now();
+            if (now - lastSpawnTimestamp < 350 || now - lastEditorCloseTime < 350) return;
+            lastSpawnTimestamp = now;
+
+            if (document.activeElement && document.activeElement !== document.body) {
+                try { document.activeElement.blur(); } catch (e) {}
+            }
+
             pushUndoState();
             const colIdx = state.columns.findIndex(c => c.id === sourceNode.columnId);
             const targetCol = state.columns[Math.max(0, colIdx - 1)];
@@ -2972,6 +2999,10 @@
             runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
             saveState();
             draw();
+
+            const updatedGeom = computeColumnGeometries();
+            const screenPos = worldToScreen(getNodeGlobalX(newNode, updatedGeom), newNode.y);
+            openInlineEditor('node', newNode.id, screenPos.x, screenPos.y, newNode.text);
         }
 
         function cycleLinkArrow(link) {
@@ -3073,11 +3104,8 @@
             draw();
         }
 
-        // CRITICAL MOBILE & DESKTOP FIX:
-        // `fitScreen()` now computes BOTH `zoomX` (so all 4 columns fit horizontally on a narrow phone screen!)
-        // AND `zoomY` (so the full vertical network fits between the sticky header and mobile dock).
         function fitScreen() {
-            state.camera.zoom = 1; // Measure natural 1x column width first
+            state.camera.zoom = 1;
             const colGeom = computeColumnGeometries();
             const totalW = colGeom._totalWorldWidth || 1040;
 
@@ -3111,14 +3139,14 @@
             e.stopPropagation();
             const isVis = fileMenu.style.display === 'flex';
             hideAllMenus();
-            if (!isVis) placeFloatingElement(fileMenu, 12, 58);
+            if (!isVis) placeFloatingElement(fileMenu, 12, 54);
         });
 
         document.getElementById('btnSettings').addEventListener('click', (e) => {
             e.stopPropagation();
             const isVis = settingsPanel.style.display === 'flex';
             hideAllMenus();
-            if (!isVis) placeFloatingElement(settingsPanel, 52, 58);
+            if (!isVis) placeFloatingElement(settingsPanel, 48, 54);
         });
 
         document.getElementById('docTitleBtn').addEventListener('click', (e) => {
@@ -3142,11 +3170,12 @@
         });
 
         // Mobile Action Dock Buttons
-        document.getElementById('mobAddBox').addEventListener('click', addBoxInViewportCenter);
-        document.getElementById('mobAddLeft').addEventListener('click', () => {
+        document.getElementById('mobAddBox').addEventListener('click', (e) => addBoxInViewportCenter(e));
+        document.getElementById('mobAddLeft').addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
             const selNode = state.selectedNodeId ? state.nodesById[state.selectedNodeId] : null;
             if (selNode) addConnectedLeftNode(selNode);
-            else addBoxInViewportCenter();
+            else addBoxInViewportCenter(e);
         });
         document.getElementById('mobLink').addEventListener('click', () => {
             if (state.selectedNodeId) startLinkMode(state.selectedNodeId);
@@ -3234,7 +3263,7 @@
 
         document.getElementById('btnUndo').addEventListener('click', performUndo);
         document.getElementById('btnRedo').addEventListener('click', performRedo);
-        document.getElementById('btnAddBox').addEventListener('click', addBoxInViewportCenter);
+        document.getElementById('btnAddBox').addEventListener('click', (e) => addBoxInViewportCenter(e));
         document.getElementById('btnAddCol').addEventListener('click', () => {
             const targetColId = state.selectedColId || state.columns[state.columns.length - 1].id;
             insertColumnRelative(targetColId, 1);
@@ -3249,6 +3278,7 @@
 
         window.addEventListener('keydown', (e) => {
             if (inlineEditor.style.display === 'block') return;
+            if (Date.now() - lastEditorCloseTime < 350) return;
 
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
                 e.preventDefault(); performUndo(); return;
@@ -3279,7 +3309,10 @@
                 e.preventDefault(); deleteSelected(); return;
             }
             if (e.key === 'Enter') {
-                e.preventDefault(); addBoxInViewportCenter(); return;
+                if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+                e.preventDefault();
+                addBoxInViewportCenter(e);
+                return;
             }
             if (e.key === 'Tab' && selNode) {
                 e.preventDefault(); addConnectedLeftNode(selNode); return;
