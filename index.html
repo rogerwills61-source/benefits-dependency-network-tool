@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>BDN Studio — Benefits Dependency Network Mapper</title>
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#090d16">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <style>
         :root {
             --bg-canvas: #090d16;
@@ -24,27 +26,32 @@
             --danger: #ef4444;
             --success: #10b981;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-canvas); color: var(--text-primary); }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body, html {
+            width: 100%; height: 100%; overflow: hidden;
+            background: var(--bg-canvas); color: var(--text-primary);
+            touch-action: none; overscroll-behavior: none;
+        }
 
+        /* Minimalist 3-Zone Top HUD */
         #topHud {
-            position: fixed; top: 8px; left: 12px; right: 12px; height: 46px;
-            display: flex; align-items: center; justify-content: space-between; gap: 8px;
-            z-index: 50; pointer-events: none;
+            position: fixed; top: 8px; left: 8px; right: 8px; min-height: 44px;
+            display: flex; align-items: center; justify-content: space-between; gap: 6px;
+            z-index: 50; pointer-events: none; flex-wrap: nowrap;
         }
         .hud-island {
             pointer-events: auto;
             background: var(--surface-hud); backdrop-filter: blur(12px);
             border: 1px solid var(--border-hud); border-radius: 10px;
-            display: flex; align-items: center; gap: 5px; padding: 5px 8px;
+            display: flex; align-items: center; gap: 4px; padding: 4px 7px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.35);
         }
         .hud-btn {
             background: rgba(148, 163, 184, 0.08); color: var(--text-primary);
             border: 1px solid var(--border-hud); border-radius: 7px;
-            height: 32px; padding: 0 10px; font-size: 12px; font-weight: 500; cursor: pointer;
+            height: 32px; padding: 0 9px; font-size: 12px; font-weight: 500; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-            transition: all 0.14s ease;
+            transition: all 0.14s ease; touch-action: manipulation;
         }
         .hud-btn.icon-only { width: 32px; padding: 0; }
         .hud-btn:hover:not(:disabled) { background: rgba(56, 189, 248, 0.16); border-color: var(--accent); }
@@ -53,38 +60,62 @@
         .hud-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.25; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
         #docTitleBtn {
-            font-weight: 700; font-size: 13.5px; color: var(--text-primary);
-            padding: 4px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
-            max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 700; font-size: 13px; color: var(--text-primary);
+            padding: 4px 6px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+            max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         #docTitleBtn:hover { border-color: var(--border-hud); background: rgba(148, 163, 184, 0.08); }
         .status-pill {
-            font-size: 11px; color: var(--text-secondary); padding: 4px 10px;
+            font-size: 11px; color: var(--text-secondary); padding: 4px 8px;
             border-radius: 999px; background: rgba(148, 163, 184, 0.07); border: 1px solid var(--border-hud);
             white-space: nowrap;
         }
         .status-pill.live { color: #10b981; border-color: rgba(16, 185, 129, 0.35); }
 
-        #canvasContainer { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-        canvas { display: block; width: 100%; height: 100%; }
+        @media (max-width: 760px) {
+            #btnMenu span { display: none; }
+            #btnMenu { width: 32px; padding: 0; }
+            #docTitleBtn { max-width: 110px; font-size: 12px; }
+            .status-pill { font-size: 10px; padding: 3px 6px; }
+            #btnHelp { display: none; }
+        }
+
+        /* Canvas Viewport — CRITICAL: touch-action: none prevents browser scroll hijacking! */
+        #canvasContainer { width: 100vw; height: 100dvh; position: relative; overflow: hidden; touch-action: none; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+        /* Mobile Thumb-Zone Contextual Action Dock (ThoughtTree Standard) */
+        #mobileActionDock {
+            position: fixed; bottom: max(12px, env(safe-area-inset-bottom, 12px)); left: 50%;
+            transform: translateX(-50%); z-index: 60;
+            background: var(--surface-hud); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-hud); border-radius: 12px;
+            padding: 5px 8px; gap: 5px; align-items: center;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+            display: none; max-width: calc(100vw - 16px); overflow-x: auto;
+        }
+        @media (max-width: 820px), (pointer: coarse) {
+            #mobileActionDock { display: flex; }
+        }
 
         #inlineEditor {
             position: fixed; display: none; z-index: 130;
             background: var(--surface-modal); color: var(--text-primary); border: 2px solid var(--accent);
-            border-radius: 8px; padding: 6px 10px; font-size: 13px; line-height: 1.35;
+            border-radius: 8px; padding: 6px 10px; font-size: 14px; line-height: 1.35;
             box-shadow: 0 8px 28px rgba(0,0,0,0.55); outline: none; resize: none;
             max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px);
+            user-select: text; -webkit-user-select: text;
         }
 
         .floating-menu {
             position: fixed; display: none; flex-direction: column; z-index: 120;
             background: var(--surface-modal); border: 1px solid var(--border-hud);
-            border-radius: 11px; padding: 6px; min-width: 245px;
+            border-radius: 11px; padding: 6px; min-width: 240px;
             box-shadow: 0 12px 32px rgba(0,0,0,0.55);
             max-height: calc(100dvh - 24px); max-width: calc(100vw - 24px); overflow-y: auto;
         }
         .ctx-item {
-            padding: 7px 10px; font-size: 12px; color: var(--text-primary);
+            padding: 8px 10px; font-size: 12.5px; color: var(--text-primary);
             border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px;
         }
         .ctx-item:hover { background: rgba(56, 189, 248, 0.15); }
@@ -96,7 +127,7 @@
 
         .swatch-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; flex-wrap: wrap; }
         .color-swatch {
-            width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+            width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
             border: 2px solid rgba(255,255,255,0.2); transition: transform 0.12s ease;
         }
         .color-swatch:hover { transform: scale(1.2); border-color: #fff; }
@@ -140,10 +171,10 @@
         .help-row kbd { background: rgba(148,163,184,0.15); color: var(--text-primary); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
 
         #modeBanner {
-            position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
+            position: fixed; top: 108px; left: 50%; transform: translateX(-50%);
             background: rgba(56, 189, 248, 0.95); color: #090d16; font-weight: 700;
             font-size: 12px; padding: 6px 14px; border-radius: 999px; z-index: 90;
-            display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4); white-space: nowrap;
         }
     </style>
 </head>
@@ -169,8 +200,8 @@
         </div>
 
         <div class="hud-island">
-            <span id="docTitleBtn" title="Click to rename BDN document">Service Transformation BDN</span>
-            <span class="status-pill" id="saveStatus" title="Local & Same-File Multi-Device Sync Status">✓ Auto-saved</span>
+            <span id="docTitleBtn" title="Tap/Click to rename BDN document">Service Transformation BDN</span>
+            <span class="status-pill" id="saveStatus" title="Local & Same-File Multi-Device Sync Status">✓ Saved</span>
         </div>
 
         <div class="hud-island">
@@ -180,7 +211,17 @@
         </div>
     </div>
 
-    <div id="modeBanner">Link Mode: Click target box to connect (Press Esc to cancel)</div>
+    <!-- Mobile Thumb-Zone Action Dock -->
+    <div id="mobileActionDock">
+        <button class="hud-btn" id="mobAddBox">+ Box</button>
+        <button class="hud-btn" id="mobAddLeft">+ Left</button>
+        <button class="hud-btn" id="mobLink">🔗 Link</button>
+        <button class="hud-btn" id="mobEdit">✎ Edit</button>
+        <button class="hud-btn" id="mobPin">📌 Pin</button>
+        <button class="hud-btn" id="mobDel" style="color:#f87171;">🗑</button>
+    </div>
+
+    <div id="modeBanner">Link Mode: Tap target box to connect (Tap empty space to cancel)</div>
 
     <div id="canvasContainer">
         <canvas id="bdnCanvas"></canvas>
@@ -189,7 +230,7 @@
     <textarea id="inlineEditor" rows="2"></textarea>
     <input type="file" id="hiddenFileInput" accept=".json,.bdn.json" style="display:none;" />
 
-    <!-- File Menu (Zero URL Sync Links — Sync happens seamlessly via embedded 256-bit cryptographic file token) -->
+    <!-- File Menu -->
     <div class="floating-menu" id="fileMenu">
         <div class="ctx-label">File &amp; Cloud Storage</div>
         <div class="ctx-item" id="menuNewBdn"><span>📄 New Blank BDN</span><span class="ctx-kbd">Alt+N</span></div>
@@ -266,7 +307,7 @@
 
     <div id="helpPopover">
         <h4>BDN Studio — Shortcuts &amp; Controls</h4>
-        <div class="help-row"><span>Add Box (or Right-Click Background)</span><kbd>Enter</kbd></div>
+        <div class="help-row"><span>Add Box (or Right-Click / Long-Press)</span><kbd>Enter</kbd></div>
         <div class="help-row"><span>Add Connected Box to Left Column</span><kbd>Tab</kbd></div>
         <div class="help-row"><span>Start / Complete Horizontal Link</span><kbd>L</kbd></div>
         <div class="help-row"><span>Stretch Box Top or Bottom Edge</span><kbd>Hover Top/Bottom ↕</kbd></div>
@@ -282,15 +323,17 @@
         <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
         <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
         <div style="margin-top:8px; color:var(--text-muted); line-height:1.45;">
-            • <strong>Right-Click Canvas Background:</strong> Add a box directly at the cursor, insert/colour columns, or tidy.<br>
-            • <strong>Access-Controlled File Sync:</strong> Opening the exact same <code>.bdn.json</code> file across devices syncs automatically using its embedded 256-bit cryptographic token (never by filename).
+            • <strong>Mobile &amp; Touch:</strong> Pinch with two fingers to zoom, drag with one finger to pan, tap <code>Fit</code> to fit all 4 columns onto your phone screen, or long-press any box/column for the context menu.
         </div>
     </div>
 
     <script>
-        const STORAGE_KEY_STATE = 'bdn_studio_state_v11';
-        const STORAGE_KEY_DEFAULT_COLS = 'bdn_studio_default_cols_v11';
-        const STORAGE_KEY_SETTINGS = 'bdn_studio_settings_v11';
+        /* ============================================================================
+         * BDN STUDIO v2.2 — FULL MOBILE TOUCH, PINCH-ZOOM & WIDTH-AWARE FIT
+         * ============================================================================ */
+        const STORAGE_KEY_STATE = 'bdn_studio_state_v12';
+        const STORAGE_KEY_DEFAULT_COLS = 'bdn_studio_default_cols_v12';
+        const STORAGE_KEY_SETTINGS = 'bdn_studio_settings_v12';
 
         const FACTORY_COLUMNS = [
             { id: 'col_enablers', title: 'Enablers', color: '#38bdf8' },
@@ -332,8 +375,8 @@
         const BOX_MIN_HEIGHT = 54;
         const SUBLANE_GAP = 42;
         const COL_SIDE_PADDING = 36;
-        const STICKY_HEADER_SCREEN_TOP = 62;
-        const STICKY_HEADER_HEIGHT = 42;
+        const STICKY_HEADER_SCREEN_TOP = 60;
+        const STICKY_HEADER_HEIGHT = 40;
         const INITIAL_SPAWN_Y = 140;
         const VERTICAL_BOX_GAP = 38;
         const LINK_SLOT_SPACING = 22;
@@ -341,6 +384,8 @@
         const RESIZE_HANDLE_ZONE = 9;
         const STUB_LENGTH = 28;
         const STUB_RADIUS = 11;
+        const MIN_ZOOM = 0.18; // Allows full 4+ column BDN to fit comfortably on a 360px portrait phone screen!
+        const MAX_ZOOM = 2.4;
 
         let settings = {
             theme: 'dark',
@@ -387,6 +432,14 @@
         let broadcastChannel = null;
         let crossDeviceEventSource = null;
         let syncPushTimer = null;
+
+        // Pointer & Multi-Touch Pinch-Zoom State
+        const activePointers = new Map(); // pointerId -> { x, y }
+        let pinchStartDist = 0;
+        let pinchStartZoom = 1;
+        let pinchWorldCenter = { x: 0, y: 0 };
+        let longPressTimer = null;
+        let lastTapTime = 0;
 
         let linkingFromNodeId = null;
         let draggingGroup = null;
@@ -457,6 +510,9 @@
             syncSeg('arrowSelector', 'data-arrow', settings.defaultArrow);
         }
 
+        /* ----------------------------------------------------------------------------
+         * CRYPTOGRAPHIC FILE-BOUND SYNC (~50ms, ZERO BACKDOORS)
+         * ---------------------------------------------------------------------------- */
         function getPrivateFileChannelKey() {
             if (!state.mapId || !state.fileSyncToken || state.fileSyncToken.length < 32) return null;
             return 'bdn_priv_' + state.mapId.replace(/[^a-zA-Z0-9]/g, '') + '_' + state.fileSyncToken.slice(0, 40);
@@ -473,7 +529,7 @@
                 broadcastChannel = new BroadcastChannel(channelKey);
                 broadcastChannel.onmessage = (ev) => {
                     if (ev.data && ev.data.senderId !== instanceClientId && ev.data.state) {
-                        mergeIncomingCRDTState(ev.data.state, '⚡ Synced live');
+                        mergeIncomingCRDTState(ev.data.state, '⚡ Synced');
                     }
                 };
             }
@@ -490,7 +546,7 @@
                         if (!wrapper || !wrapper.message) return;
                         const payload = JSON.parse(wrapper.message);
                         if (payload && payload.senderId !== instanceClientId && payload.state) {
-                            mergeIncomingCRDTState(payload.state, '⚡ Synced live');
+                            mergeIncomingCRDTState(payload.state, '⚡ Synced');
                         }
                     } catch (e) {}
                 };
@@ -531,7 +587,7 @@
             }, 50);
         }
 
-        function mergeIncomingCRDTState(incoming, badgeLabel = '⚡ Synced live') {
+        function mergeIncomingCRDTState(incoming, badgeLabel = '⚡ Synced') {
             if (!incoming || incoming.mapId !== state.mapId || incoming.fileSyncToken !== state.fileSyncToken) return;
             let changed = false;
 
@@ -594,12 +650,15 @@
                     const text = await file.text();
                     const parsed = JSON.parse(text);
                     if (parsed && parsed.mapId === state.mapId && parsed.fileSyncToken === state.fileSyncToken) {
-                        mergeIncomingCRDTState(parsed, '⚡ Cloud File Synced');
+                        mergeIncomingCRDTState(parsed, '⚡ Cloud Synced');
                     }
                 }
             } catch (e) {}
         }, 900);
 
+        /* ----------------------------------------------------------------------------
+         * FILE OPEN, SAVE & PNG EXPORT
+         * ---------------------------------------------------------------------------- */
         function getCleanFileName(ext = '.bdn.json') {
             const slug = (state.mapTitle || 'bdn-network')
                 .toLowerCase()
@@ -667,7 +726,7 @@
                 runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
                 saveState();
                 fitScreen();
-                updateStatusPill('✓ File Opened & Sync Active', true);
+                updateStatusPill('✓ Sync Active', true);
             } catch (err) {
                 alert('Could not parse BDN JSON file.');
             }
@@ -704,7 +763,7 @@
                     await writable.close();
                     const f = await sessionFileHandle.getFile();
                     lastFileModifiedTime = f.lastModified;
-                    updateStatusPill('✓ Saved to file', true);
+                    updateStatusPill('✓ Saved', true);
                     return;
                 } catch (e) {}
             }
@@ -716,7 +775,7 @@
             a.download = getCleanFileName('.bdn.json');
             a.click();
             URL.revokeObjectURL(url);
-            updateStatusPill('✓ Downloaded .bdn.json');
+            updateStatusPill('✓ Downloaded');
         }
 
         function exportPngDiagram() {
@@ -727,9 +786,12 @@
             a.href = url;
             a.download = getCleanFileName('.png');
             a.click();
-            updateStatusPill('✓ Exported PNG');
+            updateStatusPill('✓ PNG Saved');
         }
 
+        /* ----------------------------------------------------------------------------
+         * UNDO / REDO
+         * ---------------------------------------------------------------------------- */
         function createSnapshot() {
             return JSON.stringify({
                 mapTitle: state.mapTitle,
@@ -790,6 +852,9 @@
             document.getElementById('btnRedo').disabled = redoStack.length === 0;
         }
 
+        /* ----------------------------------------------------------------------------
+         * COLUMN GEOMETRY (FIXED FOR MOBILE & DESKTOP SO ZOOMING OUT SHRINKS CLEANLY!)
+         * ---------------------------------------------------------------------------- */
         function getDefaultColumns() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY_DEFAULT_COLS);
@@ -805,8 +870,16 @@
             const colGeom = {};
             const colCount = Math.max(1, state.columns.length);
             const zoom = state.camera.zoom || 1;
-            const minWorldWidthToFillScreen = (window.innerWidth / zoom) / colCount;
-            const minBaseColW = Math.max(260, Math.floor(window.innerWidth / colCount), minWorldWidthToFillScreen);
+            const isMobileScreen = window.innerWidth <= 820;
+
+            // CRITICAL MOBILE FIX:
+            // On mobile screens, do NOT inflate world column width by `window.innerWidth / zoom` when zooming out—
+            // otherwise zooming out makes columns wider in world-space so the diagram refuses to shrink onto the phone screen!
+            // On desktop, only expand world column width if the total unzoomed columns are narrower than the monitor.
+            const minDesktopColW = isMobileScreen
+                ? 258
+                : Math.max(258, Math.floor((window.innerWidth / Math.min(1, zoom)) / colCount));
+
             let runningX = 0;
 
             state.columns.forEach((col, colIndex) => {
@@ -819,7 +892,7 @@
                 });
                 const laneCount = maxSubLane + 1;
                 const requiredInnerW = laneCount * BOX_WIDTH + (laneCount - 1) * SUBLANE_GAP + COL_SIDE_PADDING * 2;
-                const colWidth = Math.max(minBaseColW, requiredInnerW);
+                const colWidth = Math.max(minDesktopColW, requiredInnerW);
                 const colEndX = colStartX + colWidth;
 
                 colGeom[col.id] = {
@@ -847,8 +920,9 @@
             const colGeom = computeColumnGeometries();
             const totalScreenW = (colGeom._totalWorldWidth || window.innerWidth) * state.camera.zoom;
 
-            if (totalScreenW <= window.innerWidth + 1) {
-                state.camera.x = 0;
+            if (totalScreenW <= window.innerWidth) {
+                // Center horizontally when zoomed out so all 4 columns sit balanced on screen
+                state.camera.x = (window.innerWidth - totalScreenW) / 2;
             } else {
                 const minX = window.innerWidth - totalScreenW;
                 state.camera.x = Math.min(0, Math.max(minX, state.camera.x));
@@ -974,7 +1048,7 @@
             return link;
         }
 
-        function updateStatusPill(prefix = '✓ Auto-saved', isLive = false) {
+        function updateStatusPill(prefix = '✓ Saved', isLive = false) {
             const pill = document.getElementById('saveStatus');
             const now = new Date();
             const hh = String(now.getHours()).padStart(2, '0');
@@ -987,7 +1061,7 @@
             state.updatedAt = Date.now();
             try {
                 localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
-                updateStatusPill(sessionFileHandle ? '✓ Saved to file' : '✓ Auto-saved', !!sessionFileHandle);
+                updateStatusPill(sessionFileHandle ? '✓ File' : '✓ Saved', !!sessionFileHandle);
             } catch (e) {}
 
             broadcastCRDTUpdate();
@@ -1710,7 +1784,7 @@
         }
 
         function getHeaderActionRects(screenEndX) {
-            const btnY = STICKY_HEADER_SCREEN_TOP + 9;
+            const btnY = STICKY_HEADER_SCREEN_TOP + 8;
             const btnH = 24;
             const btnW = 24;
             return {
@@ -1979,16 +2053,16 @@
 
                 ctx.fillStyle = col.color;
                 ctx.beginPath();
-                ctx.arc(screenX + 16, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1, 5, 0, Math.PI * 2);
+                ctx.arc(screenX + 12, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1, 4.5, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.fillStyle = theme.textPrimary;
-                ctx.font = '600 13px system-ui, sans-serif';
+                ctx.font = (screenW < 120 ? '600 11px' : '600 13px') + ' system-ui, sans-serif';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(col.title, screenX + 28, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1);
+                ctx.fillText(col.title, screenX + 22, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1);
 
-                if (screenW > 150) {
+                if (screenW > 155) {
                     const rects = getHeaderActionRects(screenEndX);
                     const drawMiniBtn = (r, symbol, enabled = true) => {
                         drawRoundedRect(r.x, r.y, r.w, r.h, 5);
@@ -2024,7 +2098,7 @@
                     if (cg && wx >= cg.x && wx <= cg.endX) {
                         const screenEndX = cg.endX * state.camera.zoom + state.camera.x;
                         const screenW = cg.width * state.camera.zoom;
-                        if (screenW > 150) {
+                        if (screenW > 155) {
                             const rects = getHeaderActionRects(screenEndX);
                             const inRect = (r) => screenX >= r.x && screenX <= r.x + r.w && screenY >= r.y && screenY <= r.y + r.h;
                             if (inRect(rects.moveLeft)) return { type: 'col-btn-left', col };
@@ -2051,10 +2125,10 @@
                 const yRight = link.rightStubY || (rightNode.y + rightNode.height / 2);
                 const xRightCircle = getNodeGlobalX(rightNode, colGeom) - STUB_LENGTH;
 
-                if (Math.hypot(wx - xLeftCircle, wy - yLeft) <= STUB_RADIUS + 4) {
+                if (Math.hypot(wx - xLeftCircle, wy - yLeft) <= STUB_RADIUS + 6) {
                     return { type: 'stub', link, targetNode: rightNode };
                 }
-                if (Math.hypot(wx - xRightCircle, wy - yRight) <= STUB_RADIUS + 4) {
+                if (Math.hypot(wx - xRightCircle, wy - yRight) <= STUB_RADIUS + 6) {
                     return { type: 'stub', link, targetNode: leftNode };
                 }
             }
@@ -2085,7 +2159,7 @@
                 const rightNode = xA <= xB ? nB : nA;
                 const startX = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH;
                 const endX = getNodeGlobalX(rightNode, colGeom);
-                if (wx >= startX && wx <= endX && Math.abs(wy - link.anchorY) <= 9) {
+                if (wx >= startX && wx <= endX && Math.abs(wy - link.anchorY) <= 12) {
                     return { type: 'link', link };
                 }
             }
@@ -2135,6 +2209,7 @@
             const dx = world.x - draggingGroup.startMouseX;
             const dy = world.y - draggingGroup.startMouseY;
             if (Math.hypot(dx, dy) > 3) {
+                clearTimeout(longPressTimer);
                 if (!draggingGroup.undoPushed) {
                     pushUndoState();
                     draggingGroup.undoPushed = true;
@@ -2211,12 +2286,67 @@
             settingsPanel.style.display = 'none';
         }
 
+        /* ----------------------------------------------------------------------------
+         * POINTER, MULTI-TOUCH PINCH-TO-ZOOM & LONG-PRESS EVENTS
+         * ---------------------------------------------------------------------------- */
         canvas.addEventListener('pointerdown', (e) => {
             hideAllMenus();
             if (e.button === 2) return;
+
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+            // Two-finger Pinch-to-Zoom on Mobile / Trackpad
+            if (activePointers.size === 2) {
+                clearTimeout(longPressTimer);
+                stopEdgeAutoScrollLoop();
+                draggingGroup = null;
+                resizingNode = null;
+                draggingColumn = null;
+                isPanning = false;
+
+                const pts = Array.from(activePointers.values());
+                pinchStartDist = Math.max(10, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+                pinchStartZoom = state.camera.zoom;
+                const midX = (pts[0].x + pts[1].x) / 2;
+                const midY = (pts[0].y + pts[1].y) / 2;
+                pinchWorldCenter = screenToWorld(midX, midY);
+                return;
+            }
+
             lastPointerScreen = { x: e.clientX, y: e.clientY };
             const world = screenToWorld(e.clientX, e.clientY);
             const hit = hitTest(e.clientX, e.clientY);
+
+            // Double-tap on mobile touch to edit box/column/link
+            const now = Date.now();
+            if (e.pointerType === 'touch' && now - lastTapTime < 300 && hit) {
+                lastTapTime = 0;
+                if (hit.type === 'node' || hit.type === 'resize-node-top' || hit.type === 'resize-node-bottom') {
+                    openInlineEditor('node', hit.node.id, e.clientX - 90, e.clientY - 25, hit.node.text);
+                    return;
+                } else if (hit.type === 'column-header') {
+                    openInlineEditor('col', hit.col.id, e.clientX - 90, STICKY_HEADER_SCREEN_TOP + 4, hit.col.title);
+                    return;
+                } else if (hit.type === 'link') {
+                    openInlineEditor('link', hit.link.id, e.clientX - 90, e.clientY - 25, hit.link.label);
+                    return;
+                }
+            }
+            lastTapTime = now;
+
+            // 480ms Long-Press on touch opens the full Context Menu!
+            if (e.pointerType === 'touch') {
+                const startX = e.clientX;
+                const startY = e.clientY;
+                clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    draggingGroup = null;
+                    isPanning = false;
+                    resizingNode = null;
+                    openContextMenuAtPoint(startX, startY);
+                }, 480);
+            }
 
             if (hit?.type === 'col-btn-left') {
                 state.selectedColId = hit.col.id;
@@ -2340,6 +2470,31 @@
         });
 
         window.addEventListener('pointermove', (e) => {
+            if (activePointers.has(e.pointerId)) {
+                const prev = activePointers.get(e.pointerId);
+                if (Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > 8) {
+                    clearTimeout(longPressTimer);
+                }
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            }
+
+            // Handle 2-Finger Pinch-to-Zoom & Pan on Mobile
+            if (activePointers.size === 2) {
+                const pts = Array.from(activePointers.values());
+                const dist = Math.max(10, Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y));
+                const midX = (pts[0].x + pts[1].x) / 2;
+                const midY = (pts[0].y + pts[1].y) / 2;
+                const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
+                state.camera.zoom = newZoom;
+                state.camera.x = midX - pinchWorldCenter.x * newZoom;
+                state.camera.y = midY - pinchWorldCenter.y * newZoom;
+                const colGeom = computeColumnGeometries();
+                computeHorizontalLinksAndStubs(colGeom);
+                clampCameraBounds();
+                draw();
+                return;
+            }
+
             lastPointerScreen = { x: e.clientX, y: e.clientY };
             const world = screenToWorld(e.clientX, e.clientY);
 
@@ -2405,12 +2560,24 @@
             updateHoverCursor(e.clientX, e.clientY);
         });
 
-        window.addEventListener('pointerup', (e) => {
+        function handlePointerEnd(e) {
+            clearTimeout(longPressTimer);
+            activePointers.delete(e.pointerId);
+            if (activePointers.size < 2) {
+                pinchStartDist = 0;
+            }
+            if (activePointers.size === 1) {
+                // Smoothly resume 1-finger panning after lifting one finger from a pinch
+                const remaining = Array.from(activePointers.values())[0];
+                isPanning = true;
+                panStart = { x: remaining.x - state.camera.x, y: remaining.y - state.camera.y };
+                return;
+            }
+
             stopEdgeAutoScrollLoop();
 
             if (draggingColumn) {
                 draggingColumn = null;
-                updateHoverCursor(e.clientX, e.clientY);
                 draw();
                 return;
             }
@@ -2424,7 +2591,6 @@
                     anchorSet: n ? new Set([n.id]) : null
                 });
                 saveState();
-                updateHoverCursor(e.clientX, e.clientY);
                 draw();
                 return;
             }
@@ -2463,17 +2629,18 @@
                     });
                 }
                 draggingGroup = null;
-                updateHoverCursor(e.clientX, e.clientY);
                 draw();
             }
             isPanning = false;
-            updateHoverCursor(e.clientX, e.clientY);
-        });
+        }
+
+        window.addEventListener('pointerup', handlePointerEnd);
+        window.addEventListener('pointercancel', handlePointerEnd);
 
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-            const newZoom = Math.min(2.2, Math.max(0.35, state.camera.zoom * zoomFactor));
+            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.camera.zoom * zoomFactor));
             const wx = (e.clientX - state.camera.x) / state.camera.zoom;
             const wy = (e.clientY - state.camera.y) / state.camera.zoom;
             state.camera.zoom = newZoom;
@@ -2485,6 +2652,9 @@
             draw();
         }, { passive: false });
 
+        /* ----------------------------------------------------------------------------
+         * BOX CREATION & INLINE EDITING
+         * ---------------------------------------------------------------------------- */
         function addBoxAtWorldPoint(wx, wy, customColId = null) {
             pushUndoState();
             const colGeom = computeColumnGeometries();
@@ -2523,8 +2693,8 @@
             editingTarget = { type: targetType, id, initialText: initialText || '' };
             inlineEditor.value = initialText || '';
             inlineEditor.style.display = 'block';
-            const clampedX = Math.min(window.innerWidth - 260, Math.max(12, screenX));
-            const clampedY = Math.min(window.innerHeight - 90, Math.max(64, screenY));
+            const clampedX = Math.min(window.innerWidth - 245, Math.max(12, screenX));
+            const clampedY = Math.min(window.innerHeight - 100, Math.max(64, screenY));
             inlineEditor.style.left = clampedX + 'px';
             inlineEditor.style.top = clampedY + 'px';
             inlineEditor.style.width = '230px';
@@ -2584,6 +2754,9 @@
             }
         });
 
+        /* ----------------------------------------------------------------------------
+         * CONTEXT MENU (RIGHT-CLICK OR MOBILE LONG-PRESS)
+         * ---------------------------------------------------------------------------- */
         function placeFloatingElement(el, anchorX, anchorY) {
             el.style.left = '0px';
             el.style.top = '0px';
@@ -2593,7 +2766,7 @@
             const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
             const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
             const posX = (anchorX + rect.width > vw - 12) ? Math.max(12, vw - rect.width - 12) : Math.max(12, anchorX);
-            const posY = (anchorY + rect.height > vh - 12) ? Math.max(12, anchorY - rect.height) : Math.max(12, anchorY);
+            const posY = (anchorY + rect.height > vh - 72) ? Math.max(12, anchorY - rect.height) : Math.max(12, anchorY);
             el.style.left = posX + 'px';
             el.style.top = posY + 'px';
             el.style.visibility = 'visible';
@@ -2659,17 +2832,16 @@
             placeFloatingElement(contextMenu, x, y);
         }
 
-        canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const world = screenToWorld(e.clientX, e.clientY);
-            const hit = hitTest(e.clientX, e.clientY);
+        function openContextMenuAtPoint(screenX, screenY) {
+            const world = screenToWorld(screenX, screenY);
+            const hit = hitTest(screenX, screenY);
 
             if (hit?.type === 'node' || hit?.type === 'resize-node-top' || hit?.type === 'resize-node-bottom') {
                 const n = hit.node;
                 state.selectedNodeId = n.id;
                 draw();
-                showContextMenu(e.clientX, e.clientY, [
-                    { label: '✎ Edit Box Text', kbd: 'F2', action: () => openInlineEditor('node', n.id, e.clientX, e.clientY, n.text) },
+                showContextMenu(screenX, screenY, [
+                    { label: '✎ Edit Box Text', kbd: 'F2', action: () => openInlineEditor('node', n.id, screenX, screenY, n.text) },
                     { label: '🔗 Start Link From Box', kbd: 'L', action: () => startLinkMode(n.id) },
                     { label: '⬅ Add Connected Box to Left Column', kbd: 'Tab', action: () => addConnectedLeftNode(n) },
                     { sep: true },
@@ -2689,8 +2861,8 @@
                 const l = hit.link;
                 state.selectedLinkId = l.id;
                 draw();
-                showContextMenu(e.clientX, e.clientY, [
-                    { label: '✎ Edit Link Annotation', kbd: 'F2', action: () => openInlineEditor('link', l.id, e.clientX, e.clientY, l.label) },
+                showContextMenu(screenX, screenY, [
+                    { label: '✎ Edit Link Annotation', kbd: 'F2', action: () => openInlineEditor('link', l.id, screenX, screenY, l.label) },
                     { label: '⇄ Cycle Arrowhead Direction', kbd: 'A', action: () => cycleLinkArrow(l) },
                     { label: l.forceSplit ? 'Heal Split Link to Straight Line' : 'Convert to Split Link Stubs (①—①)', kbd: 'S', action: () => toggleForceSplit(l) },
                     { sep: true },
@@ -2700,8 +2872,8 @@
                 const col = hit.col;
                 state.selectedColId = col.id;
                 draw();
-                showContextMenu(e.clientX, e.clientY, [
-                    { label: `✎ Rename "${col.title}"`, kbd: 'F2', action: () => openInlineEditor('col', col.id, e.clientX, STICKY_HEADER_SCREEN_TOP + 4, col.title) },
+                showContextMenu(screenX, screenY, [
+                    { label: `✎ Rename "${col.title}"`, kbd: 'F2', action: () => openInlineEditor('col', col.id, screenX, STICKY_HEADER_SCREEN_TOP + 4, col.title) },
                     { header: 'Column Accent Colour' },
                     { swatches: true, onSelectColor: (hex) => { if (hex) { pushUndoState(); col.color = hex; saveState(); draw(); } } },
                     { sep: true },
@@ -2718,11 +2890,11 @@
                 if (bgCol) state.selectedColId = bgCol.id;
                 draw();
 
-                showContextMenu(e.clientX, e.clientY, [
+                showContextMenu(screenX, screenY, [
                     { header: `Column: ${bgCol ? bgCol.title : 'Workspace'}` },
                     { label: '+ Add Box Here', kbd: 'Enter', action: () => addBoxAtWorldPoint(world.x, world.y, bgCol?.id) },
                     { sep: true },
-                    { label: '✎ Rename This Column...', action: () => openInlineEditor('col', bgCol.id, e.clientX, STICKY_HEADER_SCREEN_TOP + 4, bgCol.title) },
+                    { label: '✎ Rename This Column...', action: () => openInlineEditor('col', bgCol.id, screenX, STICKY_HEADER_SCREEN_TOP + 4, bgCol.title) },
                     { label: '+ Insert Column to Left', action: () => insertColumnRelative(bgCol.id, 0) },
                     { label: '+ Insert Column to Right', action: () => insertColumnRelative(bgCol.id, 1) },
                     { header: 'Column Colour' },
@@ -2733,8 +2905,16 @@
                     { label: '⛶ Fit Diagram to Screen', action: () => fitScreen() }
                 ]);
             }
+        }
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            openContextMenuAtPoint(e.clientX, e.clientY);
         });
 
+        /* ----------------------------------------------------------------------------
+         * MUTATION HELPERS & WIDTH-AWARE FIT SCREEN (WORKS ON MOBILE & DESKTOP!)
+         * ---------------------------------------------------------------------------- */
         function clearManualOnNode(nodeId) {
             const n = state.nodesById[nodeId];
             if (!n) return;
@@ -2893,29 +3073,40 @@
             draw();
         }
 
+        // CRITICAL MOBILE & DESKTOP FIX:
+        // `fitScreen()` now computes BOTH `zoomX` (so all 4 columns fit horizontally on a narrow phone screen!)
+        // AND `zoomY` (so the full vertical network fits between the sticky header and mobile dock).
         function fitScreen() {
-            const allNodes = Object.values(state.nodesById);
-            if (allNodes.length === 0) {
-                state.camera = { x: 0, y: 0, zoom: 1 };
-                draw();
-                return;
-            }
-            const minTop = Math.min(...allNodes.map(n => n.y));
-            const maxBottom = Math.max(...allNodes.map(n => n.y + n.height));
-            const contentH = Math.max(200, maxBottom - minTop + 100);
-            const headerBottom = STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT;
-            const availableH = window.innerHeight - headerBottom;
-            const zoomY = Math.min(1, availableH / contentH);
-            const finalZoom = Math.max(0.35, zoomY);
-            state.camera.zoom = finalZoom;
-            state.camera.x = 0;
-            state.camera.y = headerBottom + 28 - minTop * finalZoom;
+            state.camera.zoom = 1; // Measure natural 1x column width first
             const colGeom = computeColumnGeometries();
-            computeHorizontalLinksAndStubs(colGeom);
+            const totalW = colGeom._totalWorldWidth || 1040;
+
+            const allNodes = Object.values(state.nodesById);
+            const minTop = allNodes.length ? Math.min(...allNodes.map(n => n.y)) : INITIAL_SPAWN_Y;
+            const maxBottom = allNodes.length ? Math.max(...allNodes.map(n => n.y + n.height)) : 500;
+            const contentH = Math.max(200, maxBottom - minTop + 90);
+
+            const headerBottom = STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT;
+            const bottomDockClearance = window.innerWidth <= 820 ? 72 : 20;
+            const availableH = Math.max(180, window.innerHeight - headerBottom - bottomDockClearance);
+
+            const zoomX = window.innerWidth / totalW;
+            const zoomY = availableH / contentH;
+            const finalZoom = Math.min(1, Math.max(MIN_ZOOM, Math.min(zoomX, zoomY)));
+
+            state.camera.zoom = finalZoom;
+            state.camera.x = (window.innerWidth - totalW * finalZoom) / 2;
+            state.camera.y = headerBottom + 20 - minTop * finalZoom;
+
+            const updatedGeom = computeColumnGeometries();
+            computeHorizontalLinksAndStubs(updatedGeom);
             clampCameraBounds();
             draw();
         }
 
+        /* ----------------------------------------------------------------------------
+         * HUD, MOBILE DOCK & KEYBOARD SHORTCUTS
+         * ---------------------------------------------------------------------------- */
         document.getElementById('btnMenu').addEventListener('click', (e) => {
             e.stopPropagation();
             const isVis = fileMenu.style.display === 'flex';
@@ -2927,7 +3118,7 @@
             e.stopPropagation();
             const isVis = settingsPanel.style.display === 'flex';
             hideAllMenus();
-            if (!isVis) placeFloatingElement(settingsPanel, 76, 58);
+            if (!isVis) placeFloatingElement(settingsPanel, 52, 58);
         });
 
         document.getElementById('docTitleBtn').addEventListener('click', (e) => {
@@ -2950,6 +3141,33 @@
             helpPopover.style.display = 'none';
         });
 
+        // Mobile Action Dock Buttons
+        document.getElementById('mobAddBox').addEventListener('click', addBoxInViewportCenter);
+        document.getElementById('mobAddLeft').addEventListener('click', () => {
+            const selNode = state.selectedNodeId ? state.nodesById[state.selectedNodeId] : null;
+            if (selNode) addConnectedLeftNode(selNode);
+            else addBoxInViewportCenter();
+        });
+        document.getElementById('mobLink').addEventListener('click', () => {
+            if (state.selectedNodeId) startLinkMode(state.selectedNodeId);
+        });
+        document.getElementById('mobEdit').addEventListener('click', () => {
+            const selNode = state.selectedNodeId ? state.nodesById[state.selectedNodeId] : null;
+            const selLink = state.selectedLinkId ? state.linksById[state.selectedLinkId] : null;
+            if (selNode) {
+                const colGeom = computeColumnGeometries();
+                const sc = worldToScreen(getNodeGlobalX(selNode, colGeom), selNode.y);
+                openInlineEditor('node', selNode.id, sc.x, sc.y, selNode.text);
+            } else if (selLink) {
+                openInlineEditor('link', selLink.id, window.innerWidth / 2 - 110, window.innerHeight / 2 - 30, selLink.label);
+            }
+        });
+        document.getElementById('mobPin').addEventListener('click', () => {
+            if (state.selectedNodeId) togglePinNode(state.selectedNodeId, false);
+        });
+        document.getElementById('mobDel').addEventListener('click', deleteSelected);
+
+        // File Menu Actions
         document.getElementById('menuNewBdn').addEventListener('click', () => {
             hideAllMenus();
             pushUndoState();
@@ -2964,12 +3182,12 @@
         document.getElementById('menuSaveDefaultCols').addEventListener('click', () => {
             hideAllMenus();
             localStorage.setItem(STORAGE_KEY_DEFAULT_COLS, JSON.stringify(state.columns));
-            updateStatusPill('✓ Saved Default Columns');
+            updateStatusPill('✓ Cols Saved');
         });
         document.getElementById('menuRestoreFactoryCols').addEventListener('click', () => {
             hideAllMenus();
             localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);
-            updateStatusPill('↺ Restored Factory Columns');
+            updateStatusPill('↺ Factory Cols');
         });
         document.getElementById('menuResetAllTidy').addEventListener('click', () => {
             hideAllMenus();
