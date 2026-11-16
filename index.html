@@ -1,1 +1,603 @@
-﻿powershell -command "Get-Clipboard | Set-Content -Encoding UTF8 index.html"
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>BDN Studio — Benefits Dependency Network Mapper</title>
+<meta name="theme-color" content="#090d16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+:root{--bg-canvas:#090d16;--surface-hud:rgba(15,23,42,0.92);--surface-modal:#0f172a;--surface-box:#0f172a;--surface-box-selected:#17253b;--surface-header:rgba(15,23,42,0.96);--border-hud:#1e293b;--border-focus:#38bdf8;--text-primary:#f8fafc;--text-secondary:#94a3b8;--text-muted:#64748b;--link-stroke:#cbd5e1;--accent:#38bdf8;--amber:#f59e0b;--danger:#ef4444;--success:#10b981}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body,html{width:100%;height:100%;overflow:hidden;background:var(--bg-canvas);color:var(--text-primary);touch-action:none;overscroll-behavior:none}
+#topHud{position:fixed;top:8px;left:8px;right:8px;min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:6px;z-index:50;pointer-events:none;flex-wrap:nowrap}
+.hud-island{pointer-events:auto;background:var(--surface-hud);backdrop-filter:blur(12px);border:1px solid var(--border-hud);border-radius:10px;display:flex;align-items:center;gap:4px;padding:4px 7px;box-shadow:0 4px 20px rgba(0,0,0,0.35);flex-shrink:0}
+#centerIsland{flex:0 1 auto;min-width:0;justify-content:center}
+.hud-btn{background:rgba(148,163,184,0.08);color:var(--text-primary);border:1px solid var(--border-hud);border-radius:7px;height:32px;padding:0 9px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:all .14s ease;touch-action:manipulation;flex-shrink:0}
+.hud-btn.icon-only{width:32px;padding:0}
+.hud-btn:hover:not(:disabled){background:rgba(56,189,248,0.16);border-color:var(--accent)}
+.hud-btn:disabled{opacity:.35;cursor:default}
+.hud-btn.active{background:rgba(56,189,248,0.25);border-color:var(--accent);color:#fff}
+.hud-btn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.25;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#docTitleBtn{font-weight:700;font-size:13px;color:var(--text-primary);padding:3px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent;max-width:440px;white-space:normal;line-height:1.25;text-align:center;word-break:break-word}
+#docTitleBtn:hover{border-color:var(--border-hud);background:rgba(148,163,184,0.08)}
+.status-pill{font-size:11px;color:var(--text-secondary);padding:4px 8px;border-radius:999px;background:rgba(148,163,184,0.07);border:1px solid var(--border-hud);white-space:nowrap;flex-shrink:0}
+.status-pill.live{color:#10b981;border-color:rgba(16,185,129,0.35)}
+@media (max-width:760px){
+#topHud{left:6px;right:6px;top:6px;gap:4px;flex-wrap:wrap}
+#leftIsland{order:1}
+#rightIsland{order:2;margin-left:auto}
+#centerIsland{order:3;flex:1 1 100%;width:100%;justify-content:space-between;padding:4px 10px}
+.hud-island{padding:3px 6px;gap:4px;border-radius:8px}
+.hud-btn{height:28px;padding:0 8px;font-size:11px}
+.hud-btn.icon-only{width:28px;padding:0}
+#btnMenu span{display:none}
+#btnMenu{width:28px;padding:0}
+#docTitleBtn{max-width:none;flex:1 1 auto;font-size:12px;text-align:left;padding:1px 2px;white-space:normal}
+.status-pill{font-size:10px;padding:2px 7px}
+#btnHelp{display:none}
+}
+#canvasContainer{width:100vw;height:100dvh;position:relative;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#mobileActionDock{position:fixed;bottom:max(12px,env(safe-area-inset-bottom,12px));left:50%;transform:translateX(-50%);z-index:60;background:var(--surface-hud);backdrop-filter:blur(12px);border:1px solid var(--border-hud);border-radius:12px;padding:5px 8px;gap:5px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,0.55);display:none;max-width:calc(100vw - 16px);overflow-x:auto}
+@media (max-width:820px),(pointer:coarse){#mobileActionDock{display:flex}}
+#inlineEditor{position:fixed;display:none;z-index:130;background:var(--surface-modal);color:var(--text-primary);border:2px solid var(--accent);border-radius:8px;padding:6px 10px;font-size:14px;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,0.55);outline:none;resize:none;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);user-select:text;-webkit-user-select:text}
+.floating-menu{position:fixed;display:none;flex-direction:column;z-index:120;background:var(--surface-modal);border:1px solid var(--border-hud);border-radius:11px;padding:6px;min-width:240px;box-shadow:0 12px 32px rgba(0,0,0,0.55);max-height:calc(100dvh - 24px);max-width:calc(100vw - 24px);overflow-y:auto}
+.ctx-item{padding:8px 10px;font-size:12.5px;color:var(--text-primary);border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ctx-item:hover{background:rgba(56,189,248,0.15)}
+.ctx-item.danger{color:#f87171}
+.ctx-item.danger:hover{background:rgba(239,68,68,0.16)}
+.ctx-kbd{font-size:10px;color:var(--text-muted);font-family:monospace}
+.ctx-sep{height:1px;background:var(--border-hud);margin:5px 0}
+.ctx-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);padding:4px 10px 2px}
+.swatch-row{display:flex;align-items:center;gap:6px;padding:5px 10px;flex-wrap:wrap}
+.color-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.2);transition:transform .12s ease}
+.color-swatch:hover{transform:scale(1.2);border-color:#fff}
+#settingsPanel{width:310px;padding:14px;gap:10px}
+#settingsPanel h4{font-size:13px;color:var(--accent);margin-bottom:2px}
+.setting-group{display:flex;flex-direction:column;gap:5px}
+.setting-group label{font-size:11.5px;color:var(--text-secondary);font-weight:500}
+.seg-control{display:flex;gap:4px;background:rgba(148,163,184,0.08);padding:3px;border-radius:7px;border:1px solid var(--border-hud)}
+.seg-btn{flex:1;text-align:center;padding:5px 6px;font-size:11px;font-weight:500;color:var(--text-secondary);border-radius:5px;cursor:pointer}
+.seg-btn.active{background:var(--accent);color:#090d16;font-weight:700}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer}
+.toggle-row input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:150}
+.modal-card{background:var(--surface-modal);border:1px solid var(--border-hud);border-radius:12px;padding:20px;width:460px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;box-shadow:0 16px 40px rgba(0,0,0,0.75)}
+.modal-card h3{font-size:16px;margin-bottom:8px;color:var(--text-primary)}
+.modal-card p{font-size:13px;color:var(--text-secondary);line-height:1.5;margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#helpPopover{position:fixed;top:58px;right:12px;width:370px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 76px);overflow-y:auto;background:var(--surface-modal);border:1px solid var(--border-hud);border-radius:10px;padding:14px;z-index:125;display:none;box-shadow:0 12px 32px rgba(0,0,0,0.65);font-size:12px}
+#helpPopover h4{font-size:13px;margin-bottom:8px;color:var(--accent)}
+.help-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(148,163,184,0.1);color:var(--text-secondary)}
+.help-row kbd{background:rgba(148,163,184,0.15);color:var(--text-primary);padding:1px 6px;border-radius:4px;font-size:11px}
+#modeBanner{position:fixed;top:138px;left:50%;transform:translateX(-50%);background:rgba(56,189,248,0.95);color:#090d16;font-weight:700;font-size:12px;padding:6px 14px;border-radius:999px;z-index:90;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="topHud">
+  <div class="hud-island" id="leftIsland">
+    <button class="hud-btn" id="btnMenu" title="File & Document Menu" type="button">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span>Menu</span>
+    </button>
+    <button class="hud-btn icon-only" id="btnSettings" title="Appearance & Workspace Settings" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="hud-btn icon-only" id="btnUndo" title="Undo (Ctrl+Z)" type="button" disabled>
+      <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+    </button>
+    <button class="hud-btn icon-only" id="btnRedo" title="Redo (Ctrl+Y)" type="button" disabled>
+      <svg viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+    </button>
+    <button class="hud-btn" id="btnAddBox" style="display:none" title="Add Box in Centre of View (Enter)" type="button">+ Box</button>
+    <button class="hud-btn" id="btnAddCol" style="display:none" title="Insert New Column" type="button">+ Col</button>
+  </div>
+  <div class="hud-island" id="centerIsland">
+    <span id="docTitleBtn" title="Tap/Click to rename BDN document">Service Transformation BDN</span>
+    <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
+  </div>
+  <div class="hud-island" id="rightIsland">
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Idempotent — Keeps Pinned 📌 Boxes Fixed)" type="button">Tidy</button>
+    <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
+    <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
+  </div>
+</div>
+
+<div id="mobileActionDock">
+  <button class="hud-btn" id="mobAddBox" type="button">+ Box</button>
+  <button class="hud-btn" id="mobAddLeft" type="button">+ Left</button>
+  <button class="hud-btn" id="mobLink" type="button">🔗 Link</button>
+  <button class="hud-btn" id="mobEdit" type="button">✎ Edit</button>
+  <button class="hud-btn" id="mobPin" type="button">📌 Pin</button>
+  <button class="hud-btn" id="mobDel" type="button" style="color:#f87171">🗑</button>
+</div>
+
+<div id="modeBanner">Link Mode: Tap target box to connect (Tap empty space to cancel)</div>
+<div id="canvasContainer"><canvas id="bdnCanvas"></canvas></div>
+<textarea id="inlineEditor" rows="2"></textarea>
+<input type="file" id="hiddenFileInput" accept=".json,.bdn.json,application/json" style="display:none" />
+
+<div class="floating-menu" id="fileMenu">
+  <div class="ctx-label">File &amp; Cloud Storage</div>
+  <div class="ctx-item" id="menuNewBdn"><span>📄 New Blank BDN</span><span class="ctx-kbd">Alt+N</span></div>
+  <div class="ctx-item" id="menuOpenBdn"><span>📂 Open File / Google Drive...</span><span class="ctx-kbd">Ctrl+O</span></div>
+  <div class="ctx-item" id="menuSaveBdn"><span>💾 Save File</span><span class="ctx-kbd">Ctrl+S</span></div>
+  <div class="ctx-item" id="menuSaveAsBdn"><span>📥 Save As New File (.bdn.json)...</span><span class="ctx-kbd">Ctrl+Shift+S</span></div>
+  <div class="ctx-item" id="menuExportPng"><span>🖼️ Export High-Res PNG Image</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-label">Columns &amp; Layout</div>
+  <div class="ctx-item" id="menuSaveDefaultCols"><span>📌 Save Current Columns as Default</span></div>
+  <div class="ctx-item" id="menuRestoreFactoryCols"><span>↺ Restore Factory 4 Columns</span></div>
+  <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
+  <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
+  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load Large Stress-Test Demo (28 Boxes)</span></div>
+</div>
+
+<div class="floating-menu" id="settingsPanel">
+  <h4>Appearance &amp; Workspace</h4>
+  <div class="setting-group">
+    <label>Color Theme</label>
+    <div class="seg-control" id="themeSelector">
+      <div class="seg-btn active" data-theme="dark">Slate Dark</div>
+      <div class="seg-btn" data-theme="light">Daylight</div>
+      <div class="seg-btn" data-theme="warm">Solarized</div>
+      <div class="seg-btn" data-theme="blueprint">Blueprint</div>
+    </div>
+  </div>
+  <div class="setting-group">
+    <label>Box Corner Style</label>
+    <div class="seg-control" id="shapeSelector">
+      <div class="seg-btn active" data-shape="rounded">Rounded</div>
+      <div class="seg-btn" data-shape="sharp">Sharp</div>
+      <div class="seg-btn" data-shape="pill">Soft Pill</div>
+    </div>
+  </div>
+  <div class="setting-group">
+    <label>Box Fill Style</label>
+    <div class="seg-control" id="fillSelector">
+      <div class="seg-btn active" data-fill="card">Solid Card</div>
+      <div class="seg-btn" data-fill="tinted">Tinted</div>
+      <div class="seg-btn" data-fill="outline">Outline</div>
+    </div>
+  </div>
+  <div class="setting-group">
+    <label>Link Arrowhead Direction (Applies Live)</label>
+    <div class="seg-control" id="arrowSelector">
+      <div class="seg-btn active" data-arrow="right">L → R</div>
+      <div class="seg-btn" data-arrow="left">R → L</div>
+      <div class="seg-btn" data-arrow="both">Both</div>
+      <div class="seg-btn" data-arrow="none">None</div>
+    </div>
+  </div>
+  <div class="ctx-sep"></div>
+  <label class="toggle-row">
+    <span>Show <strong>+ Box / + Col</strong> in Top Toolbar</span>
+    <input type="checkbox" id="chkShowToolbarAdd" />
+  </label>
+</div>
+
+<div class="floating-menu" id="contextMenu"></div>
+
+<div class="modal-backdrop" id="conflictModal">
+  <div class="modal-card">
+    <h3>Horizontal Link Path Conflict</h3>
+    <p id="conflictMessage">A straight horizontal link cannot be routed between these boxes because manual locks or an intermediate box block the horizontal corridor. How would you like to resolve this?</p>
+    <div class="modal-actions">
+      <button class="hud-btn" id="btnConflictSplit" type="button">Use Split Link Stubs (①—①)</button>
+      <button class="hud-btn active" id="btnConflictAuto" type="button">Revert Blocking Boxes to Auto-Layout</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpPopover">
+  <h4>BDN Studio — Shortcuts &amp; Controls</h4>
+  <div class="help-row"><span>Add Box (or Right-Click / Long-Press)</span><kbd>Enter</kbd></div>
+  <div class="help-row"><span>Add Connected Box to Left Column</span><kbd>Tab</kbd></div>
+  <div class="help-row"><span>Start / Complete Horizontal Link</span><kbd>L</kbd></div>
+  <div class="help-row"><span>Stretch Box Top or Bottom Edge</span><kbd>Hover Top/Bottom ↕</kbd></div>
+  <div class="help-row"><span>Drag Box (Smooth cascade stretch/shrink)</span><kbd>Drag</kbd></div>
+  <div class="help-row"><span>Drag Box + Exclusive Left Upstream Chain</span><kbd>Shift + Drag</kbd></div>
+  <div class="help-row"><span>Undo / Redo</span><kbd>Ctrl+Z / Ctrl+Y</kbd></div>
+  <div class="help-row"><span>Open / Save File (Local or Google Drive)</span><kbd>Ctrl+O / Ctrl+S</kbd></div>
+  <div class="help-row"><span>Return Manual Box to Auto-Layout</span><kbd>M</kbd></div>
+  <div class="help-row"><span>Toggle Pin (Opt-Out of Auto-Layout)</span><kbd>P</kbd></div>
+  <div class="help-row"><span>Pin Entire Upstream Branch</span><kbd>Shift + P</kbd></div>
+  <div class="help-row"><span>Edit Box / Link Annotation / Column</span><kbd>F2 / DblClick</kbd></div>
+  <div class="help-row"><span>Cycle Link Arrowhead Direction</span><kbd>A</kbd></div>
+  <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
+  <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
+  <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
+    • <strong>Built-In Stress Test:</strong> Click <code>☰ Menu</code> → <code>🚀 Load Large Stress-Test Demo</code> to load a 28-box, 5-column network instantly with one click!<br>
+    • <strong>Self-Healing Sub-50ms Sync:</strong> Automatically discovers peers, reconnects on wake, and never prompts mobile devices to save on load.
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY_STATE='bdn_studio_state_v16',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v16',STORAGE_KEY_SETTINGS='bdn_studio_settings_v16';
+const FACTORY_COLUMNS=[
+  {id:'col_enablers',title:'Enablers',color:'#38bdf8'},
+  {id:'col_changes',title:'Business Changes',color:'#34d399'},
+  {id:'col_benefits',title:'Benefits',color:'#f472b6'},
+  {id:'col_objectives',title:'Strategic Objectives',color:'#fbbf24'}
+];
+const SWATCH_PALETTE=['#38bdf8','#34d399','#f472b6','#fbbf24','#a78bfa','#fb923c','#2dd4bf','#f87171','#60a5fa','#94a3b8'];
+const THEMES={
+  dark:{bgCanvas:'#090d16',surfaceHud:'rgba(15,23,42,0.92)',surfaceModal:'#0f172a',surfaceBox:'#0f172a',surfaceBoxSel:'#17253b',surfaceHeader:'rgba(15,23,42,0.96)',borderHud:'#1e293b',textPrimary:'#f8fafc',textSecondary:'#94a3b8',textMuted:'#64748b',linkStroke:'#cbd5e1',colTintEven:'rgba(15,23,42,0.22)',colTintOdd:'rgba(30,41,59,0.14)'},
+  light:{bgCanvas:'#f8fafc',surfaceHud:'rgba(255,255,255,0.94)',surfaceModal:'#ffffff',surfaceBox:'#ffffff',surfaceBoxSel:'#e0f2fe',surfaceHeader:'rgba(248,250,252,0.96)',borderHud:'#cbd5e1',textPrimary:'#0f172a',textSecondary:'#475569',textMuted:'#64748b',linkStroke:'#334155',colTintEven:'rgba(241,245,249,0.65)',colTintOdd:'rgba(226,232,240,0.4)'},
+  warm:{bgCanvas:'#1c1917',surfaceHud:'rgba(28,25,23,0.94)',surfaceModal:'#292524',surfaceBox:'#292524',surfaceBoxSel:'#44403c',surfaceHeader:'rgba(28,25,23,0.96)',borderHud:'#44403c',textPrimary:'#f5f5f4',textSecondary:'#a8a29e',textMuted:'#78716c',linkStroke:'#d6d3d1',colTintEven:'rgba(41,37,36,0.28)',colTintOdd:'rgba(68,64,60,0.18)'},
+  blueprint:{bgCanvas:'#07192f',surfaceHud:'rgba(10,34,64,0.94)',surfaceModal:'#0a2240',surfaceBox:'#0a2240',surfaceBoxSel:'#123866',surfaceHeader:'rgba(10,34,64,0.96)',borderHud:'#1e4976',textPrimary:'#f0f9ff',textSecondary:'#93c5fd',textMuted:'#60a5fa',linkStroke:'#e0f2fe',colTintEven:'rgba(14,42,77,0.3)',colTintOdd:'rgba(20,58,102,0.2)'}
+};
+const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=68,COL_SIDE_PADDING=58,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=38,LINK_SLOT_SPACING=26,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.16,MAX_ZOOM=2.4;
+
+function getHeaderTopY(){const hud=document.getElementById('topHud');return hud?Math.max(52,Math.round(hud.getBoundingClientRect().bottom+6)):56;}
+
+let settings={theme:'dark',boxShape:'rounded',boxFill:'card',defaultArrow:'right',showAddButtonsInToolbar:false};
+function generateCryptographicFileToken(){
+  const b=new Uint8Array(32);if(window.crypto&&window.crypto.getRandomValues)window.crypto.getRandomValues(b);
+  else for(let i=0;i<32;i++)b[i]=Math.floor(Math.random()*256);
+  return Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+let state={
+  mapId:'bdn_'+Math.random().toString(36).slice(2,10),
+  fileSyncToken:generateCryptographicFileToken(),
+  mapTitle:'Service Transformation BDN',
+  updatedAt:Date.now(),
+  deletedById:{},columns:[],nodesById:{},linksById:{},
+  selectedNodeId:null,selectedLinkId:null,selectedColId:null,
+  camera:{x:0,y:0,zoom:1}
+};
+
+const undoStack=[],redoStack=[],MAX_HISTORY=60;
+let sessionFileHandle=null,lastFileModifiedTime=0,fileSaveDebounceTimer=null;
+const instanceClientId='client_'+Math.random().toString(36).slice(2,10);
+const MQTT_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
+let broadcastChannel=null,mqttClients={},rtcPeers={},rtcDataChannels={},activeChannelKey=null,discoveryBeaconTimer=null,lastDragStreamTime=0;
+const activePointers=new Map();
+let pinchStartDist=0,pinchStartZoom=1,pinchWorldCenter={x:0,y:0},longPressTimer=null,lastTapTime=0,lastEditorCloseTime=0,lastSpawnTimestamp=0;
+let linkingFromNodeId=null,draggingGroup=null,draggingColumn=null,resizingNode=null,isPanning=false,panStart={x:0,y:0},lastPointerScreen={x:0,y:0};
+let autoScrollTimer=null,highlightedStubLinkId=null,pendingConflictLinkId=null,spawnCascadeCounter=0,helpHoverTimeout=null;
+
+const canvas=document.getElementById('bdnCanvas'),ctx=canvas.getContext('2d'),inlineEditor=document.getElementById('inlineEditor');
+const contextMenu=document.getElementById('contextMenu'),fileMenu=document.getElementById('fileMenu'),settingsPanel=document.getElementById('settingsPanel');
+const modeBanner=document.getElementById('modeBanner'),conflictModal=document.getElementById('conflictModal'),helpPopover=document.getElementById('helpPopover');
+
+function isMobileOrTouchDevice(){return window.innerWidth<=820||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);}
+function loadSettings(){try{const r=localStorage.getItem(STORAGE_KEY_SETTINGS);if(r)settings=Object.assign(settings,JSON.parse(r));}catch(e){}applySettingsToUI();}
+function saveSettings(){try{localStorage.setItem(STORAGE_KEY_SETTINGS,JSON.stringify(settings));}catch(e){}applySettingsToUI();draw();}
+function applySettingsToUI(){
+  const t=THEMES[settings.theme]||THEMES.dark,r=document.documentElement;
+  r.style.setProperty('--bg-canvas',t.bgCanvas);r.style.setProperty('--surface-hud',t.surfaceHud);r.style.setProperty('--surface-modal',t.surfaceModal);
+  r.style.setProperty('--surface-box',t.surfaceBox);r.style.setProperty('--surface-box-selected',t.surfaceBoxSel);r.style.setProperty('--surface-header',t.surfaceHeader);
+  r.style.setProperty('--border-hud',t.borderHud);r.style.setProperty('--text-primary',t.textPrimary);r.style.setProperty('--text-secondary',t.textSecondary);
+  r.style.setProperty('--text-muted',t.textMuted);r.style.setProperty('--link-stroke',t.linkStroke);
+  document.getElementById('btnAddBox').style.display=settings.showAddButtonsInToolbar?'inline-flex':'none';
+  document.getElementById('btnAddCol').style.display=settings.showAddButtonsInToolbar?'inline-flex':'none';
+  document.getElementById('chkShowToolbarAdd').checked=!!settings.showAddButtonsInToolbar;
+  const syncSeg=(id,a,v)=>document.querySelectorAll(`#${id} .seg-btn`).forEach(b=>b.classList.toggle('active',b.getAttribute(a)===v));
+  syncSeg('themeSelector','data-theme',settings.theme);syncSeg('shapeSelector','data-shape',settings.boxShape);
+  syncSeg('fillSelector','data-fill',settings.boxFill);syncSeg('arrowSelector','data-arrow',settings.defaultArrow);
+}
+
+function getPrivateFileChannelKey(){
+  if(!state.mapId||!state.fileSyncToken||state.fileSyncToken.length<32)return null;
+  return 'bdn_v26_'+state.mapId.replace(/[^a-zA-Z0-9]/g,'')+'_'+state.fileSyncToken.slice(0,40);
+}
+function encodeMqttLength(len){const o=[];do{let d=len%128;len=Math.floor(len/128);if(len>0)d|=128;o.push(d);}while(len>0);return o;}
+function encodeMqttUTF8(s){const b=new TextEncoder().encode(s);return[(b.length>>8)&0xff,b.length&0xff,...b];}
+function buildMqttConnectPacket(cid){const b=[0x00,0x04,0x4d,0x51,0x54,0x54,0x04,0x02,0x00,0x28,...encodeMqttUTF8(cid)];return new Uint8Array([0x10,...encodeMqttLength(b.length),...b]);}
+function buildMqttSubscribePacket(t){const b=[0x00,0x01,...encodeMqttUTF8(t),0x00];return new Uint8Array([0x82,...encodeMqttLength(b.length),...b]);}
+function buildMqttPublishPacket(t,p){
+  const tb=encodeMqttUTF8(t),pb=new TextEncoder().encode(p),rl=tb.length+pb.length,h=[0x30,...encodeMqttLength(rl)],pkt=new Uint8Array(h.length+rl);
+  pkt.set(h,0);pkt.set(tb,h.length);pkt.set(pb,h.length+tb.length);return pkt;
+}
+function parseMqttPublishPackets(buf){
+  const b=new Uint8Array(buf),msgs=[];let off=0;
+  while(off<b.length){
+    const type=b[off]&0xf0;let mult=1,rl=0,idx=off+1;
+    while(idx<b.length){const c=b[idx++];rl+=(c&127)*mult;mult*=128;if((c&128)===0)break;}
+    if(idx+rl>b.length)break;
+    if(type===0x30){const tl=(b[idx]<<8)|b[idx+1],ps=idx+2+tl,pe=idx+rl;if(pe>=ps)msgs.push(new TextDecoder().decode(b.subarray(ps,pe)));}
+    off=idx+rl;
+  }
+  return msgs;
+}
+
+function connectAndMaintainMqttBroker(wsUrl,topic){
+  if(mqttClients[wsUrl]){clearTimeout(mqttClients[wsUrl].reconnectTimer);clearInterval(mqttClients[wsUrl].pingTimer);try{mqttClients[wsUrl].ws.close();}catch(e){}}
+  const entry={ws:null,pingTimer:null,reconnectTimer:null,connected:false};
+  mqttClients[wsUrl]=entry;
+  const sched=()=>{entry.connected=false;clearInterval(entry.pingTimer);clearTimeout(entry.reconnectTimer);entry.reconnectTimer=setTimeout(()=>{if(activeChannelKey===topic)connectAndMaintainMqttBroker(wsUrl,topic);},1600);};
+  try{
+    const ws=new WebSocket(wsUrl,'mqtt');ws.binaryType='arraybuffer';entry.ws=ws;
+    ws.onopen=()=>ws.send(buildMqttConnectPacket('bdn_'+Math.random().toString(36).slice(2,10)));
+    ws.onmessage=(ev)=>{
+      const a=new Uint8Array(ev.data),pt=a[0]&0xf0;
+      if(pt===0x20)ws.send(buildMqttSubscribePacket(topic));
+      else if(pt===0x90){entry.connected=true;sendHelloAnnouncement();setTimeout(sendHelloAnnouncement,400);}
+      else if(pt===0x30){entry.connected=true;parseMqttPublishPackets(ev.data).forEach(r=>{try{handleIncomingSyncPacket(JSON.parse(r));}catch(e){}});}
+    };
+    entry.pingTimer=setInterval(()=>{
+      if(ws.readyState===WebSocket.OPEN){try{ws.send(new Uint8Array([0xc0,0x00]));}catch(e){}}
+      else if(ws.readyState===WebSocket.CLOSED||ws.readyState===WebSocket.CLOSING)sched();
+    },14000);
+    ws.onerror=sched;ws.onclose=sched;
+  }catch(e){sched();}
+}
+
+function cleanupDeadRtcPeer(pid){
+  if(rtcDataChannels[pid]){try{rtcDataChannels[pid].close();}catch(e){}delete rtcDataChannels[pid];}
+  if(rtcPeers[pid]){try{rtcPeers[pid].close();}catch(e){}delete rtcPeers[pid];}
+}
+function hasOpenRtcDataChannel(pid){const dc=rtcDataChannels[pid];return!!(dc&&dc.readyState==='open');}
+
+function getOrCreateRtcPeer(pid,init){
+  if(rtcPeers[pid]){
+    const st=rtcPeers[pid].connectionState||rtcPeers[pid].iceConnectionState;
+    if(st==='failed'||st==='disconnected'||st==='closed')cleanupDeadRtcPeer(pid);
+    else return rtcPeers[pid];
+  }
+  try{
+    const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+    rtcPeers[pid]=pc;
+    pc.onicecandidate=(ev)=>{if(ev.candidate)sendOverMqttOnly({type:'RTC_ICE',senderId:instanceClientId,targetId:pid,candidate:ev.candidate});};
+    const mon=()=>{const s=pc.connectionState||pc.iceConnectionState;if(s==='failed'||s==='disconnected'||s==='closed')cleanupDeadRtcPeer(pid);};
+    pc.onconnectionstatechange=mon;pc.oniceconnectionstatechange=mon;
+    const setupDc=(dc)=>{
+      rtcDataChannels[pid]=dc;
+      dc.onopen=()=>{updateStatusPill('⚡ P2P Live',true);try{dc.send(JSON.stringify({type:'STATE_SYNC',senderId:instanceClientId,state:buildSyncStateObject()}));}catch(e){}};
+      dc.onmessage=(ev)=>{try{handleIncomingSyncPacket(JSON.parse(ev.data));}catch(e){}};
+      dc.onclose=()=>cleanupDeadRtcPeer(pid);dc.onerror=()=>cleanupDeadRtcPeer(pid);
+    };
+    if(init){
+      const dc=pc.createDataChannel('bdn_fast_sync',{ordered:false,maxRetransmits:0});setupDc(dc);
+      pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>sendOverMqttOnly({type:'RTC_OFFER',senderId:instanceClientId,targetId:pid,sdp:pc.localDescription})).catch(()=>cleanupDeadRtcPeer(pid));
+    }else pc.ondatachannel=(ev)=>setupDc(ev.channel);
+    return pc;
+  }catch(e){return null;}
+}
+
+function handleIncomingSyncPacket(pkt){
+  if(!pkt||pkt.senderId===instanceClientId)return;
+  if(pkt.type==='HELLO'){
+    if(pkt.state)mergeIncomingCRDTState(pkt.state,'⚡ Synced');
+    if(!hasOpenRtcDataChannel(pkt.senderId)){
+      if(instanceClientId>pkt.senderId)getOrCreateRtcPeer(pkt.senderId,true);
+      sendOverMqttOnly({type:'STATE_SYNC',senderId:instanceClientId,state:buildSyncStateObject()});
+    }
+    return;
+  }
+  if(pkt.type==='STATE_SYNC'&&pkt.state){
+    mergeIncomingCRDTState(pkt.state,'⚡ Synced');
+    if(!hasOpenRtcDataChannel(pkt.senderId)&&instanceClientId>pkt.senderId)getOrCreateRtcPeer(pkt.senderId,true);
+    return;
+  }
+  if(pkt.targetId&&pkt.targetId!==instanceClientId)return;
+  if(pkt.type==='RTC_OFFER'&&pkt.sdp){
+    cleanupDeadRtcPeer(pkt.senderId);
+    const pc=getOrCreateRtcPeer(pkt.senderId,false);
+    if(pc)pc.setRemoteDescription(new RTCSessionDescription(pkt.sdp)).then(()=>pc.createAnswer()).then(a=>pc.setLocalDescription(a)).then(()=>sendOverMqttOnly({type:'RTC_ANSWER',senderId:instanceClientId,targetId:pkt.senderId,sdp:pc.localDescription})).catch(()=>cleanupDeadRtcPeer(pkt.senderId));
+  }else if(pkt.type==='RTC_ANSWER'&&pkt.sdp){
+    const pc=rtcPeers[pkt.senderId];if(pc&&pc.signalingState==='have-local-offer')pc.setRemoteDescription(new RTCSessionDescription(pkt.sdp)).catch(()=>{});
+  }else if(pkt.type==='RTC_ICE'&&pkt.candidate){
+    const pc=rtcPeers[pkt.senderId];if(pc)pc.addIceCandidate(new RTCIceCandidate(pkt.candidate)).catch(()=>{});
+  }
+}
+
+function buildSyncStateObject(){
+  return{mapId:state.mapId,fileSyncToken:state.fileSyncToken,mapTitle:state.mapTitle,updatedAt:state.updatedAt,deletedById:state.deletedById||{},columns:state.columns,nodesById:state.nodesById,linksById:state.linksById};
+}
+function sendOverMqttOnly(obj){
+  if(!activeChannelKey)return;
+  const pkt=buildMqttPublishPacket(activeChannelKey,JSON.stringify(obj));
+  Object.values(mqttClients).forEach(e=>{if(e.ws&&e.ws.readyState===WebSocket.OPEN&&e.connected){try{e.ws.send(pkt);}catch(err){}}});
+}
+function sendHelloAnnouncement(){
+  const msg={type:'HELLO',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()};
+  if(broadcastChannel){try{broadcastChannel.postMessage(msg);}catch(e){}}
+  sendOverMqttOnly(msg);
+}
+function sendSignalingOrStateMessage(obj){
+  const raw=JSON.stringify(obj);
+  if(broadcastChannel){try{broadcastChannel.postMessage(obj);}catch(e){}}
+  Object.values(rtcDataChannels).forEach(dc=>{if(dc&&dc.readyState==='open'){try{dc.send(raw);}catch(e){}}});
+  sendOverMqttOnly(obj);
+}
+
+function setupLiveSyncForCurrentFile(){
+  const ck=getPrivateFileChannelKey();if(!ck)return;activeChannelKey=ck;
+  if(broadcastChannel){try{broadcastChannel.close();}catch(e){}}
+  if('BroadcastChannel' in window){broadcastChannel=new BroadcastChannel(ck);broadcastChannel.onmessage=(ev)=>{if(ev.data)handleIncomingSyncPacket(ev.data);};}
+  Object.keys(rtcPeers).forEach(pid=>cleanupDeadRtcPeer(pid));rtcPeers={};rtcDataChannels={};
+  MQTT_BROKERS.forEach(u=>connectAndMaintainMqttBroker(u,ck));
+  clearInterval(discoveryBeaconTimer);
+  discoveryBeaconTimer=setInterval(()=>{
+    MQTT_BROKERS.forEach(u=>{const e=mqttClients[u];if(!e||!e.ws||e.ws.readyState===WebSocket.CLOSED)connectAndMaintainMqttBroker(u,activeChannelKey);});
+    const openDcs=Object.values(rtcDataChannels).filter(dc=>dc&&dc.readyState==='open');
+    if(openDcs.length===0)sendHelloAnnouncement();
+    else{const ka=JSON.stringify({type:'STATE_SYNC',senderId:instanceClientId,state:buildSyncStateObject()});openDcs.forEach(dc=>{try{dc.send(ka);}catch(e){}});}
+  },2500);
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&activeChannelKey){
+    MQTT_BROKERS.forEach(u=>{const e=mqttClients[u];if(!e||!e.ws||e.ws.readyState!==WebSocket.OPEN)connectAndMaintainMqttBroker(u,activeChannelKey);});
+    sendHelloAnnouncement();
+  }
+});
+window.addEventListener('online',()=>{if(activeChannelKey){MQTT_BROKERS.forEach(u=>connectAndMaintainMqttBroker(u,activeChannelKey));sendHelloAnnouncement();}});
+function broadcastCRDTUpdate(){sendSignalingOrStateMessage({type:'STATE_SYNC',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()});}
+
+function mergeIncomingCRDTState(inc,badge='⚡ Synced'){
+  if(!inc||inc.mapId!==state.mapId||inc.fileSyncToken!==state.fileSyncToken)return;
+  let changed=false;
+  const md=Object.assign({},state.deletedById||{});
+  Object.entries(inc.deletedById||{}).forEach(([id,ts])=>{
+    if(!md[id]||ts>md[id]){md[id]=ts;if(state.nodesById[id]){delete state.nodesById[id];changed=true;}if(state.linksById[id]){delete state.linksById[id];changed=true;}}
+  });
+  state.deletedById=md;
+  if(inc.updatedAt>(state.updatedAt||0)&&inc.mapTitle&&inc.mapTitle!==state.mapTitle){state.mapTitle=inc.mapTitle;document.getElementById('docTitleBtn').textContent=state.mapTitle;changed=true;}
+  if(Array.isArray(inc.columns)&&inc.updatedAt>=(state.updatedAt||0)){state.columns=inc.columns;changed=true;}
+  Object.entries(inc.nodesById||{}).forEach(([id,n])=>{
+    if(state.deletedById[id]&&state.deletedById[id]>=(n.updatedAt||0))return;
+    const loc=state.nodesById[id];if(!loc||(n.updatedAt||0)>(loc.updatedAt||0)){state.nodesById[id]=n;changed=true;}
+  });
+  Object.entries(inc.linksById||{}).forEach(([id,l])=>{
+    if(state.deletedById[id]&&state.deletedById[id]>=(l.updatedAt||0))return;
+    const loc=state.linksById[id];if(!loc||(l.updatedAt||0)>(loc.updatedAt||0)){state.linksById[id]=l;changed=true;}
+  });
+  if(changed){
+    state.updatedAt=Math.max(state.updatedAt||0,inc.updatedAt||Date.now());
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
+    updateStatusPill(badge,true);localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));draw();
+  }else updateStatusPill(badge,true);
+}
+
+function getCleanFileName(ext='.bdn.json'){return((state.mapTitle||'bdn-network').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'bdn-network')+ext;}
+
+async function openBdnFile(){
+  hideAllMenus();
+  if('showOpenFilePicker' in window&&!isMobileOrTouchDevice()){
+    try{
+      const [h]=await window.showOpenFilePicker({types:[{description:'BDN Studio Network (.bdn.json)',accept:{'application/json':['.json','.bdn.json']}}]});
+      sessionFileHandle=h;const f=await h.getFile();lastFileModifiedTime=f.lastModified;loadBdnJsonString(await f.text(),f.name);return;
+    }catch(err){if(err&&err.name==='AbortError')return;}
+  }
+  document.getElementById('hiddenFileInput').click();
+}
+document.getElementById('hiddenFileInput').addEventListener('change',async(e)=>{
+  const f=e.target.files?.[0];if(!f)return;sessionFileHandle=null;loadBdnJsonString(await f.text(),f.name);e.target.value='';
+});
+
+function loadBdnJsonString(str,fn=''){
+  try{
+    const p=JSON.parse(str);if(!p||!Array.isArray(p.columns)||!p.nodesById){alert('Invalid BDN file format.');return;}
+    pushUndoState();
+    state.mapId=p.mapId||('bdn_'+Math.random().toString(36).slice(2,10));
+    state.fileSyncToken=(p.fileSyncToken&&p.fileSyncToken.length>=32)?p.fileSyncToken:generateCryptographicFileToken();
+    state.mapTitle=p.mapTitle||fn.replace(/(\.bdn)?\.json$/i,'')||'Untitled BDN';
+    state.updatedAt=p.updatedAt||Date.now();state.deletedById=p.deletedById||{};
+    state.columns=p.columns;state.nodesById=p.nodesById;state.linksById=p.linksById||{};
+    state.selectedNodeId=null;state.selectedLinkId=null;state.selectedColId=state.columns[0]?.id||null;
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    activeChannelKey=null;setupLiveSyncForCurrentFile();runAutoLayout({respectSoftManual:true,respectOptOuts:true});
+    localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Sync Active',true);
+  }catch(e){alert('Could not parse BDN JSON file.');}
+}
+
+// Built-in Large Stress-Test Demo Data loader (28 boxes, 5 columns, multi-link scenarios)
+function loadStressTestDemo(){
+  pushUndoState();
+  const demoData={
+    "mapId": "bdn_stresstest_v27_01",
+    "fileSyncToken": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    "mapTitle": "National Operations & Resilience Transformation BDN (Stress Test)",
+    "updatedAt": 1763316000000,
+    "deletedById": {},
+    "columns": [
+      { "id": "col_enablers", "title": "Technology & Infrastructure Enablers", "color": "#38bdf8" },
+      { "id": "col_changes", "title": "Frontline Business Changes", "color": "#34d399" },
+      { "id": "col_capabilities", "title": "Operational Capabilities", "color": "#a78bfa" },
+      { "id": "col_benefits", "title": "Measurable Programme Benefits", "color": "#f472b6" },
+      { "id": "col_objectives", "title": "Strategic Mandate & Objectives", "color": "#fbbf24" }
+    ],
+    "nodesById": {
+      "ena_1": { "id": "ena_1", "columnId": "col_enablers", "text": "Core Cloud Telemetry & IoT Ingestion Platform", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_2": { "id": "ena_2", "columnId": "col_enablers", "text": "Automated Anomaly Detection ML Pipeline", "subLane": 1, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_3": { "id": "ena_3", "columnId": "col_enablers", "text": "Resilient Multi-Bearer Radio & Satellite Network", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_4": { "id": "ena_4", "columnId": "col_enablers", "text": "Offline-First Field Engineer Mobile App", "subLane": 0, "y": 415, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_5": { "id": "ena_5", "columnId": "col_enablers", "text": "Unified Digital Asset & Spares Inventory DB", "subLane": 0, "y": 525, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_6": { "id": "ena_6", "columnId": "col_enablers", "text": "Zero-Trust Identity & Biometric Access Gateway", "subLane": 0, "y": 640, "height": 72, "color": "#60a5fa", "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_7": { "id": "ena_7", "columnId": "col_enablers", "text": "Automated Supplier SLA & Contract Portal", "subLane": 0, "y": 765, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ena_8": { "id": "ena_8", "columnId": "col_enablers", "text": "Legacy Decommissioning Archive (Unlinked Test Box)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
+      "chg_1": { "id": "chg_1", "columnId": "col_changes", "text": "Control Room Shifts from Reactive to Predictive Triage", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_2": { "id": "chg_2", "columnId": "col_changes", "text": "Dynamic Multi-Agency Incident Routing Protocols", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_3": { "id": "chg_3", "columnId": "col_changes", "text": "Engineers Complete Guided Pre-Visit Diagnostics", "subLane": 0, "y": 415, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_4": { "id": "chg_4", "columnId": "col_changes", "text": "Automated Van-Stock Replenishment Triggers", "subLane": 1, "y": 470, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_5": { "id": "chg_5", "columnId": "col_changes", "text": "Role-Based Just-in-Time Security Elevation", "subLane": 0, "y": 640, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_6": { "id": "chg_6", "columnId": "col_changes", "text": "Commercial Teams Enforce Real-Time Penalty Credits", "subLane": 0, "y": 765, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "chg_7": { "id": "chg_7", "columnId": "col_changes", "text": "Ad-Hoc Paper Logbooks Retired (Severed Branch Test)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
+      "cap_1": { "id": "cap_1", "columnId": "col_capabilities", "text": "Automated Pre-Failure Dispatch & Self-Healing", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "cap_2": { "id": "cap_2", "columnId": "col_capabilities", "text": "Continuous Gold-Command Situational Awareness", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "cap_3": { "id": "cap_3", "columnId": "col_capabilities", "text": "Single-Visit First-Time Fix Capability", "subLane": 0, "y": 430, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "cap_4": { "id": "cap_4", "columnId": "col_capabilities", "text": "Continuous NIS2 & ISO27001 Audit Readiness", "subLane": 0, "y": 640, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "cap_5": { "id": "cap_5", "columnId": "col_capabilities", "text": "Transparent Vendor Performance & Cost Governance", "subLane": 0, "y": 765, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "cap_6": { "id": "cap_6", "columnId": "col_capabilities", "text": "Local Depot Manual Archiving (Severed Branch Test)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
+      "ben_1": { "id": "ben_1", "columnId": "col_benefits", "text": "40% Reduction in Unplanned Critical Outages", "subLane": 0, "y": 180, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ben_2": { "id": "ben_2", "columnId": "col_benefits", "text": "25% Faster Emergency Response & Recovery Time", "subLane": 0, "y": 310, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ben_3": { "id": "ben_3", "columnId": "col_benefits", "text": "£14.5m Annual Savings in Fleet & Repeat Visits", "subLane": 0, "y": 445, "height": 72, "color": "#2dd4bf", "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ben_4": { "id": "ben_4", "columnId": "col_benefits", "text": "Zero Critical Cyber Breaches or Regulatory Fines", "subLane": 0, "y": 640, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "ben_5": { "id": "ben_5", "columnId": "col_benefits", "text": "18% Reduction in Third-Party Supplier Spend", "subLane": 0, "y": 765, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "obj_1": { "id": "obj_1", "columnId": "col_objectives", "text": "99.99% National Critical Infrastructure Availability", "subLane": 0, "y": 210, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": true, "isDisconnected": false },
+      "obj_2": { "id": "obj_2", "columnId": "col_objectives", "text": "Deliver £22m Run-Rate Operational Cost Efficiency", "subLane": 0, "y": 470, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
+      "obj_3": { "id": "obj_3", "columnId": "col_objectives", "text": "Full Statutory & Cyber Security Compliance (NIS2)", "subLane": 0, "y": 660, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": true, "isDisconnected": false }
+    },
+    "linksById": {
+      "lnk_1": { "id": "lnk_1", "fromId": "ena_1", "toId": "ena_2", "label": "Raw stream", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_2": { "id": "lnk_2", "fromId": "ena_2", "toId": "chg_1", "label": "AI alerts", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_3": { "id": "lnk_3", "fromId": "ena_1", "toId": "chg_2", "label": "Live health", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_4": { "id": "lnk_4", "fromId": "ena_3", "toId": "chg_2", "label": "Zero blackspots", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_5": { "id": "lnk_5", "fromId": "ena_3", "toId": "chg_3", "label": "Field sync", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_6": { "id": "lnk_6", "fromId": "ena_4", "toId": "chg_3", "label": "Guided workflow", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_7": { "id": "lnk_7", "fromId": "ena_5", "toId": "chg_4", "label": "Real-time stock", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_8": { "id": "lnk_8", "fromId": "chg_3", "toId": "chg_4", "label": "Parts used", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_9": { "id": "lnk_9", "fromId": "ena_6", "toId": "chg_5", "label": "SSO & MFA", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_10": { "id": "lnk_10", "fromId": "ena_7", "toId": "chg_6", "label": "Auto-audit", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_11": { "id": "lnk_11", "fromId": "chg_1", "toId": "cap_1", "label": "Proactive", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_12": { "id": "lnk_12", "fromId": "chg_1", "toId": "cap_2", "label": "Shared view", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_13": { "id": "lnk_13", "fromId": "chg_2", "toId": "cap_2", "label": "Multi-agency", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_14": { "id": "lnk_14", "fromId": "chg_2", "toId": "cap_3", "label": "Right skill dispatched", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_15": { "id": "lnk_15", "fromId": "chg_3", "toId": "cap_3", "label": "92% first fix", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_16": { "id": "lnk_16", "fromId": "chg_4", "toId": "cap_3", "label": "Zero parts delay", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_17": { "id": "lnk_17", "fromId": "chg_5", "toId": "cap_4", "label": "Zero standing privs", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_18": { "id": "lnk_18", "fromId": "chg_6", "toId": "cap_5", "label": "SLA tracking", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_19": { "id": "lnk_19", "fromId": "cap_1", "toId": "ben_1", "label": "65% call reduction", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_20": { "id": "lnk_20", "fromId": "cap_2", "toId": "ben_1", "label": "Prevents cascade", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_21": { "id": "lnk_21", "fromId": "cap_2", "toId": "ben_2", "label": "Gold command speed", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_22": { "id": "lnk_22", "fromId": "cap_3", "toId": "ben_2", "label": "Rapid restoration", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_23": { "id": "lnk_23", "fromId": "cap_3", "toId": "ben_3", "label": "Fewer truck rolls", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_24": { "id": "lnk_24", "fromId": "cap_4", "toId": "ben_4", "label": "Audit pass", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_25": { "id": "lnk_25", "fromId": "cap_5", "toId": "ben_3", "label": "Rebate recovery", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
+      "lnk_26": { "id": "lnk_26", "fromId": "cap_5", "toId": "ben_5", "label": "Vendor consolidation", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_27": { "id": "lnk_27", "fromId": "ben_1", "toId": "obj_1", "label": "Primary uptime driver", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_28": { "id": "lnk_28", "fromId": "ben_2", "toId": "obj_1", "label": "MTTR target", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_29": { "id": "lnk_29", "fromId": "ben_2", "toId": "obj_3", "label": "Statutory SLA", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
+      "lnk_30": { "id": "lnk_30", "fromId": "ben_3", "toId": "obj_2", "label": "65% of savings", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_31": { "id": "lnk_31", "fromId": "ben_5", "toId": "obj_2", "label": "35% of savings", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_32": { "id": "lnk_32", "fromId": "ben_4", "toId": "obj_3", "label": "Mandatory compliance", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
+      "lnk_33": { "id": "lnk_33", "fromId": "ena_6", "toId": "cap_1", "label": "Secure edge telemetry", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
+      "lnk_34": { "id": "lnk_34", "fromId": "chg_7", "toId": "cap_6", "label": "Orphaned link", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false }
+    },
+    "selectedNodeId": "obj_1",
+    "selectedLinkId": null,
+    "selectedColId": "col_objectives",
+    "camera": { "x": 0, "y": 0, "zoom": 1 }
+  };
+  state.mapId=demoData.mapId;
+  state.fileSyncToken=demoData.fileSyncToken;
+  state.mapTitle=demoData.mapTitle;
+  state.updatedAt=Date.now();
+  state.deletedById={};
+  state.columns=demoData.columns;
+  state.nodesById=demoData.nodesById;
+  state.linksById=demoData.linksById;
+  state.selectedNodeId=demoData.selectedNodeId;
+  state.selectedLinkId=null;
+  state.selectedColId=demoData.selectedColId;
+  document.getElementById('docTitleBtn').textContent=state.mapTitle;
+  activeChannelKey=null;setupLiveSyncForCurrentFile();
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true});
+  localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
+  sendHelloAnnouncement();fitScreen();
+  updateStatusPill('⚡ Demo Loaded',true);
+}
+
+document.getElementById('menuLoadStressTest').addEventListener('click',()=>{
+  hideAllMenus();
+  loadStressTestDemo();
+});
+</script>
+</body>
+</html>
