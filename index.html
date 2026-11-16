@@ -1,104 +1,3107 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BDN Studio - Benefits Dependency Network Mapper</title>
+    <title>BDN Studio — Benefits Dependency Network Mapper</title>
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQkROIFN0dWRpbyIsInNob3J0X25hbWUiOiJCRE4iLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZjE3MmEifQ==">
     <style>
         :root {
             --bg-canvas: #090d16;
-            --surface-hud: #0f172a;
+            --surface-hud: rgba(15, 23, 42, 0.92);
+            --surface-modal: #0f172a;
+            --surface-box: #0f172a;
+            --surface-box-selected: #17253b;
+            --surface-header: rgba(15, 23, 42, 0.96);
             --border-hud: #1e293b;
+            --border-focus: #38bdf8;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --link-stroke: #cbd5e1;
             --accent: #38bdf8;
+            --amber: #f59e0b;
+            --danger: #ef4444;
+            --success: #10b981;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: system-ui, -apple-system, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-canvas); color: var(--text-primary); }
-        
-        /* Top HUD */
+
         #topHud {
-            position: fixed; top: 12px; left: 12px; right: 12px; height: 52px;
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-            border: 1px solid var(--border-hud); border-radius: 12px;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
-            z-index: 50; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            position: fixed; top: 8px; left: 12px; right: 12px; height: 46px;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            z-index: 50; pointer-events: none;
         }
-        .hud-group { display: flex; align-items: center; gap: 12px; }
-        .hud-title { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; color: var(--text-primary); }
-        .hud-pill { font-size: 12px; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-hud); }
-        
-        /* Canvas Viewport */
-        #canvasContainer { width: 100vw; height: 100vh; position: relative; cursor: grab; }
-        #canvasContainer:active { cursor: grabbing; }
+        .hud-island {
+            pointer-events: auto;
+            background: var(--surface-hud); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-hud); border-radius: 10px;
+            display: flex; align-items: center; gap: 5px; padding: 5px 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+        }
+        .hud-btn {
+            background: rgba(148, 163, 184, 0.08); color: var(--text-primary);
+            border: 1px solid var(--border-hud); border-radius: 7px;
+            height: 32px; padding: 0 10px; font-size: 12px; font-weight: 500; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            transition: all 0.14s ease;
+        }
+        .hud-btn.icon-only { width: 32px; padding: 0; }
+        .hud-btn:hover:not(:disabled) { background: rgba(56, 189, 248, 0.16); border-color: var(--accent); }
+        .hud-btn:disabled { opacity: 0.35; cursor: default; }
+        .hud-btn.active { background: rgba(56, 189, 248, 0.25); border-color: var(--accent); color: #fff; }
+        .hud-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.25; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+        #docTitleBtn {
+            font-weight: 700; font-size: 13.5px; color: var(--text-primary);
+            padding: 4px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+            max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        #docTitleBtn:hover { border-color: var(--border-hud); background: rgba(148, 163, 184, 0.08); }
+        .status-pill {
+            font-size: 11px; color: var(--text-secondary); padding: 4px 10px;
+            border-radius: 999px; background: rgba(148, 163, 184, 0.07); border: 1px solid var(--border-hud);
+            white-space: nowrap;
+        }
+        .status-pill.live { color: #10b981; border-color: rgba(16, 185, 129, 0.35); }
+
+        #canvasContainer { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* Tier Legend Bar */
-        #tierLegend {
-            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-            border: 1px solid var(--border-hud); border-radius: 12px;
-            display: flex; align-items: center; gap: 16px; padding: 10px 20px;
-            z-index: 40; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        #inlineEditor {
+            position: fixed; display: none; z-index: 130;
+            background: var(--surface-modal); color: var(--text-primary); border: 2px solid var(--accent);
+            border-radius: 8px; padding: 6px 10px; font-size: 13px; line-height: 1.35;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.55); outline: none; resize: none;
+            max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px);
         }
-        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .dot-enabling { background: #38bdf8; }
-        .dot-business { background: #34d399; }
-        .dot-outcome { background: #f472b6; }
-        .dot-strategic { background: #fbbf24; }
+
+        .floating-menu {
+            position: fixed; display: none; flex-direction: column; z-index: 120;
+            background: var(--surface-modal); border: 1px solid var(--border-hud);
+            border-radius: 11px; padding: 6px; min-width: 245px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+            max-height: calc(100dvh - 24px); max-width: calc(100vw - 24px); overflow-y: auto;
+        }
+        .ctx-item {
+            padding: 7px 10px; font-size: 12px; color: var(--text-primary);
+            border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        }
+        .ctx-item:hover { background: rgba(56, 189, 248, 0.15); }
+        .ctx-item.danger { color: #f87171; }
+        .ctx-item.danger:hover { background: rgba(239, 68, 68, 0.16); }
+        .ctx-kbd { font-size: 10px; color: var(--text-muted); font-family: monospace; }
+        .ctx-sep { height: 1px; background: var(--border-hud); margin: 5px 0; }
+        .ctx-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); padding: 4px 10px 2px; }
+
+        .swatch-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; flex-wrap: wrap; }
+        .color-swatch {
+            width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2); transition: transform 0.12s ease;
+        }
+        .color-swatch:hover { transform: scale(1.2); border-color: #fff; }
+
+        #settingsPanel { width: 310px; padding: 14px; gap: 10px; }
+        #settingsPanel h4 { font-size: 13px; color: var(--accent); margin-bottom: 2px; }
+        .setting-group { display: flex; flex-direction: column; gap: 5px; }
+        .setting-group label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+        .seg-control { display: flex; gap: 4px; background: rgba(148,163,184,0.08); padding: 3px; border-radius: 7px; border: 1px solid var(--border-hud); }
+        .seg-btn {
+            flex: 1; text-align: center; padding: 5px 6px; font-size: 11px; font-weight: 500;
+            color: var(--text-secondary); border-radius: 5px; cursor: pointer;
+        }
+        .seg-btn.active { background: var(--accent); color: #090d16; font-weight: 700; }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; color: var(--text-primary); cursor: pointer; }
+        .toggle-row input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 150;
+        }
+        .modal-card {
+            background: var(--surface-modal); border: 1px solid var(--border-hud);
+            border-radius: 12px; padding: 20px; width: 460px; max-width: calc(100vw - 24px);
+            max-height: calc(100dvh - 24px); overflow-y: auto;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.75);
+        }
+        .modal-card h3 { font-size: 16px; margin-bottom: 8px; color: var(--text-primary); }
+        .modal-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+        #helpPopover {
+            position: fixed; top: 58px; right: 12px; width: 370px;
+            max-width: calc(100vw - 24px); max-height: calc(100dvh - 76px); overflow-y: auto;
+            background: var(--surface-modal); border: 1px solid var(--border-hud);
+            border-radius: 10px; padding: 14px; z-index: 125; display: none;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-size: 12px;
+        }
+        #helpPopover h4 { font-size: 13px; margin-bottom: 8px; color: var(--accent); }
+        .help-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(148,163,184,0.1); color: var(--text-secondary); }
+        .help-row kbd { background: rgba(148,163,184,0.15); color: var(--text-primary); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+
+        #modeBanner {
+            position: fixed; top: 110px; left: 50%; transform: translateX(-50%);
+            background: rgba(56, 189, 248, 0.95); color: #090d16; font-weight: 700;
+            font-size: 12px; padding: 6px 14px; border-radius: 999px; z-index: 90;
+            display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
     </style>
 </head>
 <body>
 
     <div id="topHud">
-        <div class="hud-group">
-            <span class="hud-title">BDN Studio</span>
-            <span class="hud-pill">Benefits Dependency Network</span>
+        <div class="hud-island">
+            <button class="hud-btn" id="btnMenu" title="File & Document Menu">
+                <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <span>Menu</span>
+            </button>
+            <button class="hud-btn icon-only" id="btnSettings" title="Appearance & Workspace Settings">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="hud-btn icon-only" id="btnUndo" title="Undo (Ctrl+Z)" disabled>
+                <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            </button>
+            <button class="hud-btn icon-only" id="btnRedo" title="Redo (Ctrl+Y)" disabled>
+                <svg viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+            </button>
+            <button class="hud-btn" id="btnAddBox" style="display:none;" title="Add Box in Centre of View (Enter)">+ Box</button>
+            <button class="hud-btn" id="btnAddCol" style="display:none;" title="Insert New Column">+ Col</button>
         </div>
-        <div class="hud-group">
-            <span class="hud-pill" id="saveStatus">✓ Ready</span>
+
+        <div class="hud-island">
+            <span id="docTitleBtn" title="Click to rename BDN document">Service Transformation BDN</span>
+            <span class="status-pill" id="saveStatus" title="Local & Same-File Multi-Device Sync Status">✓ Auto-saved</span>
+        </div>
+
+        <div class="hud-island">
+            <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Idempotent — Keeps Pinned 📌 Boxes Fixed)">Tidy</button>
+            <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen">Fit</button>
+            <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" style="border-radius:50%; font-weight:700;">?</button>
         </div>
     </div>
+
+    <div id="modeBanner">Link Mode: Click target box to connect (Press Esc to cancel)</div>
 
     <div id="canvasContainer">
         <canvas id="bdnCanvas"></canvas>
     </div>
 
-    <div id="tierLegend">
-        <div class="legend-item"><span class="legend-dot dot-enabling"></span>Enabling Changes</div>
-        <div class="legend-item"><span class="legend-dot dot-business"></span>Business Changes</div>
-        <div class="legend-item"><span class="legend-dot dot-outcome"></span>Outcomes</div>
-        <div class="legend-item"><span class="legend-dot dot-strategic"></span>Strategic Objectives</div>
+    <textarea id="inlineEditor" rows="2"></textarea>
+    <input type="file" id="hiddenFileInput" accept=".json,.bdn.json" style="display:none;" />
+
+    <!-- File Menu (Zero URL Sync Links — Sync happens seamlessly via embedded 256-bit cryptographic file token) -->
+    <div class="floating-menu" id="fileMenu">
+        <div class="ctx-label">File &amp; Cloud Storage</div>
+        <div class="ctx-item" id="menuNewBdn"><span>📄 New Blank BDN</span><span class="ctx-kbd">Alt+N</span></div>
+        <div class="ctx-item" id="menuOpenBdn"><span>📂 Open File / Google Drive...</span><span class="ctx-kbd">Ctrl+O</span></div>
+        <div class="ctx-item" id="menuSaveBdn"><span>💾 Save File</span><span class="ctx-kbd">Ctrl+S</span></div>
+        <div class="ctx-item" id="menuSaveAsBdn"><span>📥 Save As New File (.bdn.json)...</span><span class="ctx-kbd">Ctrl+Shift+S</span></div>
+        <div class="ctx-item" id="menuExportPng"><span>🖼️ Export High-Res PNG Image</span></div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-label">Columns &amp; Layout</div>
+        <div class="ctx-item" id="menuSaveDefaultCols"><span>📌 Save Current Columns as Default</span></div>
+        <div class="ctx-item" id="menuRestoreFactoryCols"><span>↺ Restore Factory 4 Columns</span></div>
+        <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
+        <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
+    </div>
+
+    <!-- Settings Panel Drawer -->
+    <div class="floating-menu" id="settingsPanel">
+        <h4>Appearance &amp; Workspace</h4>
+        <div class="setting-group">
+            <label>Color Theme</label>
+            <div class="seg-control" id="themeSelector">
+                <div class="seg-btn active" data-theme="dark">Slate Dark</div>
+                <div class="seg-btn" data-theme="light">Daylight</div>
+                <div class="seg-btn" data-theme="warm">Solarized</div>
+                <div class="seg-btn" data-theme="blueprint">Blueprint</div>
+            </div>
+        </div>
+        <div class="setting-group">
+            <label>Box Corner Style</label>
+            <div class="seg-control" id="shapeSelector">
+                <div class="seg-btn active" data-shape="rounded">Rounded</div>
+                <div class="seg-btn" data-shape="sharp">Sharp</div>
+                <div class="seg-btn" data-shape="pill">Soft Pill</div>
+            </div>
+        </div>
+        <div class="setting-group">
+            <label>Box Fill Style</label>
+            <div class="seg-control" id="fillSelector">
+                <div class="seg-btn active" data-fill="card">Solid Card</div>
+                <div class="seg-btn" data-fill="tinted">Tinted</div>
+                <div class="seg-btn" data-fill="outline">Outline</div>
+            </div>
+        </div>
+        <div class="setting-group">
+            <label>Link Arrowhead Direction (Applies Live)</label>
+            <div class="seg-control" id="arrowSelector">
+                <div class="seg-btn active" data-arrow="right">L → R</div>
+                <div class="seg-btn" data-arrow="left">R → L</div>
+                <div class="seg-btn" data-arrow="both">Both</div>
+                <div class="seg-btn" data-arrow="none">None</div>
+            </div>
+        </div>
+        <div class="ctx-sep"></div>
+        <label class="toggle-row">
+            <span>Show <strong>+ Box / + Col</strong> in Top Toolbar</span>
+            <input type="checkbox" id="chkShowToolbarAdd" />
+        </label>
+    </div>
+
+    <div class="floating-menu" id="contextMenu"></div>
+
+    <div class="modal-backdrop" id="conflictModal">
+        <div class="modal-card">
+            <h3>Horizontal Link Path Conflict</h3>
+            <p id="conflictMessage">
+                A straight horizontal link cannot be routed between these boxes because manual locks or an intermediate box block the horizontal corridor. How would you like to resolve this?
+            </p>
+            <div class="modal-actions">
+                <button class="hud-btn" id="btnConflictSplit">Use Split Link Stubs (①—①)</button>
+                <button class="hud-btn active" id="btnConflictAuto">Revert Blocking Boxes to Auto-Layout</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpPopover">
+        <h4>BDN Studio — Shortcuts &amp; Controls</h4>
+        <div class="help-row"><span>Add Box (or Right-Click Background)</span><kbd>Enter</kbd></div>
+        <div class="help-row"><span>Add Connected Box to Left Column</span><kbd>Tab</kbd></div>
+        <div class="help-row"><span>Start / Complete Horizontal Link</span><kbd>L</kbd></div>
+        <div class="help-row"><span>Stretch Box Top or Bottom Edge</span><kbd>Hover Top/Bottom ↕</kbd></div>
+        <div class="help-row"><span>Drag Box (Smooth cascade stretch/shrink)</span><kbd>Drag</kbd></div>
+        <div class="help-row"><span>Drag Box + Exclusive Left Upstream Chain</span><kbd>Shift + Drag</kbd></div>
+        <div class="help-row"><span>Undo / Redo</span><kbd>Ctrl+Z / Ctrl+Y</kbd></div>
+        <div class="help-row"><span>Open / Save File (Local or Google Drive)</span><kbd>Ctrl+O / Ctrl+S</kbd></div>
+        <div class="help-row"><span>Return Manual Box to Auto-Layout</span><kbd>M</kbd></div>
+        <div class="help-row"><span>Toggle Pin (Opt-Out of Auto-Layout)</span><kbd>P</kbd></div>
+        <div class="help-row"><span>Pin Entire Upstream Branch</span><kbd>Shift + P</kbd></div>
+        <div class="help-row"><span>Edit Box / Link Annotation / Column</span><kbd>F2 / DblClick</kbd></div>
+        <div class="help-row"><span>Cycle Link Arrowhead Direction</span><kbd>A</kbd></div>
+        <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
+        <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
+        <div style="margin-top:8px; color:var(--text-muted); line-height:1.45;">
+            • <strong>Right-Click Canvas Background:</strong> Add a box directly at the cursor, insert/colour columns, or tidy.<br>
+            • <strong>Access-Controlled File Sync:</strong> Opening the exact same <code>.bdn.json</code> file across devices syncs automatically using its embedded 256-bit cryptographic token (never by filename).
+        </div>
     </div>
 
     <script>
+        const STORAGE_KEY_STATE = 'bdn_studio_state_v11';
+        const STORAGE_KEY_DEFAULT_COLS = 'bdn_studio_default_cols_v11';
+        const STORAGE_KEY_SETTINGS = 'bdn_studio_settings_v11';
+
+        const FACTORY_COLUMNS = [
+            { id: 'col_enablers', title: 'Enablers', color: '#38bdf8' },
+            { id: 'col_changes', title: 'Business Changes', color: '#34d399' },
+            { id: 'col_benefits', title: 'Benefits', color: '#f472b6' },
+            { id: 'col_objectives', title: 'Strategic Objectives', color: '#fbbf24' }
+        ];
+
+        const SWATCH_PALETTE = ['#38bdf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa', '#fb923c', '#2dd4bf', '#f87171', '#60a5fa', '#94a3b8'];
+
+        const THEMES = {
+            dark: {
+                bgCanvas: '#090d16', surfaceHud: 'rgba(15, 23, 42, 0.92)', surfaceModal: '#0f172a',
+                surfaceBox: '#0f172a', surfaceBoxSel: '#17253b', surfaceHeader: 'rgba(15, 23, 42, 0.96)',
+                borderHud: '#1e293b', textPrimary: '#f8fafc', textSecondary: '#94a3b8', textMuted: '#64748b',
+                linkStroke: '#cbd5e1', colTintEven: 'rgba(15, 23, 42, 0.22)', colTintOdd: 'rgba(30, 41, 59, 0.14)'
+            },
+            light: {
+                bgCanvas: '#f8fafc', surfaceHud: 'rgba(255, 255, 255, 0.94)', surfaceModal: '#ffffff',
+                surfaceBox: '#ffffff', surfaceBoxSel: '#e0f2fe', surfaceHeader: 'rgba(248, 250, 252, 0.96)',
+                borderHud: '#cbd5e1', textPrimary: '#0f172a', textSecondary: '#475569', textMuted: '#64748b',
+                linkStroke: '#334155', colTintEven: 'rgba(241, 245, 249, 0.65)', colTintOdd: 'rgba(226, 232, 240, 0.4)'
+            },
+            warm: {
+                bgCanvas: '#1c1917', surfaceHud: 'rgba(28, 25, 23, 0.94)', surfaceModal: '#292524',
+                surfaceBox: '#292524', surfaceBoxSel: '#44403c', surfaceHeader: 'rgba(28, 25, 23, 0.96)',
+                borderHud: '#44403c', textPrimary: '#f5f5f4', textSecondary: '#a8a29e', textMuted: '#78716c',
+                linkStroke: '#d6d3d1', colTintEven: 'rgba(41, 37, 36, 0.28)', colTintOdd: 'rgba(68, 64, 60, 0.18)'
+            },
+            blueprint: {
+                bgCanvas: '#07192f', surfaceHud: 'rgba(10, 34, 64, 0.94)', surfaceModal: '#0a2240',
+                surfaceBox: '#0a2240', surfaceBoxSel: '#123866', surfaceHeader: 'rgba(10, 34, 64, 0.96)',
+                borderHud: '#1e4976', textPrimary: '#f0f9ff', textSecondary: '#93c5fd', textMuted: '#60a5fa',
+                linkStroke: '#e0f2fe', colTintEven: 'rgba(14, 42, 77, 0.3)', colTintOdd: 'rgba(20, 58, 102, 0.2)'
+            }
+        };
+
+        const BOX_WIDTH = 186;
+        const BOX_MIN_HEIGHT = 54;
+        const SUBLANE_GAP = 42;
+        const COL_SIDE_PADDING = 36;
+        const STICKY_HEADER_SCREEN_TOP = 62;
+        const STICKY_HEADER_HEIGHT = 42;
+        const INITIAL_SPAWN_Y = 140;
+        const VERTICAL_BOX_GAP = 38;
+        const LINK_SLOT_SPACING = 22;
+        const EDGE_CORNER_PAD = 12;
+        const RESIZE_HANDLE_ZONE = 9;
+        const STUB_LENGTH = 28;
+        const STUB_RADIUS = 11;
+
+        let settings = {
+            theme: 'dark',
+            boxShape: 'rounded',
+            boxFill: 'card',
+            defaultArrow: 'right',
+            showAddButtonsInToolbar: false
+        };
+
+        function generateCryptographicFileToken() {
+            const bytes = new Uint8Array(32);
+            if (window.crypto && window.crypto.getRandomValues) {
+                window.crypto.getRandomValues(bytes);
+            } else {
+                for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
+            }
+            return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        let state = {
+            mapId: 'bdn_' + Math.random().toString(36).slice(2, 10),
+            fileSyncToken: generateCryptographicFileToken(),
+            mapTitle: 'Service Transformation BDN',
+            updatedAt: Date.now(),
+            deletedById: {},
+            columns: [],
+            nodesById: {},
+            linksById: {},
+            selectedNodeId: null,
+            selectedLinkId: null,
+            selectedColId: null,
+            camera: { x: 0, y: 0, zoom: 1 }
+        };
+
+        const undoStack = [];
+        const redoStack = [];
+        const MAX_HISTORY = 60;
+
+        let sessionFileHandle = null;
+        let lastFileModifiedTime = 0;
+        let fileSaveDebounceTimer = null;
+
+        const instanceClientId = 'client_' + Math.random().toString(36).slice(2, 9);
+        let broadcastChannel = null;
+        let crossDeviceEventSource = null;
+        let syncPushTimer = null;
+
+        let linkingFromNodeId = null;
+        let draggingGroup = null;
+        let draggingColumn = null;
+        let resizingNode = null;
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+        let lastPointerScreen = { x: 0, y: 0 };
+        let autoScrollTimer = null;
+        let highlightedStubLinkId = null;
+        let pendingConflictLinkId = null;
+        let spawnCascadeCounter = 0;
+        let helpHoverTimeout = null;
+
         const canvas = document.getElementById('bdnCanvas');
         const ctx = canvas.getContext('2d');
-        
-        function resize() {
-            canvas.width = window.innerWidth * window.devicePixelRatio;
-            canvas.height = window.innerHeight * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        const inlineEditor = document.getElementById('inlineEditor');
+        const contextMenu = document.getElementById('contextMenu');
+        const fileMenu = document.getElementById('fileMenu');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const modeBanner = document.getElementById('modeBanner');
+        const conflictModal = document.getElementById('conflictModal');
+        const helpPopover = document.getElementById('helpPopover');
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+                if (raw) settings = Object.assign(settings, JSON.parse(raw));
+            } catch (e) {}
+            applySettingsToUI();
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+            } catch (e) {}
+            applySettingsToUI();
             draw();
         }
 
-        function draw() {
-            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-            // Grid dots pattern
-            ctx.fillStyle = '#1e293b';
-            const spacing = 32;
-            for (let x = 16; x < window.innerWidth; x += spacing) {
-                for (let y = 16; y < window.innerHeight; y += spacing) {
-                    ctx.fillRect(x, y, 1.5, 1.5);
+        function applySettingsToUI() {
+            const t = THEMES[settings.theme] || THEMES.dark;
+            const root = document.documentElement;
+            root.style.setProperty('--bg-canvas', t.bgCanvas);
+            root.style.setProperty('--surface-hud', t.surfaceHud);
+            root.style.setProperty('--surface-modal', t.surfaceModal);
+            root.style.setProperty('--surface-box', t.surfaceBox);
+            root.style.setProperty('--surface-box-selected', t.surfaceBoxSel);
+            root.style.setProperty('--surface-header', t.surfaceHeader);
+            root.style.setProperty('--border-hud', t.borderHud);
+            root.style.setProperty('--text-primary', t.textPrimary);
+            root.style.setProperty('--text-secondary', t.textSecondary);
+            root.style.setProperty('--text-muted', t.textMuted);
+            root.style.setProperty('--link-stroke', t.linkStroke);
+
+            document.getElementById('btnAddBox').style.display = settings.showAddButtonsInToolbar ? 'inline-flex' : 'none';
+            document.getElementById('btnAddCol').style.display = settings.showAddButtonsInToolbar ? 'inline-flex' : 'none';
+            document.getElementById('chkShowToolbarAdd').checked = !!settings.showAddButtonsInToolbar;
+
+            const syncSeg = (containerId, attr, val) => {
+                document.querySelectorAll(`#${containerId} .seg-btn`).forEach(b => {
+                    b.classList.toggle('active', b.getAttribute(attr) === val);
+                });
+            };
+            syncSeg('themeSelector', 'data-theme', settings.theme);
+            syncSeg('shapeSelector', 'data-shape', settings.boxShape);
+            syncSeg('fillSelector', 'data-fill', settings.boxFill);
+            syncSeg('arrowSelector', 'data-arrow', settings.defaultArrow);
+        }
+
+        function getPrivateFileChannelKey() {
+            if (!state.mapId || !state.fileSyncToken || state.fileSyncToken.length < 32) return null;
+            return 'bdn_priv_' + state.mapId.replace(/[^a-zA-Z0-9]/g, '') + '_' + state.fileSyncToken.slice(0, 40);
+        }
+
+        function setupLiveSyncForCurrentFile() {
+            const channelKey = getPrivateFileChannelKey();
+            if (!channelKey) return;
+
+            if (broadcastChannel) {
+                try { broadcastChannel.close(); } catch (e) {}
+            }
+            if ('BroadcastChannel' in window) {
+                broadcastChannel = new BroadcastChannel(channelKey);
+                broadcastChannel.onmessage = (ev) => {
+                    if (ev.data && ev.data.senderId !== instanceClientId && ev.data.state) {
+                        mergeIncomingCRDTState(ev.data.state, '⚡ Synced live');
+                    }
+                };
+            }
+
+            if (crossDeviceEventSource) {
+                try { crossDeviceEventSource.close(); } catch (e) {}
+                crossDeviceEventSource = null;
+            }
+            try {
+                crossDeviceEventSource = new EventSource(`https://ntfy.sh/${channelKey}/sse`);
+                crossDeviceEventSource.onmessage = (ev) => {
+                    try {
+                        const wrapper = JSON.parse(ev.data);
+                        if (!wrapper || !wrapper.message) return;
+                        const payload = JSON.parse(wrapper.message);
+                        if (payload && payload.senderId !== instanceClientId && payload.state) {
+                            mergeIncomingCRDTState(payload.state, '⚡ Synced live');
+                        }
+                    } catch (e) {}
+                };
+            } catch (e) {}
+        }
+
+        function broadcastCRDTUpdate() {
+            const channelKey = getPrivateFileChannelKey();
+            if (!channelKey) return;
+
+            const payload = {
+                senderId: instanceClientId,
+                timestamp: Date.now(),
+                state: {
+                    mapId: state.mapId,
+                    fileSyncToken: state.fileSyncToken,
+                    mapTitle: state.mapTitle,
+                    updatedAt: state.updatedAt,
+                    deletedById: state.deletedById || {},
+                    columns: state.columns,
+                    nodesById: state.nodesById,
+                    linksById: state.linksById
+                }
+            };
+
+            if (broadcastChannel) {
+                try { broadcastChannel.postMessage(payload); } catch (e) {}
+            }
+
+            clearTimeout(syncPushTimer);
+            syncPushTimer = setTimeout(() => {
+                try {
+                    fetch(`https://ntfy.sh/${channelKey}`, {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    }).catch(() => {});
+                } catch (e) {}
+            }, 50);
+        }
+
+        function mergeIncomingCRDTState(incoming, badgeLabel = '⚡ Synced live') {
+            if (!incoming || incoming.mapId !== state.mapId || incoming.fileSyncToken !== state.fileSyncToken) return;
+            let changed = false;
+
+            const mergedDeleted = Object.assign({}, state.deletedById || {});
+            Object.entries(incoming.deletedById || {}).forEach(([id, ts]) => {
+                if (!mergedDeleted[id] || ts > mergedDeleted[id]) {
+                    mergedDeleted[id] = ts;
+                    if (state.nodesById[id]) { delete state.nodesById[id]; changed = true; }
+                    if (state.linksById[id]) { delete state.linksById[id]; changed = true; }
+                }
+            });
+            state.deletedById = mergedDeleted;
+
+            if (incoming.updatedAt > (state.updatedAt || 0) && incoming.mapTitle && incoming.mapTitle !== state.mapTitle) {
+                state.mapTitle = incoming.mapTitle;
+                document.getElementById('docTitleBtn').textContent = state.mapTitle;
+                changed = true;
+            }
+
+            if (Array.isArray(incoming.columns) && incoming.updatedAt >= (state.updatedAt || 0)) {
+                state.columns = incoming.columns;
+                changed = true;
+            }
+
+            Object.entries(incoming.nodesById || {}).forEach(([id, incNode]) => {
+                if (state.deletedById[id] && state.deletedById[id] >= (incNode.updatedAt || 0)) return;
+                const localNode = state.nodesById[id];
+                if (!localNode || (incNode.updatedAt || 0) > (localNode.updatedAt || 0)) {
+                    state.nodesById[id] = incNode;
+                    changed = true;
+                }
+            });
+
+            Object.entries(incoming.linksById || {}).forEach(([id, incLink]) => {
+                if (state.deletedById[id] && state.deletedById[id] >= (incLink.updatedAt || 0)) return;
+                const localLink = state.linksById[id];
+                if (!localLink || (incLink.updatedAt || 0) > (localLink.updatedAt || 0)) {
+                    state.linksById[id] = incLink;
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                state.updatedAt = Math.max(state.updatedAt || 0, incoming.updatedAt || Date.now());
+                const colGeom = computeColumnGeometries();
+                computeHorizontalLinksAndStubs(colGeom);
+                updateDisconnectedIndicators();
+                updateStatusPill(badgeLabel, true);
+                localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
+                draw();
+            }
+        }
+
+        setInterval(async () => {
+            if (!sessionFileHandle) return;
+            try {
+                const file = await sessionFileHandle.getFile();
+                if (file.lastModified > lastFileModifiedTime + 200) {
+                    lastFileModifiedTime = file.lastModified;
+                    const text = await file.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed && parsed.mapId === state.mapId && parsed.fileSyncToken === state.fileSyncToken) {
+                        mergeIncomingCRDTState(parsed, '⚡ Cloud File Synced');
+                    }
+                }
+            } catch (e) {}
+        }, 900);
+
+        function getCleanFileName(ext = '.bdn.json') {
+            const slug = (state.mapTitle || 'bdn-network')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '') || 'bdn-network';
+            return slug + ext;
+        }
+
+        async function openBdnFile() {
+            hideAllMenus();
+            if ('showOpenFilePicker' in window) {
+                try {
+                    const [handle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'BDN Studio Network (.bdn.json)',
+                            accept: { 'application/json': ['.json', '.bdn.json'] }
+                        }]
+                    });
+                    sessionFileHandle = handle;
+                    const file = await handle.getFile();
+                    lastFileModifiedTime = file.lastModified;
+                    const text = await file.text();
+                    loadBdnJsonString(text, file.name);
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+            document.getElementById('hiddenFileInput').click();
+        }
+
+        document.getElementById('hiddenFileInput').addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            sessionFileHandle = null;
+            loadBdnJsonString(text, file.name);
+            e.target.value = '';
+        });
+
+        function loadBdnJsonString(jsonStr, fileName = '') {
+            try {
+                const parsed = JSON.parse(jsonStr);
+                if (!parsed || !Array.isArray(parsed.columns) || !parsed.nodesById) {
+                    alert('Invalid BDN file format.');
+                    return;
+                }
+                pushUndoState();
+                state.mapId = parsed.mapId || ('bdn_' + Math.random().toString(36).slice(2, 10));
+                state.fileSyncToken = (parsed.fileSyncToken && parsed.fileSyncToken.length >= 32)
+                    ? parsed.fileSyncToken
+                    : generateCryptographicFileToken();
+                state.mapTitle = parsed.mapTitle || fileName.replace(/(\.bdn)?\.json$/i, '') || 'Untitled BDN';
+                state.updatedAt = parsed.updatedAt || Date.now();
+                state.deletedById = parsed.deletedById || {};
+                state.columns = parsed.columns;
+                state.nodesById = parsed.nodesById;
+                state.linksById = parsed.linksById || {};
+                state.selectedNodeId = null;
+                state.selectedLinkId = null;
+                state.selectedColId = state.columns[0]?.id || null;
+
+                document.getElementById('docTitleBtn').textContent = state.mapTitle;
+                setupLiveSyncForCurrentFile();
+                runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                saveState();
+                fitScreen();
+                updateStatusPill('✓ File Opened & Sync Active', true);
+            } catch (err) {
+                alert('Could not parse BDN JSON file.');
+            }
+        }
+
+        async function saveBdnFile(saveAs = false) {
+            hideAllMenus();
+            if (saveAs) {
+                state.mapId = 'bdn_' + Math.random().toString(36).slice(2, 10);
+                state.fileSyncToken = generateCryptographicFileToken();
+                setupLiveSyncForCurrentFile();
+            }
+
+            const serialized = JSON.stringify(state, null, 2);
+
+            if ('showSaveFilePicker' in window && (saveAs || !sessionFileHandle)) {
+                try {
+                    sessionFileHandle = await window.showSaveFilePicker({
+                        suggestedName: getCleanFileName('.bdn.json'),
+                        types: [{
+                            description: 'BDN Studio Network (.bdn.json)',
+                            accept: { 'application/json': ['.bdn.json', '.json'] }
+                        }]
+                    });
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+
+            if (sessionFileHandle) {
+                try {
+                    const writable = await sessionFileHandle.createWritable();
+                    await writable.write(serialized);
+                    await writable.close();
+                    const f = await sessionFileHandle.getFile();
+                    lastFileModifiedTime = f.lastModified;
+                    updateStatusPill('✓ Saved to file', true);
+                    return;
+                } catch (e) {}
+            }
+
+            const blob = new Blob([serialized], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = getCleanFileName('.bdn.json');
+            a.click();
+            URL.revokeObjectURL(url);
+            updateStatusPill('✓ Downloaded .bdn.json');
+        }
+
+        function exportPngDiagram() {
+            hideAllMenus();
+            draw();
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = getCleanFileName('.png');
+            a.click();
+            updateStatusPill('✓ Exported PNG');
+        }
+
+        function createSnapshot() {
+            return JSON.stringify({
+                mapTitle: state.mapTitle,
+                columns: state.columns,
+                nodesById: state.nodesById,
+                linksById: state.linksById,
+                deletedById: state.deletedById,
+                selectedNodeId: state.selectedNodeId,
+                selectedLinkId: state.selectedLinkId,
+                selectedColId: state.selectedColId
+            });
+        }
+
+        function pushUndoState() {
+            const snap = createSnapshot();
+            if (undoStack.length > 0 && undoStack[undoStack.length - 1] === snap) return;
+            undoStack.push(snap);
+            if (undoStack.length > MAX_HISTORY) undoStack.shift();
+            redoStack.length = 0;
+            updateUndoRedoButtons();
+        }
+
+        function restoreSnapshot(snapStr) {
+            try {
+                const parsed = JSON.parse(snapStr);
+                state.mapTitle = parsed.mapTitle || state.mapTitle;
+                state.columns = parsed.columns || [];
+                state.nodesById = parsed.nodesById || {};
+                state.linksById = parsed.linksById || {};
+                state.deletedById = parsed.deletedById || {};
+                state.selectedNodeId = parsed.selectedNodeId || null;
+                state.selectedLinkId = parsed.selectedLinkId || null;
+                state.selectedColId = parsed.selectedColId || (state.columns[0]?.id || null);
+                document.getElementById('docTitleBtn').textContent = state.mapTitle;
+                const colGeom = computeColumnGeometries();
+                computeHorizontalLinksAndStubs(colGeom);
+                updateDisconnectedIndicators();
+                saveState();
+                updateUndoRedoButtons();
+                draw();
+            } catch (e) {}
+        }
+
+        function performUndo() {
+            if (undoStack.length === 0) return;
+            redoStack.push(createSnapshot());
+            restoreSnapshot(undoStack.pop());
+        }
+
+        function performRedo() {
+            if (redoStack.length === 0) return;
+            undoStack.push(createSnapshot());
+            restoreSnapshot(redoStack.pop());
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('btnUndo').disabled = undoStack.length === 0;
+            document.getElementById('btnRedo').disabled = redoStack.length === 0;
+        }
+
+        function getDefaultColumns() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY_DEFAULT_COLS);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                }
+            } catch (e) {}
+            return JSON.parse(JSON.stringify(FACTORY_COLUMNS));
+        }
+
+        function computeColumnGeometries() {
+            const colGeom = {};
+            const colCount = Math.max(1, state.columns.length);
+            const zoom = state.camera.zoom || 1;
+            const minWorldWidthToFillScreen = (window.innerWidth / zoom) / colCount;
+            const minBaseColW = Math.max(260, Math.floor(window.innerWidth / colCount), minWorldWidthToFillScreen);
+            let runningX = 0;
+
+            state.columns.forEach((col, colIndex) => {
+                const colStartX = runningX;
+                const colNodes = Object.values(state.nodesById).filter(n => n.columnId === col.id);
+                let maxSubLane = 0;
+                colNodes.forEach(n => {
+                    if (typeof n.subLane !== 'number' || n.subLane < 0) n.subLane = 0;
+                    if (n.subLane > maxSubLane) maxSubLane = n.subLane;
+                });
+                const laneCount = maxSubLane + 1;
+                const requiredInnerW = laneCount * BOX_WIDTH + (laneCount - 1) * SUBLANE_GAP + COL_SIDE_PADDING * 2;
+                const colWidth = Math.max(minBaseColW, requiredInnerW);
+                const colEndX = colStartX + colWidth;
+
+                colGeom[col.id] = {
+                    colIndex,
+                    x: colStartX,
+                    endX: colEndX,
+                    width: colWidth,
+                    laneCount,
+                    laneX: (subLane = 0) => {
+                        const safeLane = Math.max(0, Math.min(laneCount - 1, subLane || 0));
+                        const totalLanesW = laneCount * BOX_WIDTH + (laneCount - 1) * SUBLANE_GAP;
+                        const firstLaneX = colStartX + Math.max(COL_SIDE_PADDING, (colWidth - totalLanesW) / 2);
+                        const rawX = firstLaneX + safeLane * (BOX_WIDTH + SUBLANE_GAP);
+                        return Math.min(colEndX - BOX_WIDTH - 14, Math.max(colStartX + 14, rawX));
+                    }
+                };
+                runningX += colWidth;
+            });
+
+            colGeom._totalWorldWidth = runningX;
+            return colGeom;
+        }
+
+        function clampCameraBounds() {
+            const colGeom = computeColumnGeometries();
+            const totalScreenW = (colGeom._totalWorldWidth || window.innerWidth) * state.camera.zoom;
+
+            if (totalScreenW <= window.innerWidth + 1) {
+                state.camera.x = 0;
+            } else {
+                const minX = window.innerWidth - totalScreenW;
+                state.camera.x = Math.min(0, Math.max(minX, state.camera.x));
+            }
+        }
+
+        function getNodeGlobalX(node, colGeom) {
+            if (typeof node.dragTempX === 'number') return node.dragTempX;
+            const cg = colGeom[node.columnId];
+            if (!cg) return COL_SIDE_PADDING;
+            return cg.laneX(node.subLane || 0);
+        }
+
+        function findColumnAtWorldX(wx, colGeom) {
+            for (const col of state.columns) {
+                const cg = colGeom[col.id];
+                if (cg && wx >= cg.x && wx <= cg.endX) return col;
+            }
+            if (wx < 0) return state.columns[0];
+            return state.columns[state.columns.length - 1];
+        }
+
+        function createStarterNetwork(blank = false) {
+            state.mapId = 'bdn_' + Math.random().toString(36).slice(2, 10);
+            state.fileSyncToken = generateCryptographicFileToken();
+            state.mapTitle = blank ? 'Untitled BDN' : 'Service Transformation BDN';
+            state.updatedAt = Date.now();
+            state.deletedById = {};
+            state.columns = getDefaultColumns();
+            state.nodesById = {};
+            state.linksById = {};
+            state.camera = { x: 0, y: 0, zoom: 1 };
+            document.getElementById('docTitleBtn').textContent = state.mapTitle;
+
+            const cols = state.columns;
+            const cObj = cols[cols.length - 1]?.id || cols[0].id;
+
+            if (!blank) {
+                const cBen = cols[Math.max(0, cols.length - 2)]?.id || cols[0].id;
+                const cChg = cols[Math.max(0, cols.length - 3)]?.id || cols[0].id;
+                const cEna = cols[0].id;
+
+                const obj1 = addNodeInternal(cObj, 'Reduce Operational Cost by 15%', 0, 150);
+                const obj2 = addNodeInternal(cObj, 'Improve Service Resilience & SLA', 0, 340);
+
+                const ben1 = addNodeInternal(cBen, 'Automated Triage & Dispatch Efficiency', 0, 150);
+                const ben2 = addNodeInternal(cBen, 'Fewer Field Repeat Visits', 0, 250);
+                const ben3 = addNodeInternal(cBen, 'Faster Incident Recovery', 0, 360);
+
+                const chg1 = addNodeInternal(cChg, 'Dispatchers Use Real-Time Telemetry', 0, 150);
+                const chg2 = addNodeInternal(cChg, 'Standardised Remote Diagnostics Workflow', 0, 290);
+
+                const ena1 = addNodeInternal(cEna, 'Unified Telemetry Platform', 0, 190);
+                const ena2 = addNodeInternal(cEna, 'Field Engineer Mobile Diagnostic App', 0, 320);
+
+                addLinkInternal(ben1.id, obj1.id, 'Drives 60%', settings.defaultArrow);
+                addLinkInternal(ben2.id, obj1.id, 'Drives 40%', settings.defaultArrow);
+                addLinkInternal(ben2.id, obj2.id, 'Reduces backlog', settings.defaultArrow);
+                addLinkInternal(ben3.id, obj2.id, 'Core SLA', settings.defaultArrow);
+
+                addLinkInternal(chg1.id, ben1.id, '', settings.defaultArrow);
+                addLinkInternal(chg2.id, ben2.id, '', settings.defaultArrow);
+                addLinkInternal(chg2.id, ben3.id, '', settings.defaultArrow);
+
+                addLinkInternal(ena1.id, chg1.id, '', settings.defaultArrow);
+                addLinkInternal(ena1.id, chg2.id, '', settings.defaultArrow);
+                addLinkInternal(ena2.id, chg2.id, '', settings.defaultArrow);
+
+                state.selectedNodeId = obj1.id;
+            } else {
+                state.selectedNodeId = null;
+            }
+
+            state.selectedColId = cObj;
+            setupLiveSyncForCurrentFile();
+            performIdempotentTidy(false);
+            saveState();
+        }
+
+        function addNodeInternal(columnId, text, subLane = 0, y = INITIAL_SPAWN_Y) {
+            const id = 'node_' + Math.random().toString(36).slice(2, 9);
+            const node = {
+                id,
+                columnId,
+                text: text || 'New BDN Box',
+                subLane: subLane || 0,
+                y,
+                height: BOX_MIN_HEIGHT,
+                color: null,
+                updatedAt: Date.now(),
+                isManuallyPositioned: false,
+                isManuallyStretched: false,
+                isAutoLayoutOptOut: false,
+                isDisconnected: false
+            };
+            state.nodesById[id] = node;
+            return node;
+        }
+
+        function addLinkInternal(fromId, toId, label = '', arrowMode = settings.defaultArrow) {
+            if (!fromId || !toId || fromId === toId) return null;
+            for (const l of Object.values(state.linksById)) {
+                if ((l.fromId === fromId && l.toId === toId) || (l.fromId === toId && l.toId === fromId)) {
+                    return l;
+                }
+            }
+            const id = 'link_' + Math.random().toString(36).slice(2, 9);
+            const link = {
+                id,
+                fromId,
+                toId,
+                label: label || '',
+                arrowMode: arrowMode || settings.defaultArrow || 'right',
+                updatedAt: Date.now(),
+                isSplit: false,
+                forceSplit: false,
+                splitBadgeId: null,
+                anchorY: 0,
+                leftStubY: 0,
+                rightStubY: 0
+            };
+            state.linksById[id] = link;
+            return link;
+        }
+
+        function updateStatusPill(prefix = '✓ Auto-saved', isLive = false) {
+            const pill = document.getElementById('saveStatus');
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            pill.textContent = `${prefix} · ${hh}:${mm}`;
+            pill.classList.toggle('live', !!isLive);
+        }
+
+        function saveState() {
+            state.updatedAt = Date.now();
+            try {
+                localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
+                updateStatusPill(sessionFileHandle ? '✓ Saved to file' : '✓ Auto-saved', !!sessionFileHandle);
+            } catch (e) {}
+
+            broadcastCRDTUpdate();
+
+            if (sessionFileHandle) {
+                clearTimeout(fileSaveDebounceTimer);
+                fileSaveDebounceTimer = setTimeout(async () => {
+                    try {
+                        const writable = await sessionFileHandle.createWritable();
+                        await writable.write(JSON.stringify(state, null, 2));
+                        await writable.close();
+                        const f = await sessionFileHandle.getFile();
+                        lastFileModifiedTime = f.lastModified;
+                    } catch (e) {}
+                }, 450);
+            }
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY_STATE);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.columns) && parsed.columns.length > 0 && parsed.nodesById) {
+                        state = Object.assign(state, parsed);
+                        if (!state.fileSyncToken || state.fileSyncToken.length < 32) {
+                            state.fileSyncToken = generateCryptographicFileToken();
+                        }
+                        const validColIds = new Set(state.columns.map(c => c.id));
+                        const fallbackColId = state.columns[state.columns.length - 1].id;
+                        Object.values(state.nodesById).forEach(n => {
+                            if (!validColIds.has(n.columnId)) n.columnId = fallbackColId;
+                            delete n.dragTempX;
+                        });
+                        document.getElementById('docTitleBtn').textContent = state.mapTitle || 'Untitled BDN';
+                        setupLiveSyncForCurrentFile();
+                        runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                        return;
+                    }
+                }
+            } catch (e) {}
+            createStarterNetwork(false);
+        }
+
+        function getUpstreamLeftChain(startNodeId) {
+            const colGeom = computeColumnGeometries();
+            const visited = new Set([startNodeId]);
+            const queue = [startNodeId];
+            while (queue.length > 0) {
+                const currId = queue.shift();
+                const currNode = state.nodesById[currId];
+                if (!currNode) continue;
+                const currX = getNodeGlobalX(currNode, colGeom);
+
+                for (const link of Object.values(state.linksById)) {
+                    const otherId = link.fromId === currId ? link.toId : (link.toId === currId ? link.fromId : null);
+                    if (!otherId || visited.has(otherId)) continue;
+                    const otherNode = state.nodesById[otherId];
+                    if (!otherNode) continue;
+                    const otherX = getNodeGlobalX(otherNode, colGeom);
+                    if (otherX < currX) {
+                        visited.add(otherId);
+                        queue.push(otherId);
+                    }
+                }
+            }
+            return Array.from(visited);
+        }
+
+        function updateDisconnectedIndicators() {
+            const allNodes = Object.values(state.nodesById);
+            if (allNodes.length === 0) return;
+
+            const adj = {};
+            allNodes.forEach(n => adj[n.id] = []);
+            Object.values(state.linksById).forEach(l => {
+                if (adj[l.fromId] && adj[l.toId]) {
+                    adj[l.fromId].push(l.toId);
+                    adj[l.toId].push(l.fromId);
+                }
+            });
+
+            const visited = new Set();
+            const components = [];
+
+            allNodes.forEach(n => {
+                if (visited.has(n.id)) return;
+                const comp = [];
+                const q = [n.id];
+                visited.add(n.id);
+                while (q.length > 0) {
+                    const curr = q.shift();
+                    comp.push(curr);
+                    for (const nb of (adj[curr] || [])) {
+                        if (!visited.has(nb)) {
+                            visited.add(nb);
+                            q.push(nb);
+                        }
+                    }
+                }
+                components.push(comp);
+            });
+
+            let rightmostLinkedColId = null;
+            for (let i = state.columns.length - 1; i >= 0; i--) {
+                const colId = state.columns[i].id;
+                const hasLinkedNode = allNodes.some(n => n.columnId === colId && (adj[n.id]?.length || 0) > 0);
+                if (hasLinkedNode) {
+                    rightmostLinkedColId = colId;
+                    break;
+                }
+            }
+
+            const maxCompSize = Math.max(1, ...components.map(c => c.length));
+
+            components.forEach(comp => {
+                if (comp.length === 1) {
+                    state.nodesById[comp[0]].isDisconnected = true;
+                    return;
+                }
+                const reachesAnchorCol = rightmostLinkedColId && comp.some(id => state.nodesById[id]?.columnId === rightmostLinkedColId);
+                const isMainNetwork = comp.length === maxCompSize;
+                const isDisconnectedBranch = !reachesAnchorCol && !isMainNetwork;
+
+                comp.forEach(id => {
+                    if (state.nodesById[id]) {
+                        state.nodesById[id].isDisconnected = isDisconnectedBranch;
+                    }
+                });
+            });
+        }
+
+        function isNodePositionLocked(node, options = {}) {
+            if (options.anchorSet && options.anchorSet.has(node.id)) return true;
+            if (options.respectOptOuts !== false && node.isAutoLayoutOptOut) return true;
+            if (options.respectSoftManual && node.isManuallyPositioned) return true;
+            return false;
+        }
+
+        function isNodeStretchLocked(node, options = {}) {
+            if (options.respectOptOuts !== false && node.isAutoLayoutOptOut) return true;
+            if (options.respectSoftManual && node.isManuallyStretched) return true;
+            return false;
+        }
+
+        function getBaseBoxHeight(node, maxSingleSideLinks) {
+            const textLines = Math.max(1, Math.ceil((node.text || '').length / 22));
+            const textH = Math.max(BOX_MIN_HEIGHT, 26 + textLines * 17);
+            if (maxSingleSideLinks <= 1) return textH;
+            const minSlotH = EDGE_CORNER_PAD * 2 + (maxSingleSideLinks - 1) * LINK_SLOT_SPACING;
+            return Math.max(textH, minSlotH);
+        }
+
+        function getPerSideNeighbors(node, colGeom, includeForceSplit = true) {
+            const myX = getNodeGlobalX(node, colGeom);
+            const leftNeighbors = [];
+            const rightNeighbors = [];
+
+            Object.values(state.linksById).forEach(link => {
+                if (!includeForceSplit && link.forceSplit) return;
+                if (link.fromId !== node.id && link.toId !== node.id) return;
+                const otherId = link.fromId === node.id ? link.toId : link.fromId;
+                const other = state.nodesById[otherId];
+                if (!other) return;
+                const otherX = getNodeGlobalX(other, colGeom);
+                if (otherX < myX) {
+                    leftNeighbors.push({ link, neighbor: other });
+                } else {
+                    rightNeighbors.push({ link, neighbor: other });
+                }
+            });
+
+            return { leftNeighbors, rightNeighbors };
+        }
+
+        function resolveColumnCollisions(colId, subLane, options = {}) {
+            const primarySet = options.primaryAnchorSet || options.anchorSet || new Set();
+            const laneNodes = Object.values(state.nodesById)
+                .filter(n => n.columnId === colId && (n.subLane || 0) === subLane)
+                .sort((a, b) => (a.y + a.height / 2) - (b.y + b.height / 2));
+
+            if (laneNodes.length <= 1) return;
+
+            const anchorIdx = laneNodes.findIndex(n => primarySet.has(n.id));
+
+            if (anchorIdx !== -1) {
+                for (let i = anchorIdx - 1; i >= 0; i--) {
+                    const lower = laneNodes[i + 1];
+                    const upper = laneNodes[i];
+                    const maxAllowedUpperBottom = lower.y - VERTICAL_BOX_GAP;
+                    if (upper.y + upper.height > maxAllowedUpperBottom) {
+                        upper.y = maxAllowedUpperBottom - upper.height;
+                    }
+                }
+                for (let i = anchorIdx + 1; i < laneNodes.length; i++) {
+                    const upper = laneNodes[i - 1];
+                    const lower = laneNodes[i];
+                    const minAllowedLowerTop = upper.y + upper.height + VERTICAL_BOX_GAP;
+                    if (lower.y < minAllowedLowerTop) {
+                        lower.y = minAllowedLowerTop;
+                    }
+                }
+            } else {
+                for (let i = 1; i < laneNodes.length; i++) {
+                    const prev = laneNodes[i - 1];
+                    const curr = laneNodes[i];
+                    const minAllowedY = prev.y + prev.height + VERTICAL_BOX_GAP;
+                    if (curr.y < minAllowedY) {
+                        curr.y = minAllowedY;
+                    }
                 }
             }
         }
 
-        window.addEventListener('resize', resize);
-        resize();
+        function clampStretchToColumnClashes(node, candidateTop, candidateBottom, laneNodes, options) {
+            let safeTop = candidateTop;
+            let safeBottom = candidateBottom;
+
+            laneNodes.forEach(other => {
+                if (other.id === node.id) return;
+                const otherMid = other.y + other.height / 2;
+                const nodeMid = (candidateTop + candidateBottom) / 2;
+
+                if (otherMid < nodeMid) {
+                    if (isNodePositionLocked(other, options)) {
+                        const limitTop = other.y + other.height + VERTICAL_BOX_GAP;
+                        if (safeTop < limitTop) safeTop = limitTop;
+                    }
+                } else {
+                    if (isNodePositionLocked(other, options)) {
+                        const limitBottom = other.y - VERTICAL_BOX_GAP;
+                        if (safeBottom > limitBottom) safeBottom = limitBottom;
+                    }
+                }
+            });
+
+            return { safeTop, safeBottom };
+        }
+
+        function performIdempotentTidy(respectOptOuts = true) {
+            let colGeom = computeColumnGeometries();
+
+            Object.values(state.nodesById).forEach(n => {
+                if (!respectOptOuts || !n.isAutoLayoutOptOut) {
+                    n.isManuallyPositioned = false;
+                    n.isManuallyStretched = false;
+                    n.updatedAt = Date.now();
+                }
+            });
+            if (!respectOptOuts) {
+                Object.values(state.linksById).forEach(l => {
+                    l.forceSplit = false;
+                    l.updatedAt = Date.now();
+                });
+            }
+
+            state.columns.forEach(col => {
+                const maxLane = colGeom[col.id]?.laneCount || 1;
+                for (let lane = 0; lane < maxLane; lane++) {
+                    const laneNodes = Object.values(state.nodesById)
+                        .filter(n => n.columnId === col.id && (n.subLane || 0) === lane)
+                        .sort((a, b) => a.y - b.y);
+
+                    let cursorY = INITIAL_SPAWN_Y;
+                    laneNodes.forEach(node => {
+                        const locked = respectOptOuts && node.isAutoLayoutOptOut;
+                        if (!locked) {
+                            const { leftNeighbors, rightNeighbors } = getPerSideNeighbors(node, colGeom, true);
+                            const maxSide = Math.max(leftNeighbors.length, rightNeighbors.length);
+                            node.height = getBaseBoxHeight(node, maxSide);
+                            node.y = cursorY;
+                        }
+                        cursorY = Math.max(cursorY, node.y) + node.height + VERTICAL_BOX_GAP;
+                    });
+                }
+            });
+
+            runAutoLayout({ respectSoftManual: false, respectOptOuts, anchorSet: null });
+
+            const allNodes = Object.values(state.nodesById);
+            const hasPinned = respectOptOuts && allNodes.some(n => n.isAutoLayoutOptOut);
+            if (allNodes.length > 0 && !hasPinned) {
+                const minTop = Math.min(...allNodes.map(n => n.y));
+                const shiftY = INITIAL_SPAWN_Y - minTop;
+                if (Math.abs(shiftY) > 1) {
+                    allNodes.forEach(n => { n.y += shiftY; });
+                    computeHorizontalLinksAndStubs(colGeom);
+                }
+            }
+        }
+
+        function runAutoLayout(options = { respectSoftManual: true, respectOptOuts: true, anchorSet: null }) {
+            let colGeom = computeColumnGeometries();
+            const links = Object.values(state.linksById);
+            const primaryAnchorSet = options.anchorSet ? new Set(options.anchorSet) : new Set();
+
+            links.forEach(l => {
+                const nA = state.nodesById[l.fromId];
+                const nB = state.nodesById[l.toId];
+                if (nA && nB && nA.columnId === nB.columnId && (nA.subLane || 0) === (nB.subLane || 0)) {
+                    nB.subLane = (nA.subLane || 0) + 1;
+                }
+            });
+            colGeom = computeColumnGeometries();
+
+            Object.values(state.nodesById).forEach(n => {
+                if (!isNodeStretchLocked(n, options)) {
+                    const { leftNeighbors, rightNeighbors } = getPerSideNeighbors(n, colGeom, true);
+                    const maxSide = Math.max(leftNeighbors.length, rightNeighbors.length);
+                    n.height = getBaseBoxHeight(n, maxSide);
+                }
+            });
+
+            const alignedToAnchor = new Set(primaryAnchorSet);
+            if (alignedToAnchor.size > 0) {
+                const queue = Array.from(alignedToAnchor);
+                while (queue.length > 0) {
+                    const currId = queue.shift();
+                    const currNode = state.nodesById[currId];
+                    if (!currNode) continue;
+
+                    const { leftNeighbors, rightNeighbors } = getPerSideNeighbors(currNode, colGeom, false);
+                    [...leftNeighbors, ...rightNeighbors].forEach(({ neighbor }) => {
+                        if (alignedToAnchor.has(neighbor.id)) return;
+                        if (isNodePositionLocked(neighbor, options)) return;
+
+                        const nbSides = getPerSideNeighbors(neighbor, colGeom, false);
+                        const nbMaxSide = Math.max(nbSides.leftNeighbors.length, nbSides.rightNeighbors.length);
+
+                        if (nbMaxSide <= 1) {
+                            neighbor.y = currNode.y + (currNode.height - neighbor.height) / 2;
+                            alignedToAnchor.add(neighbor.id);
+                            queue.push(neighbor.id);
+                        }
+                    });
+                }
+            }
+
+            state.columns.forEach(col => {
+                const maxLane = colGeom[col.id]?.laneCount || 1;
+                for (let lane = 0; lane < maxLane; lane++) {
+                    resolveColumnCollisions(col.id, lane, { ...options, primaryAnchorSet: alignedToAnchor });
+                }
+            });
+
+            for (let cIdx = state.columns.length - 1; cIdx >= 0; cIdx--) {
+                const col = state.columns[cIdx];
+                const colNodes = Object.values(state.nodesById).filter(n => n.columnId === col.id);
+
+                colNodes.forEach(node => {
+                    if (isNodePositionLocked(node, options) || alignedToAnchor.has(node.id)) return;
+                    const { leftNeighbors, rightNeighbors } = getPerSideNeighbors(node, colGeom, false);
+                    const maxSide = Math.max(leftNeighbors.length, rightNeighbors.length);
+                    if (maxSide <= 1) {
+                        const connected = [...leftNeighbors, ...rightNeighbors].map(x => x.neighbor);
+                        if (connected.length > 0) {
+                            const avgCenter = connected.reduce((acc, t) => acc + (t.y + t.height / 2), 0) / connected.length;
+                            node.y = avgCenter - node.height / 2;
+                        }
+                    }
+                });
+
+                const maxLane = colGeom[col.id]?.laneCount || 1;
+                for (let lane = 0; lane < maxLane; lane++) {
+                    resolveColumnCollisions(col.id, lane, { ...options, primaryAnchorSet: alignedToAnchor });
+                }
+            }
+
+            for (let pass = 0; pass < 2; pass++) {
+                const colOrder = pass === 0
+                    ? state.columns.map((_, i) => i)
+                    : state.columns.map((_, i) => state.columns.length - 1 - i);
+
+                for (const cIdx of colOrder) {
+                    const col = state.columns[cIdx];
+                    const maxLane = colGeom[col.id]?.laneCount || 1;
+                    for (let lane = 0; lane < maxLane; lane++) {
+                        const laneNodes = Object.values(state.nodesById)
+                            .filter(n => n.columnId === col.id && (n.subLane || 0) === lane)
+                            .sort((a, b) => a.y - b.y);
+
+                        laneNodes.forEach(node => {
+                            if (isNodeStretchLocked(node, options)) return;
+
+                            const { leftNeighbors, rightNeighbors } = getPerSideNeighbors(node, colGeom, false);
+                            const maxSideLinks = Math.max(leftNeighbors.length, rightNeighbors.length);
+
+                            let needsBridgeStretch = false;
+                            if (maxSideLinks === 1 && leftNeighbors.length === 1 && rightNeighbors.length === 1) {
+                                const lNb = leftNeighbors[0].neighbor;
+                                const rNb = rightNeighbors[0].neighbor;
+                                const overlapTop = Math.max(lNb.y + EDGE_CORNER_PAD, rNb.y + EDGE_CORNER_PAD);
+                                const overlapBottom = Math.min(lNb.y + lNb.height - EDGE_CORNER_PAD, rNb.y + rNb.height - EDGE_CORNER_PAD);
+                                if (overlapBottom < overlapTop) {
+                                    needsBridgeStretch = true;
+                                }
+                            }
+
+                            if (maxSideLinks <= 1 && !needsBridgeStretch) {
+                                node.height = getBaseBoxHeight(node, 1);
+                                return;
+                            }
+
+                            const targetNeighbors = [];
+                            if (needsBridgeStretch) {
+                                targetNeighbors.push(leftNeighbors[0].neighbor, rightNeighbors[0].neighbor);
+                            } else {
+                                if (leftNeighbors.length > 1) targetNeighbors.push(...leftNeighbors.map(x => x.neighbor));
+                                if (rightNeighbors.length > 1) targetNeighbors.push(...rightNeighbors.map(x => x.neighbor));
+                                if (leftNeighbors.length === 1) targetNeighbors.push(leftNeighbors[0].neighbor);
+                                if (rightNeighbors.length === 1) targetNeighbors.push(rightNeighbors[0].neighbor);
+                            }
+
+                            let reqTop = Infinity;
+                            let reqBottom = -Infinity;
+
+                            targetNeighbors.forEach(nb => {
+                                const nbBottomAttach = nb.y + nb.height - EDGE_CORNER_PAD;
+                                const nbTopAttach = nb.y + EDGE_CORNER_PAD;
+
+                                const myX = getNodeGlobalX(node, colGeom);
+                                const nbX = getNodeGlobalX(nb, colGeom);
+                                const segLeftX = Math.min(myX, nbX) + BOX_WIDTH;
+                                const segRightX = Math.max(myX, nbX);
+                                const testY = (nbTopAttach + nbBottomAttach) / 2;
+
+                                const corridorBlocked = Object.values(state.nodesById).some(other => {
+                                    if (other.id === node.id || other.id === nb.id) return false;
+                                    const ox = getNodeGlobalX(other, colGeom);
+                                    if (ox + BOX_WIDTH <= segLeftX + 4 || ox >= segRightX - 4) return false;
+                                    return testY >= other.y - 4 && testY <= other.y + other.height + 4;
+                                });
+
+                                if (!corridorBlocked) {
+                                    reqTop = Math.min(reqTop, nbBottomAttach - EDGE_CORNER_PAD);
+                                    reqBottom = Math.max(reqBottom, nbTopAttach + EDGE_CORNER_PAD);
+                                }
+                            });
+
+                            if (reqTop === Infinity || reqBottom === -Infinity) return;
+
+                            const minHeightForSlots = getBaseBoxHeight(node, maxSideLinks);
+                            const isDirectlyDragged = primaryAnchorSet.has(node.id);
+
+                            let candidateTop = isDirectlyDragged ? node.y : reqTop;
+                            let candidateBottom = Math.max(candidateTop + minHeightForSlots, reqBottom);
+
+                            const { safeTop, safeBottom } = clampStretchToColumnClashes(
+                                node, candidateTop, candidateBottom, laneNodes, options
+                            );
+
+                            if (!isDirectlyDragged) {
+                                node.y = safeTop;
+                            }
+                            node.height = Math.max(minHeightForSlots, safeBottom - node.y);
+                        });
+
+                        resolveColumnCollisions(col.id, lane, { ...options, primaryAnchorSet: alignedToAnchor });
+                    }
+                }
+            }
+
+            computeHorizontalLinksAndStubs(colGeom);
+            updateDisconnectedIndicators();
+            clampCameraBounds();
+        }
+
+        function computeHorizontalLinksAndStubs(colGeom) {
+            const links = Object.values(state.linksById);
+            const allNodes = Object.values(state.nodesById);
+            let splitCounter = 1;
+
+            const usedYPerNodeSide = {};
+            const getUsed = (key) => (usedYPerNodeSide[key] = usedYPerNodeSide[key] || []);
+
+            const solidLinks = [];
+            const splitLinks = [];
+
+            links.forEach(link => {
+                const nA = state.nodesById[link.fromId];
+                const nB = state.nodesById[link.toId];
+                if (!nA || !nB) return;
+
+                if (link.forceSplit) {
+                    link.isSplit = true;
+                    link.splitBadgeId = String(splitCounter++);
+                    splitLinks.push({ link, nA, nB });
+                    return;
+                }
+
+                const overlapTop = Math.max(nA.y + EDGE_CORNER_PAD, nB.y + EDGE_CORNER_PAD);
+                const overlapBottom = Math.min(nA.y + nA.height - EDGE_CORNER_PAD, nB.y + nB.height - EDGE_CORNER_PAD);
+
+                if (overlapBottom < overlapTop) {
+                    link.isSplit = true;
+                    link.splitBadgeId = String(splitCounter++);
+                    splitLinks.push({ link, nA, nB });
+                } else {
+                    link.isSplit = false;
+                    link.splitBadgeId = null;
+                    solidLinks.push({ link, nA, nB, overlapTop, overlapBottom });
+                }
+            });
+
+            solidLinks.sort((a, b) => ((a.overlapTop + a.overlapBottom) / 2) - ((b.overlapTop + b.overlapBottom) / 2));
+
+            solidLinks.forEach(item => {
+                const { link, nA, nB, overlapTop, overlapBottom } = item;
+                const xA = getNodeGlobalX(nA, colGeom);
+                const xB = getNodeGlobalX(nB, colGeom);
+                const leftNode = xA <= xB ? nA : nB;
+                const rightNode = xA <= xB ? nB : nA;
+
+                const leftKey = leftNode.id + '_right';
+                const rightKey = rightNode.id + '_left';
+                const existingYs = [...getUsed(leftKey), ...getUsed(rightKey)];
+
+                const midY = (overlapTop + overlapBottom) / 2;
+                const span = overlapBottom - overlapTop;
+                const candidates = [midY];
+                for (let step = 8; step <= span / 2 + 2; step += 8) {
+                    if (midY - step >= overlapTop) candidates.push(midY - step);
+                    if (midY + step <= overlapBottom) candidates.push(midY + step);
+                }
+
+                let bestY = midY;
+                let bestClearance = -1;
+
+                for (const candY of candidates) {
+                    const segLeftX = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH;
+                    const segRightX = getNodeGlobalX(rightNode, colGeom);
+                    const blockedByIntermediate = allNodes.some(other => {
+                        if (other.id === leftNode.id || other.id === rightNode.id) return false;
+                        const ox = getNodeGlobalX(other, colGeom);
+                        if (ox + BOX_WIDTH <= segLeftX + 4 || ox >= segRightX - 4) return false;
+                        return candY >= other.y - 6 && candY <= other.y + other.height + 6;
+                    });
+                    if (blockedByIntermediate) continue;
+
+                    const minDist = existingYs.length === 0
+                        ? 999
+                        : Math.min(...existingYs.map(ey => Math.abs(ey - candY)));
+                    if (minDist > bestClearance) {
+                        bestClearance = minDist;
+                        bestY = candY;
+                    }
+                }
+
+                if (bestClearance === -1) {
+                    link.isSplit = true;
+                    link.splitBadgeId = String(splitCounter++);
+                    splitLinks.push({ link, nA, nB });
+                } else {
+                    link.anchorY = Math.round(bestY);
+                    getUsed(leftKey).push(link.anchorY);
+                    getUsed(rightKey).push(link.anchorY);
+                }
+            });
+
+            function allocateStubSlotOnNodeSide(node, sideSuffix, preferredTowardY) {
+                const key = node.id + '_' + sideSuffix;
+                const used = getUsed(key);
+                const topBound = node.y + EDGE_CORNER_PAD;
+                const bottomBound = node.y + node.height - EDGE_CORNER_PAD;
+                const mid = (topBound + bottomBound) / 2;
+
+                const candidates = [];
+                if (preferredTowardY < mid) {
+                    for (let y = topBound; y <= bottomBound; y += 6) candidates.push(y);
+                } else {
+                    for (let y = bottomBound; y >= topBound; y -= 6) candidates.push(y);
+                }
+                candidates.push(mid);
+
+                let bestY = mid;
+                let maxDist = -1;
+                for (const c of candidates) {
+                    const minDist = used.length === 0 ? 999 : Math.min(...used.map(u => Math.abs(u - c)));
+                    if (minDist > maxDist) {
+                        maxDist = minDist;
+                        bestY = c;
+                    }
+                }
+                const finalY = Math.round(bestY);
+                used.push(finalY);
+                return finalY;
+            }
+
+            splitLinks.forEach(({ link, nA, nB }) => {
+                const xA = getNodeGlobalX(nA, colGeom);
+                const xB = getNodeGlobalX(nB, colGeom);
+                const leftNode = xA <= xB ? nA : nB;
+                const rightNode = xA <= xB ? nB : nA;
+
+                link.leftStubY = allocateStubSlotOnNodeSide(leftNode, 'right', rightNode.y + rightNode.height / 2);
+                link.rightStubY = allocateStubSlotOnNodeSide(rightNode, 'left', leftNode.y + leftNode.height / 2);
+            });
+        }
+
+        function checkAndPromptLinkConflict(link) {
+            if (!link || !link.isSplit || link.forceSplit) return;
+            pendingConflictLinkId = link.id;
+            const nA = state.nodesById[link.fromId];
+            const nB = state.nodesById[link.toId];
+            document.getElementById('conflictMessage').textContent =
+                `The link between "${nA?.text || 'Box A'}" and "${nB?.text || 'Box B'}" is blocked from forming a straight horizontal line by a clashing box or lock. Would you like to revert those boxes to Auto-Layout or keep a numbered Split Link stub (①—①)?`;
+            conflictModal.style.display = 'flex';
+        }
+
+        document.getElementById('btnConflictSplit').addEventListener('click', () => {
+            if (pendingConflictLinkId && state.linksById[pendingConflictLinkId]) {
+                state.linksById[pendingConflictLinkId].forceSplit = true;
+                state.linksById[pendingConflictLinkId].updatedAt = Date.now();
+                runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                saveState();
+                draw();
+            }
+            pendingConflictLinkId = null;
+            conflictModal.style.display = 'none';
+        });
+
+        document.getElementById('btnConflictAuto').addEventListener('click', () => {
+            if (pendingConflictLinkId && state.linksById[pendingConflictLinkId]) {
+                const l = state.linksById[pendingConflictLinkId];
+                l.forceSplit = false;
+                l.updatedAt = Date.now();
+                [l.fromId, l.toId].forEach(id => {
+                    const n = state.nodesById[id];
+                    if (n) {
+                        n.isManuallyPositioned = false;
+                        n.isManuallyStretched = false;
+                        n.isAutoLayoutOptOut = false;
+                        n.updatedAt = Date.now();
+                    }
+                });
+                const nA = state.nodesById[l.fromId];
+                const nB = state.nodesById[l.toId];
+                if (nA && nB) nA.y = nB.y;
+                runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                saveState();
+                draw();
+            }
+            pendingConflictLinkId = null;
+            conflictModal.style.display = 'none';
+        });
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            clampCameraBounds();
+            draw();
+        }
+
+        function worldToScreen(wx, wy) {
+            return {
+                x: wx * state.camera.zoom + state.camera.x,
+                y: wy * state.camera.zoom + state.camera.y
+            };
+        }
+
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - state.camera.x) / state.camera.zoom,
+                y: (sy - state.camera.y) / state.camera.zoom
+            };
+        }
+
+        function drawRoundedRect(x, y, w, h, r) {
+            const radius = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + w - radius, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+            ctx.lineTo(x + w, y + h - radius);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+            ctx.lineTo(x + radius, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function hexToRgba(hex, alpha) {
+            const clean = (hex || '#38bdf8').replace('#', '');
+            const num = parseInt(clean, 16);
+            const r = (num >> 16) & 255;
+            const g = (num >> 8) & 255;
+            const b = num & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function drawArrowhead(x, y, dirX, color) {
+            const size = 7;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x - dirX * size * 1.35, y - size);
+            ctx.lineTo(x - dirX * size * 1.35, y + size);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function wrapTextLines(text, maxWidth) {
+            const words = (text || '').split(/\s+/);
+            const lines = [];
+            let current = '';
+            for (const w of words) {
+                const test = current ? current + ' ' + w : w;
+                if (ctx.measureText(test).width > maxWidth && current) {
+                    lines.push(current);
+                    current = w;
+                } else {
+                    current = test;
+                }
+            }
+            if (current) lines.push(current);
+            return lines.length ? lines : [''];
+        }
+
+        function getHeaderActionRects(screenEndX) {
+            const btnY = STICKY_HEADER_SCREEN_TOP + 9;
+            const btnH = 24;
+            const btnW = 24;
+            return {
+                moveLeft:  { x: screenEndX - 88, y: btnY, w: btnW, h: btnH },
+                moveRight: { x: screenEndX - 60, y: btnY, w: btnW, h: btnH },
+                insertCol: { x: screenEndX - 32, y: btnY, w: btnW, h: btnH }
+            };
+        }
+
+        function draw() {
+            clampCameraBounds();
+            const theme = THEMES[settings.theme] || THEMES.dark;
+            ctx.fillStyle = theme.bgCanvas;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+            const colGeom = computeColumnGeometries();
+            const allNodes = Object.values(state.nodesById);
+            const headerBottomScreenY = STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT;
+
+            state.columns.forEach((col, idx) => {
+                const cg = colGeom[col.id];
+                if (!cg) return;
+                const screenX = cg.x * state.camera.zoom + state.camera.x;
+                const screenW = cg.width * state.camera.zoom;
+                const screenEndX = screenX + screenW;
+                const isColSelected = state.selectedColId === col.id;
+
+                ctx.fillStyle = isColSelected
+                    ? hexToRgba(col.color, 0.06)
+                    : (idx % 2 === 0 ? theme.colTintEven : theme.colTintOdd);
+                ctx.fillRect(screenX, headerBottomScreenY, screenW, window.innerHeight - headerBottomScreenY);
+
+                ctx.save();
+                ctx.setLineDash([6, 6]);
+                ctx.strokeStyle = isColSelected ? col.color : 'rgba(148, 163, 184, 0.42)';
+                ctx.lineWidth = isColSelected ? 2 : 1.5;
+                ctx.beginPath();
+                ctx.moveTo(screenEndX, STICKY_HEADER_SCREEN_TOP);
+                ctx.lineTo(screenEndX, window.innerHeight);
+                ctx.stroke();
+                if (idx === 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, STICKY_HEADER_SCREEN_TOP);
+                    ctx.lineTo(screenX, window.innerHeight);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, headerBottomScreenY, window.innerWidth, window.innerHeight - headerBottomScreenY);
+            ctx.clip();
+
+            ctx.translate(state.camera.x, state.camera.y);
+            ctx.scale(state.camera.zoom, state.camera.zoom);
+
+            Object.values(state.linksById).forEach(link => {
+                const nA = state.nodesById[link.fromId];
+                const nB = state.nodesById[link.toId];
+                if (!nA || !nB) return;
+
+                const xA = getNodeGlobalX(nA, colGeom);
+                const xB = getNodeGlobalX(nB, colGeom);
+                const leftNode = xA <= xB ? nA : nB;
+                const rightNode = xA <= xB ? nB : nA;
+                const isSelected = state.selectedLinkId === link.id || highlightedStubLinkId === link.id;
+                const strokeColor = isSelected ? '#38bdf8' : theme.linkStroke;
+
+                if (!link.isSplit) {
+                    const startX = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH;
+                    const endX = getNodeGlobalX(rightNode, colGeom);
+                    const y = link.anchorY;
+
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = isSelected ? 2.8 : 2;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, y);
+                    ctx.lineTo(endX, y);
+                    ctx.stroke();
+
+                    if (link.arrowMode === 'right' || link.arrowMode === 'both') {
+                        drawArrowhead(endX, y, 1, strokeColor);
+                    }
+                    if (link.arrowMode === 'left' || link.arrowMode === 'both') {
+                        drawArrowhead(startX, y, -1, strokeColor);
+                    }
+
+                    if (link.label) {
+                        const midX = (startX + endX) / 2;
+                        ctx.font = '500 11px system-ui, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.lineWidth = 6;
+                        ctx.strokeStyle = theme.bgCanvas;
+                        ctx.strokeText(link.label, midX, y - 9);
+                        ctx.fillStyle = isSelected ? '#38bdf8' : theme.textPrimary;
+                        ctx.fillText(link.label, midX, y - 9);
+                    }
+                } else {
+                    const yLeft = link.leftStubY || (leftNode.y + leftNode.height / 2);
+                    const xLeftStart = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH;
+                    const xLeftCircle = xLeftStart + STUB_LENGTH;
+
+                    const yRight = link.rightStubY || (rightNode.y + rightNode.height / 2);
+                    const xRightStart = getNodeGlobalX(rightNode, colGeom);
+                    const xRightCircle = xRightStart - STUB_LENGTH;
+
+                    const stubColor = isSelected ? '#38bdf8' : '#f59e0b';
+
+                    ctx.strokeStyle = stubColor;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(xLeftStart, yLeft);
+                    ctx.lineTo(xLeftCircle - STUB_RADIUS, yLeft);
+                    ctx.stroke();
+
+                    ctx.fillStyle = theme.surfaceBox;
+                    ctx.beginPath();
+                    ctx.arc(xLeftCircle, yLeft, STUB_RADIUS, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = stubColor;
+                    ctx.font = '700 11px system-ui, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(link.splitBadgeId || '?', xLeftCircle, yLeft);
+
+                    ctx.beginPath();
+                    ctx.moveTo(xRightStart, yRight);
+                    ctx.lineTo(xRightCircle + STUB_RADIUS, yRight);
+                    ctx.stroke();
+
+                    ctx.fillStyle = theme.surfaceBox;
+                    ctx.beginPath();
+                    ctx.arc(xRightCircle, yRight, STUB_RADIUS, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = stubColor;
+                    ctx.fillText(link.splitBadgeId || '?', xRightCircle, yRight);
+
+                    if (link.label) {
+                        ctx.font = '500 10px system-ui, sans-serif';
+                        ctx.fillStyle = theme.textSecondary;
+                        ctx.fillText(link.label, xLeftCircle, yLeft - 17);
+                        ctx.fillText(link.label, xRightCircle, yRight - 17);
+                    }
+                }
+            });
+
+            const cornerRadius = settings.boxShape === 'sharp' ? 2 : (settings.boxShape === 'pill' ? 24 : 10);
+
+            allNodes.forEach(node => {
+                const col = state.columns.find(c => c.id === node.columnId);
+                const boxColor = node.color || (col ? col.color : '#38bdf8');
+                const x = getNodeGlobalX(node, colGeom);
+                const y = node.y;
+                const w = BOX_WIDTH;
+                const h = node.height;
+                const isSelected = state.selectedNodeId === node.id;
+                const isLinkSource = linkingFromNodeId === node.id;
+
+                drawRoundedRect(x, y, w, h, cornerRadius);
+                if (settings.boxFill === 'tinted') {
+                    ctx.fillStyle = hexToRgba(boxColor, isSelected ? 0.26 : 0.14);
+                } else if (settings.boxFill === 'outline') {
+                    ctx.fillStyle = theme.bgCanvas;
+                } else {
+                    ctx.fillStyle = isSelected ? theme.surfaceBoxSel : theme.surfaceBox;
+                }
+                ctx.fill();
+
+                if (node.isDisconnected) {
+                    ctx.setLineDash([6, 4]);
+                    ctx.lineWidth = isSelected ? 2.5 : 1.8;
+                    ctx.strokeStyle = isSelected ? '#38bdf8' : '#f59e0b';
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.lineWidth = isSelected || isLinkSource ? 2.5 : 1.6;
+                    ctx.strokeStyle = isLinkSource ? '#10b981' : (isSelected ? '#38bdf8' : boxColor);
+                    ctx.stroke();
+                }
+
+                if (settings.boxFill === 'card') {
+                    drawRoundedRect(x + 3, y + 6, 4, h - 12, 2);
+                    ctx.fillStyle = boxColor;
+                    ctx.fill();
+                }
+
+                let badgeX = x + w - 8;
+                ctx.font = '600 10px system-ui, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+
+                if (node.isAutoLayoutOptOut) {
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fillText('📌 Pinned', badgeX, y + 7);
+                    badgeX -= 54;
+                } else if (node.isManuallyPositioned || node.isManuallyStretched) {
+                    ctx.fillStyle = theme.textSecondary;
+                    ctx.fillText('✋ Manual', badgeX, y + 7);
+                    badgeX -= 52;
+                }
+
+                if (node.isDisconnected) {
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillText('⚠ Unlinked', badgeX, y + 7);
+                }
+
+                ctx.fillStyle = theme.textPrimary;
+                ctx.font = '500 12.5px system-ui, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                const lines = wrapTextLines(node.text, w - 26);
+                const lineHeight = 16.5;
+                const totalTextH = lines.length * lineHeight;
+                const startTextY = y + h / 2 - totalTextH / 2 + lineHeight / 2 + 4;
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, x + 14, startTextY + i * lineHeight);
+                });
+
+                const gripColor = isSelected ? '#38bdf8' : 'rgba(148, 163, 184, 0.38)';
+                ctx.fillStyle = gripColor;
+                ctx.fillRect(x + w / 2 - 16, y + 3, 32, 2.5);
+                ctx.fillRect(x + w / 2 - 16, y + h - 5.5, 32, 2.5);
+            });
+
+            ctx.restore();
+
+            state.columns.forEach((col, idx) => {
+                const cg = colGeom[col.id];
+                if (!cg) return;
+                const screenX = cg.x * state.camera.zoom + state.camera.x;
+                const screenW = cg.width * state.camera.zoom;
+                const screenEndX = screenX + screenW;
+
+                ctx.fillStyle = theme.surfaceHeader;
+                ctx.fillRect(screenX, STICKY_HEADER_SCREEN_TOP, screenW, STICKY_HEADER_HEIGHT);
+
+                ctx.fillStyle = col.color;
+                ctx.fillRect(screenX, STICKY_HEADER_SCREEN_TOP, screenW, 3);
+
+                ctx.strokeStyle = theme.borderHud;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(screenX, headerBottomScreenY);
+                ctx.lineTo(screenEndX, headerBottomScreenY);
+                ctx.stroke();
+
+                ctx.save();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                ctx.beginPath();
+                ctx.moveTo(screenEndX, STICKY_HEADER_SCREEN_TOP);
+                ctx.lineTo(screenEndX, headerBottomScreenY);
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(screenX + 2, STICKY_HEADER_SCREEN_TOP, Math.max(0, screenW - 4), STICKY_HEADER_HEIGHT);
+                ctx.clip();
+
+                ctx.fillStyle = col.color;
+                ctx.beginPath();
+                ctx.arc(screenX + 16, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = theme.textPrimary;
+                ctx.font = '600 13px system-ui, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(col.title, screenX + 28, STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT / 2 + 1);
+
+                if (screenW > 150) {
+                    const rects = getHeaderActionRects(screenEndX);
+                    const drawMiniBtn = (r, symbol, enabled = true) => {
+                        drawRoundedRect(r.x, r.y, r.w, r.h, 5);
+                        ctx.fillStyle = enabled ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.03)';
+                        ctx.fill();
+                        ctx.strokeStyle = theme.borderHud;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.fillStyle = enabled ? theme.textPrimary : theme.textMuted;
+                        ctx.font = '600 11px system-ui, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(symbol, r.x + r.w / 2, r.y + r.h / 2 + 0.5);
+                    };
+                    drawMiniBtn(rects.moveLeft, '◀', idx > 0);
+                    drawMiniBtn(rects.moveRight, '▶', idx < state.columns.length - 1);
+                    drawMiniBtn(rects.insertCol, '+', true);
+                }
+                ctx.restore();
+            });
+        }
+
+        function hitTest(screenX, screenY) {
+            const colGeom = computeColumnGeometries();
+            const world = screenToWorld(screenX, screenY);
+            const wx = world.x;
+            const wy = world.y;
+
+            if (screenY >= STICKY_HEADER_SCREEN_TOP && screenY <= STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT) {
+                for (let idx = 0; idx < state.columns.length; idx++) {
+                    const col = state.columns[idx];
+                    const cg = colGeom[col.id];
+                    if (cg && wx >= cg.x && wx <= cg.endX) {
+                        const screenEndX = cg.endX * state.camera.zoom + state.camera.x;
+                        const screenW = cg.width * state.camera.zoom;
+                        if (screenW > 150) {
+                            const rects = getHeaderActionRects(screenEndX);
+                            const inRect = (r) => screenX >= r.x && screenX <= r.x + r.w && screenY >= r.y && screenY <= r.y + r.h;
+                            if (inRect(rects.moveLeft)) return { type: 'col-btn-left', col };
+                            if (inRect(rects.moveRight)) return { type: 'col-btn-right', col };
+                            if (inRect(rects.insertCol)) return { type: 'col-btn-insert', col };
+                        }
+                        return { type: 'column-header', col };
+                    }
+                }
+            }
+
+            for (const link of Object.values(state.linksById)) {
+                if (!link.isSplit) continue;
+                const nA = state.nodesById[link.fromId];
+                const nB = state.nodesById[link.toId];
+                if (!nA || !nB) continue;
+                const xA = getNodeGlobalX(nA, colGeom);
+                const xB = getNodeGlobalX(nB, colGeom);
+                const leftNode = xA <= xB ? nA : nB;
+                const rightNode = xA <= xB ? nB : nA;
+
+                const yLeft = link.leftStubY || (leftNode.y + leftNode.height / 2);
+                const xLeftCircle = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH + STUB_LENGTH;
+                const yRight = link.rightStubY || (rightNode.y + rightNode.height / 2);
+                const xRightCircle = getNodeGlobalX(rightNode, colGeom) - STUB_LENGTH;
+
+                if (Math.hypot(wx - xLeftCircle, wy - yLeft) <= STUB_RADIUS + 4) {
+                    return { type: 'stub', link, targetNode: rightNode };
+                }
+                if (Math.hypot(wx - xRightCircle, wy - yRight) <= STUB_RADIUS + 4) {
+                    return { type: 'stub', link, targetNode: leftNode };
+                }
+            }
+
+            const nodes = Object.values(state.nodesById);
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const n = nodes[i];
+                const x = getNodeGlobalX(n, colGeom);
+                if (wx >= x && wx <= x + BOX_WIDTH && wy >= n.y && wy <= n.y + n.height) {
+                    if (wy <= n.y + RESIZE_HANDLE_ZONE) {
+                        return { type: 'resize-node-top', node: n };
+                    }
+                    if (wy >= n.y + n.height - RESIZE_HANDLE_ZONE) {
+                        return { type: 'resize-node-bottom', node: n };
+                    }
+                    return { type: 'node', node: n };
+                }
+            }
+
+            for (const link of Object.values(state.linksById)) {
+                if (link.isSplit) continue;
+                const nA = state.nodesById[link.fromId];
+                const nB = state.nodesById[link.toId];
+                if (!nA || !nB) continue;
+                const xA = getNodeGlobalX(nA, colGeom);
+                const xB = getNodeGlobalX(nB, colGeom);
+                const leftNode = xA <= xB ? nA : nB;
+                const rightNode = xA <= xB ? nB : nA;
+                const startX = getNodeGlobalX(leftNode, colGeom) + BOX_WIDTH;
+                const endX = getNodeGlobalX(rightNode, colGeom);
+                if (wx >= startX && wx <= endX && Math.abs(wy - link.anchorY) <= 9) {
+                    return { type: 'link', link };
+                }
+            }
+
+            return null;
+        }
+
+        function updateHoverCursor(screenX, screenY) {
+            if (resizingNode) {
+                canvas.style.cursor = 'ns-resize';
+                return;
+            }
+            if (draggingGroup || isPanning || draggingColumn) {
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            const hit = hitTest(screenX, screenY);
+            if (hit?.type === 'resize-node-top' || hit?.type === 'resize-node-bottom') {
+                canvas.style.cursor = 'ns-resize';
+            } else if (hit?.type === 'node' || hit?.type === 'column-header') {
+                canvas.style.cursor = linkingFromNodeId ? 'crosshair' : 'grab';
+            } else if (hit?.type === 'stub' || hit?.type === 'link' || hit?.type?.startsWith('col-btn-')) {
+                canvas.style.cursor = 'pointer';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+        }
+
+        function teleportToNode(targetNode, linkId) {
+            if (!targetNode) return;
+            const colGeom = computeColumnGeometries();
+            const targetX = getNodeGlobalX(targetNode, colGeom) + BOX_WIDTH / 2;
+            const targetY = targetNode.y + targetNode.height / 2;
+            state.camera.x = window.innerWidth / 2 - targetX * state.camera.zoom;
+            state.camera.y = window.innerHeight / 2 - targetY * state.camera.zoom;
+            clampCameraBounds();
+            state.selectedNodeId = targetNode.id;
+            state.selectedLinkId = linkId;
+            highlightedStubLinkId = linkId;
+            setTimeout(() => { highlightedStubLinkId = null; draw(); }, 1800);
+            draw();
+        }
+
+        function applyActiveDragPosition(screenX, screenY) {
+            if (!draggingGroup) return;
+            const world = screenToWorld(screenX, screenY);
+            const dx = world.x - draggingGroup.startMouseX;
+            const dy = world.y - draggingGroup.startMouseY;
+            if (Math.hypot(dx, dy) > 3) {
+                if (!draggingGroup.undoPushed) {
+                    pushUndoState();
+                    draggingGroup.undoPushed = true;
+                }
+                draggingGroup.moved = true;
+            }
+
+            Object.entries(draggingGroup.allBaselineById).forEach(([id, base]) => {
+                const n = state.nodesById[id];
+                if (n && !draggingGroup.groupIds.includes(id)) {
+                    n.y = base.y;
+                    n.height = base.height;
+                }
+            });
+
+            draggingGroup.groupIds.forEach(id => {
+                const n = state.nodesById[id];
+                const init = draggingGroup.allBaselineById[id];
+                if (n && init) {
+                    n.y = init.y + dy;
+                    n.updatedAt = Date.now();
+                    if (id === draggingGroup.anchorNodeId && Math.abs(dx) > 16) {
+                        n.dragTempX = init.x + dx;
+                    } else {
+                        delete n.dragTempX;
+                    }
+                }
+            });
+
+            runAutoLayout({
+                respectSoftManual: true,
+                respectOptOuts: true,
+                anchorSet: new Set(draggingGroup.groupIds)
+            });
+            draw();
+        }
+
+        function startEdgeAutoScrollLoop() {
+            if (autoScrollTimer) return;
+            autoScrollTimer = setInterval(() => {
+                if (!draggingGroup && !resizingNode) {
+                    stopEdgeAutoScrollLoop();
+                    return;
+                }
+                const topEdgeTrigger = STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT + 36;
+                const bottomEdgeTrigger = window.innerHeight - 36;
+                let panDeltaY = 0;
+
+                if (lastPointerScreen.y < topEdgeTrigger) {
+                    panDeltaY = Math.min(22, Math.max(6, (topEdgeTrigger - lastPointerScreen.y) * 0.35));
+                } else if (lastPointerScreen.y > bottomEdgeTrigger) {
+                    panDeltaY = -Math.min(22, Math.max(6, (lastPointerScreen.y - bottomEdgeTrigger) * 0.35));
+                }
+
+                if (panDeltaY !== 0) {
+                    state.camera.y += panDeltaY;
+                    if (draggingGroup) {
+                        applyActiveDragPosition(lastPointerScreen.x, lastPointerScreen.y);
+                    }
+                }
+            }, 16);
+        }
+
+        function stopEdgeAutoScrollLoop() {
+            if (autoScrollTimer) {
+                clearInterval(autoScrollTimer);
+                autoScrollTimer = null;
+            }
+        }
+
+        function hideAllMenus() {
+            contextMenu.style.display = 'none';
+            fileMenu.style.display = 'none';
+            settingsPanel.style.display = 'none';
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            hideAllMenus();
+            if (e.button === 2) return;
+            lastPointerScreen = { x: e.clientX, y: e.clientY };
+            const world = screenToWorld(e.clientX, e.clientY);
+            const hit = hitTest(e.clientX, e.clientY);
+
+            if (hit?.type === 'col-btn-left') {
+                state.selectedColId = hit.col.id;
+                moveColumn(hit.col.id, -1);
+                return;
+            }
+            if (hit?.type === 'col-btn-right') {
+                state.selectedColId = hit.col.id;
+                moveColumn(hit.col.id, 1);
+                return;
+            }
+            if (hit?.type === 'col-btn-insert') {
+                state.selectedColId = hit.col.id;
+                insertColumnRelative(hit.col.id, 1);
+                return;
+            }
+
+            if (hit?.type === 'stub') {
+                teleportToNode(hit.targetNode, hit.link.id);
+                return;
+            }
+
+            if (linkingFromNodeId) {
+                if (hit?.type === 'node' && hit.node.id !== linkingFromNodeId) {
+                    pushUndoState();
+                    const newLink = addLinkInternal(linkingFromNodeId, hit.node.id, '', settings.defaultArrow);
+                    linkingFromNodeId = null;
+                    modeBanner.style.display = 'none';
+                    runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                    saveState();
+                    draw();
+                    checkAndPromptLinkConflict(newLink);
+                } else {
+                    linkingFromNodeId = null;
+                    modeBanner.style.display = 'none';
+                    draw();
+                }
+                return;
+            }
+
+            if (hit?.type === 'resize-node-top' || hit?.type === 'resize-node-bottom') {
+                pushUndoState();
+                state.selectedNodeId = hit.node.id;
+                state.selectedLinkId = null;
+                resizingNode = {
+                    nodeId: hit.node.id,
+                    edge: hit.type === 'resize-node-top' ? 'top' : 'bottom',
+                    startMouseY: world.y,
+                    initialY: hit.node.y,
+                    initialHeight: hit.node.height
+                };
+                startEdgeAutoScrollLoop();
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            if (hit?.type === 'node') {
+                state.selectedNodeId = hit.node.id;
+                state.selectedColId = hit.node.columnId;
+                state.selectedLinkId = null;
+
+                const colGeom = computeColumnGeometries();
+                const groupIds = e.shiftKey ? getUpstreamLeftChain(hit.node.id) : [hit.node.id];
+
+                const allBaselineById = {};
+                Object.values(state.nodesById).forEach(n => {
+                    allBaselineById[n.id] = {
+                        x: getNodeGlobalX(n, colGeom),
+                        y: n.y,
+                        height: n.height
+                    };
+                });
+
+                draggingGroup = {
+                    anchorNodeId: hit.node.id,
+                    groupIds,
+                    startMouseX: world.x,
+                    startMouseY: world.y,
+                    allBaselineById,
+                    moved: false,
+                    undoPushed: false
+                };
+                startEdgeAutoScrollLoop();
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            if (hit?.type === 'column-header') {
+                state.selectedColId = hit.col.id;
+                state.selectedNodeId = null;
+                state.selectedLinkId = null;
+                draggingColumn = {
+                    colId: hit.col.id,
+                    startScreenX: e.clientX,
+                    undoPushed: false
+                };
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            if (hit?.type === 'link') {
+                state.selectedLinkId = hit.link.id;
+                state.selectedNodeId = null;
+                draw();
+                return;
+            }
+
+            const colGeom = computeColumnGeometries();
+            const clickedCol = findColumnAtWorldX(world.x, colGeom);
+            if (clickedCol) state.selectedColId = clickedCol.id;
+
+            state.selectedNodeId = null;
+            state.selectedLinkId = null;
+            isPanning = true;
+            panStart = { x: e.clientX - state.camera.x, y: e.clientY - state.camera.y };
+            updateHoverCursor(e.clientX, e.clientY);
+            draw();
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            lastPointerScreen = { x: e.clientX, y: e.clientY };
+            const world = screenToWorld(e.clientX, e.clientY);
+
+            if (draggingColumn) {
+                if (Math.abs(e.clientX - draggingColumn.startScreenX) > 18) {
+                    const colGeom = computeColumnGeometries();
+                    const hoverCol = findColumnAtWorldX(world.x, colGeom);
+                    if (hoverCol && hoverCol.id !== draggingColumn.colId) {
+                        if (!draggingColumn.undoPushed) {
+                            pushUndoState();
+                            draggingColumn.undoPushed = true;
+                        }
+                        const fromIdx = state.columns.findIndex(c => c.id === draggingColumn.colId);
+                        const toIdx = state.columns.findIndex(c => c.id === hoverCol.id);
+                        if (fromIdx !== -1 && toIdx !== -1) {
+                            const [movedCol] = state.columns.splice(fromIdx, 1);
+                            state.columns.splice(toIdx, 0, movedCol);
+                            draggingColumn.startScreenX = e.clientX;
+                            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+                            saveState();
+                            draw();
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (resizingNode) {
+                const node = state.nodesById[resizingNode.nodeId];
+                if (node) {
+                    const dy = world.y - resizingNode.startMouseY;
+                    if (resizingNode.edge === 'bottom') {
+                        node.height = Math.max(BOX_MIN_HEIGHT, resizingNode.initialHeight + dy);
+                    } else {
+                        const fixedBottom = resizingNode.initialY + resizingNode.initialHeight;
+                        const newTop = Math.min(fixedBottom - BOX_MIN_HEIGHT, resizingNode.initialY + dy);
+                        node.y = newTop;
+                        node.height = fixedBottom - newTop;
+                        node.isManuallyPositioned = true;
+                    }
+                    node.isManuallyStretched = true;
+                    node.updatedAt = Date.now();
+                    const colGeom = computeColumnGeometries();
+                    computeHorizontalLinksAndStubs(colGeom);
+                    draw();
+                }
+                return;
+            }
+
+            if (draggingGroup) {
+                applyActiveDragPosition(e.clientX, e.clientY);
+                return;
+            }
+
+            if (isPanning) {
+                state.camera.x = e.clientX - panStart.x;
+                state.camera.y = e.clientY - panStart.y;
+                clampCameraBounds();
+                draw();
+                return;
+            }
+
+            updateHoverCursor(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            stopEdgeAutoScrollLoop();
+
+            if (draggingColumn) {
+                draggingColumn = null;
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            if (resizingNode) {
+                const n = state.nodesById[resizingNode.nodeId];
+                resizingNode = null;
+                runAutoLayout({
+                    respectSoftManual: true,
+                    respectOptOuts: true,
+                    anchorSet: n ? new Set([n.id]) : null
+                });
+                saveState();
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            if (draggingGroup) {
+                if (draggingGroup.moved) {
+                    const colGeom = computeColumnGeometries();
+                    const anchorNode = state.nodesById[draggingGroup.anchorNodeId];
+                    if (anchorNode && typeof anchorNode.dragTempX === 'number') {
+                        const centerX = anchorNode.dragTempX + BOX_WIDTH / 2;
+                        const targetCol = findColumnAtWorldX(centerX, colGeom);
+                        if (targetCol) {
+                            anchorNode.columnId = targetCol.id;
+                            state.selectedColId = targetCol.id;
+                        }
+                        delete anchorNode.dragTempX;
+                    }
+
+                    if (anchorNode) {
+                        anchorNode.isManuallyPositioned = true;
+                        anchorNode.updatedAt = Date.now();
+                    }
+                    draggingGroup.groupIds.forEach(id => {
+                        if (state.nodesById[id]) delete state.nodesById[id].dragTempX;
+                    });
+
+                    runAutoLayout({
+                        respectSoftManual: true,
+                        respectOptOuts: true,
+                        anchorSet: anchorNode ? new Set([anchorNode.id]) : null
+                    });
+                    saveState();
+                } else {
+                    draggingGroup.groupIds.forEach(id => {
+                        if (state.nodesById[id]) delete state.nodesById[id].dragTempX;
+                    });
+                }
+                draggingGroup = null;
+                updateHoverCursor(e.clientX, e.clientY);
+                draw();
+            }
+            isPanning = false;
+            updateHoverCursor(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+            const newZoom = Math.min(2.2, Math.max(0.35, state.camera.zoom * zoomFactor));
+            const wx = (e.clientX - state.camera.x) / state.camera.zoom;
+            const wy = (e.clientY - state.camera.y) / state.camera.zoom;
+            state.camera.zoom = newZoom;
+            state.camera.x = e.clientX - wx * newZoom;
+            state.camera.y = e.clientY - wy * newZoom;
+            const colGeom = computeColumnGeometries();
+            computeHorizontalLinksAndStubs(colGeom);
+            clampCameraBounds();
+            draw();
+        }, { passive: false });
+
+        function addBoxAtWorldPoint(wx, wy, customColId = null) {
+            pushUndoState();
+            const colGeom = computeColumnGeometries();
+            const targetCol = customColId
+                ? state.columns.find(c => c.id === customColId)
+                : findColumnAtWorldX(wx, colGeom);
+            const colId = targetCol ? targetCol.id : state.columns[state.columns.length - 1].id;
+
+            const newNode = addNodeInternal(colId, 'New BDN Box', 0, wy - BOX_MIN_HEIGHT / 2);
+            newNode.isManuallyPositioned = true;
+            state.selectedNodeId = newNode.id;
+            state.selectedColId = colId;
+
+            runAutoLayout({
+                respectSoftManual: true,
+                respectOptOuts: true,
+                anchorSet: new Set([newNode.id])
+            });
+            saveState();
+            draw();
+
+            const updatedGeom = computeColumnGeometries();
+            const screenPos = worldToScreen(getNodeGlobalX(newNode, updatedGeom), newNode.y);
+            openInlineEditor('node', newNode.id, screenPos.x, screenPos.y, newNode.text);
+        }
+
+        function addBoxInViewportCenter() {
+            const centerWorld = screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
+            spawnCascadeCounter = (spawnCascadeCounter + 1) % 5;
+            addBoxAtWorldPoint(centerWorld.x, centerWorld.y + spawnCascadeCounter * 22);
+        }
+
+        let editingTarget = null;
+
+        function openInlineEditor(targetType, id, screenX, screenY, initialText) {
+            editingTarget = { type: targetType, id, initialText: initialText || '' };
+            inlineEditor.value = initialText || '';
+            inlineEditor.style.display = 'block';
+            const clampedX = Math.min(window.innerWidth - 260, Math.max(12, screenX));
+            const clampedY = Math.min(window.innerHeight - 90, Math.max(64, screenY));
+            inlineEditor.style.left = clampedX + 'px';
+            inlineEditor.style.top = clampedY + 'px';
+            inlineEditor.style.width = '230px';
+            inlineEditor.focus();
+            inlineEditor.select();
+        }
+
+        function commitInlineEditor() {
+            if (!editingTarget) return;
+            const val = inlineEditor.value.trim();
+            if (val !== editingTarget.initialText) {
+                pushUndoState();
+            }
+            if (editingTarget.type === 'node' && state.nodesById[editingTarget.id]) {
+                if (val) {
+                    state.nodesById[editingTarget.id].text = val;
+                    state.nodesById[editingTarget.id].updatedAt = Date.now();
+                }
+            } else if (editingTarget.type === 'link' && state.linksById[editingTarget.id]) {
+                state.linksById[editingTarget.id].label = val;
+                state.linksById[editingTarget.id].updatedAt = Date.now();
+            } else if (editingTarget.type === 'col') {
+                const col = state.columns.find(c => c.id === editingTarget.id);
+                if (col && val) col.title = val;
+            } else if (editingTarget.type === 'mapTitle') {
+                if (val) {
+                    state.mapTitle = val;
+                    document.getElementById('docTitleBtn').textContent = val;
+                }
+            }
+            inlineEditor.style.display = 'none';
+            editingTarget = null;
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        inlineEditor.addEventListener('blur', commitInlineEditor);
+        inlineEditor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                commitInlineEditor();
+            } else if (e.key === 'Escape') {
+                editingTarget = null;
+                inlineEditor.style.display = 'none';
+            }
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            const hit = hitTest(e.clientX, e.clientY);
+            if (hit?.type === 'node' || hit?.type === 'resize-node-top' || hit?.type === 'resize-node-bottom') {
+                openInlineEditor('node', hit.node.id, e.clientX - 90, e.clientY - 25, hit.node.text);
+            } else if (hit?.type === 'link') {
+                openInlineEditor('link', hit.link.id, e.clientX - 90, e.clientY - 25, hit.link.label);
+            } else if (hit?.type === 'column-header') {
+                openInlineEditor('col', hit.col.id, e.clientX - 90, STICKY_HEADER_SCREEN_TOP + 4, hit.col.title);
+            }
+        });
+
+        function placeFloatingElement(el, anchorX, anchorY) {
+            el.style.left = '0px';
+            el.style.top = '0px';
+            el.style.visibility = 'hidden';
+            el.style.display = 'flex';
+            const rect = el.getBoundingClientRect();
+            const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+            const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const posX = (anchorX + rect.width > vw - 12) ? Math.max(12, vw - rect.width - 12) : Math.max(12, anchorX);
+            const posY = (anchorY + rect.height > vh - 12) ? Math.max(12, anchorY - rect.height) : Math.max(12, anchorY);
+            el.style.left = posX + 'px';
+            el.style.top = posY + 'px';
+            el.style.visibility = 'visible';
+        }
+
+        function showContextMenu(x, y, items) {
+            hideAllMenus();
+            contextMenu.innerHTML = '';
+            items.forEach(item => {
+                if (item.sep) {
+                    const sep = document.createElement('div');
+                    sep.className = 'ctx-sep';
+                    contextMenu.appendChild(sep);
+                    return;
+                }
+                if (item.header) {
+                    const hdr = document.createElement('div');
+                    hdr.className = 'ctx-label';
+                    hdr.textContent = item.header;
+                    contextMenu.appendChild(hdr);
+                    return;
+                }
+                if (item.swatches) {
+                    const sRow = document.createElement('div');
+                    sRow.className = 'swatch-row';
+                    SWATCH_PALETTE.forEach(hex => {
+                        const dot = document.createElement('div');
+                        dot.className = 'color-swatch';
+                        dot.style.background = hex;
+                        dot.title = hex;
+                        dot.addEventListener('click', () => {
+                            hideAllMenus();
+                            item.onSelectColor(hex);
+                        });
+                        sRow.appendChild(dot);
+                    });
+                    if (item.allowReset) {
+                        const rst = document.createElement('span');
+                        rst.style.fontSize = '11px';
+                        rst.style.color = 'var(--text-secondary)';
+                        rst.style.cursor = 'pointer';
+                        rst.style.marginLeft = '4px';
+                        rst.textContent = '↺ Auto';
+                        rst.addEventListener('click', () => {
+                            hideAllMenus();
+                            item.onSelectColor(null);
+                        });
+                        sRow.appendChild(rst);
+                    }
+                    contextMenu.appendChild(sRow);
+                    return;
+                }
+                const row = document.createElement('div');
+                row.className = 'ctx-item' + (item.danger ? ' danger' : '');
+                row.innerHTML = `<span>${item.label}</span><span class="ctx-kbd">${item.kbd || ''}</span>`;
+                row.addEventListener('click', () => {
+                    hideAllMenus();
+                    item.action();
+                });
+                contextMenu.appendChild(row);
+            });
+
+            placeFloatingElement(contextMenu, x, y);
+        }
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const world = screenToWorld(e.clientX, e.clientY);
+            const hit = hitTest(e.clientX, e.clientY);
+
+            if (hit?.type === 'node' || hit?.type === 'resize-node-top' || hit?.type === 'resize-node-bottom') {
+                const n = hit.node;
+                state.selectedNodeId = n.id;
+                draw();
+                showContextMenu(e.clientX, e.clientY, [
+                    { label: '✎ Edit Box Text', kbd: 'F2', action: () => openInlineEditor('node', n.id, e.clientX, e.clientY, n.text) },
+                    { label: '🔗 Start Link From Box', kbd: 'L', action: () => startLinkMode(n.id) },
+                    { label: '⬅ Add Connected Box to Left Column', kbd: 'Tab', action: () => addConnectedLeftNode(n) },
+                    { sep: true },
+                    { header: 'Box Colour Override' },
+                    { swatches: true, allowReset: true, onSelectColor: (hex) => { pushUndoState(); n.color = hex; n.updatedAt = Date.now(); saveState(); draw(); } },
+                    { sep: true },
+                    { label: '↺ Return Box to Auto-Layout (Clear Manual)', kbd: 'M', action: () => clearManualOnNode(n.id) },
+                    { label: n.isAutoLayoutOptOut ? 'Unpin Box (Allow Auto-Layout)' : '📌 Pin Box (Opt-Out of Auto-Layout)', kbd: 'P', action: () => togglePinNode(n.id, false) },
+                    { label: '📌 Pin/Unpin Upstream Left Branch', kbd: 'Shift+P', action: () => togglePinNode(n.id, true) },
+                    { sep: true },
+                    { label: 'Shift Right into Intra-Column Sub-Lane', kbd: 'Alt+→', action: () => shiftSubLane(n, 1) },
+                    { label: 'Shift Left in Intra-Column Sub-Lane', kbd: 'Alt+←', action: () => shiftSubLane(n, -1) },
+                    { sep: true },
+                    { label: '🗑 Delete Box', kbd: 'Del', danger: true, action: () => deleteSelected() }
+                ]);
+            } else if (hit?.type === 'link') {
+                const l = hit.link;
+                state.selectedLinkId = l.id;
+                draw();
+                showContextMenu(e.clientX, e.clientY, [
+                    { label: '✎ Edit Link Annotation', kbd: 'F2', action: () => openInlineEditor('link', l.id, e.clientX, e.clientY, l.label) },
+                    { label: '⇄ Cycle Arrowhead Direction', kbd: 'A', action: () => cycleLinkArrow(l) },
+                    { label: l.forceSplit ? 'Heal Split Link to Straight Line' : 'Convert to Split Link Stubs (①—①)', kbd: 'S', action: () => toggleForceSplit(l) },
+                    { sep: true },
+                    { label: '🗑 Delete Link', kbd: 'Del', danger: true, action: () => deleteSelected() }
+                ]);
+            } else if (hit?.type === 'column-header' || hit?.col) {
+                const col = hit.col;
+                state.selectedColId = col.id;
+                draw();
+                showContextMenu(e.clientX, e.clientY, [
+                    { label: `✎ Rename "${col.title}"`, kbd: 'F2', action: () => openInlineEditor('col', col.id, e.clientX, STICKY_HEADER_SCREEN_TOP + 4, col.title) },
+                    { header: 'Column Accent Colour' },
+                    { swatches: true, onSelectColor: (hex) => { if (hex) { pushUndoState(); col.color = hex; saveState(); draw(); } } },
+                    { sep: true },
+                    { label: '◀ Move Column Left', action: () => moveColumn(col.id, -1) },
+                    { label: '▶ Move Column Right', action: () => moveColumn(col.id, 1) },
+                    { label: '+ Insert New Column to Left', action: () => insertColumnRelative(col.id, 0) },
+                    { label: '+ Insert New Column to Right', action: () => insertColumnRelative(col.id, 1) },
+                    { sep: true },
+                    { label: '🗑 Delete Column', danger: true, action: () => deleteColumn(col.id) }
+                ]);
+            } else {
+                const colGeom = computeColumnGeometries();
+                const bgCol = findColumnAtWorldX(world.x, colGeom) || state.columns[state.columns.length - 1];
+                if (bgCol) state.selectedColId = bgCol.id;
+                draw();
+
+                showContextMenu(e.clientX, e.clientY, [
+                    { header: `Column: ${bgCol ? bgCol.title : 'Workspace'}` },
+                    { label: '+ Add Box Here', kbd: 'Enter', action: () => addBoxAtWorldPoint(world.x, world.y, bgCol?.id) },
+                    { sep: true },
+                    { label: '✎ Rename This Column...', action: () => openInlineEditor('col', bgCol.id, e.clientX, STICKY_HEADER_SCREEN_TOP + 4, bgCol.title) },
+                    { label: '+ Insert Column to Left', action: () => insertColumnRelative(bgCol.id, 0) },
+                    { label: '+ Insert Column to Right', action: () => insertColumnRelative(bgCol.id, 1) },
+                    { header: 'Column Colour' },
+                    { swatches: true, onSelectColor: (hex) => { if (hex && bgCol) { pushUndoState(); bgCol.color = hex; saveState(); draw(); } } },
+                    { sep: true },
+                    { label: '✨ Tidy Network (Keep Pins)', action: () => document.getElementById('btnTidyKeepPins').click() },
+                    { label: '⚡ Reset All Locks & Tidy', action: () => document.getElementById('menuResetAllTidy').click() },
+                    { label: '⛶ Fit Diagram to Screen', action: () => fitScreen() }
+                ]);
+            }
+        });
+
+        function clearManualOnNode(nodeId) {
+            const n = state.nodesById[nodeId];
+            if (!n) return;
+            pushUndoState();
+            n.isManuallyPositioned = false;
+            n.isManuallyStretched = false;
+            n.isAutoLayoutOptOut = false;
+            n.updatedAt = Date.now();
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function startLinkMode(nodeId) {
+            linkingFromNodeId = nodeId;
+            modeBanner.style.display = 'block';
+            draw();
+        }
+
+        function togglePinNode(nodeId, upstreamChain = false) {
+            const target = state.nodesById[nodeId];
+            if (!target) return;
+            pushUndoState();
+            const nextVal = !target.isAutoLayoutOptOut;
+            const ids = upstreamChain ? getUpstreamLeftChain(nodeId) : [nodeId];
+            ids.forEach(id => {
+                if (state.nodesById[id]) {
+                    state.nodesById[id].isAutoLayoutOptOut = nextVal;
+                    state.nodesById[id].updatedAt = Date.now();
+                }
+            });
+            saveState();
+            draw();
+        }
+
+        function shiftSubLane(node, delta) {
+            pushUndoState();
+            node.subLane = Math.max(0, (node.subLane || 0) + delta);
+            node.isManuallyPositioned = true;
+            node.updatedAt = Date.now();
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true, anchorSet: new Set([node.id]) });
+            saveState();
+            draw();
+        }
+
+        function addConnectedLeftNode(sourceNode) {
+            pushUndoState();
+            const colIdx = state.columns.findIndex(c => c.id === sourceNode.columnId);
+            const targetCol = state.columns[Math.max(0, colIdx - 1)];
+            const subLane = (targetCol.id === sourceNode.columnId) ? Math.max(0, (sourceNode.subLane || 0) - 1) : 0;
+            const newNode = addNodeInternal(targetCol.id, 'New BDN Box', subLane, sourceNode.y);
+            addLinkInternal(newNode.id, sourceNode.id, '', settings.defaultArrow);
+            state.selectedNodeId = newNode.id;
+            state.selectedColId = targetCol.id;
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function cycleLinkArrow(link) {
+            pushUndoState();
+            const order = ['right', 'left', 'both', 'none'];
+            const idx = order.indexOf(link.arrowMode || 'right');
+            link.arrowMode = order[(idx + 1) % order.length];
+            link.updatedAt = Date.now();
+            saveState();
+            draw();
+        }
+
+        function toggleForceSplit(link) {
+            pushUndoState();
+            link.forceSplit = !link.forceSplit;
+            link.updatedAt = Date.now();
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function insertColumnRelative(colId, offset) {
+            pushUndoState();
+            const idx = state.columns.findIndex(c => c.id === colId);
+            const insertIdx = idx === -1 ? state.columns.length : idx + offset;
+            const newCol = {
+                id: 'col_' + Math.random().toString(36).slice(2, 8),
+                title: 'New Column',
+                color: SWATCH_PALETTE[state.columns.length % SWATCH_PALETTE.length]
+            };
+            state.columns.splice(insertIdx, 0, newCol);
+            state.selectedColId = newCol.id;
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+
+            const colGeom = computeColumnGeometries();
+            const cg = colGeom[newCol.id];
+            if (cg) {
+                const screenX = cg.x * state.camera.zoom + state.camera.x + 20;
+                openInlineEditor('col', newCol.id, screenX, STICKY_HEADER_SCREEN_TOP + 4, newCol.title);
+            }
+        }
+
+        function moveColumn(colId, dir) {
+            const idx = state.columns.findIndex(c => c.id === colId);
+            const nextIdx = idx + dir;
+            if (idx < 0 || nextIdx < 0 || nextIdx >= state.columns.length) return;
+            pushUndoState();
+            const [col] = state.columns.splice(idx, 1);
+            state.columns.splice(nextIdx, 0, col);
+            state.selectedColId = col.id;
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function deleteColumn(colId) {
+            if (state.columns.length <= 1) return;
+            pushUndoState();
+            state.columns = state.columns.filter(c => c.id !== colId);
+            Object.values(state.nodesById).forEach(n => {
+                if (n.columnId === colId) deleteNodeById(n.id);
+            });
+            state.selectedColId = state.columns[0].id;
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function deleteNodeById(nodeId) {
+            state.deletedById = state.deletedById || {};
+            state.deletedById[nodeId] = Date.now();
+            delete state.nodesById[nodeId];
+            Object.values(state.linksById).forEach(l => {
+                if (l.fromId === nodeId || l.toId === nodeId) {
+                    state.deletedById[l.id] = Date.now();
+                    delete state.linksById[l.id];
+                }
+            });
+        }
+
+        function deleteSelected() {
+            if (state.selectedLinkId && state.linksById[state.selectedLinkId]) {
+                pushUndoState();
+                state.deletedById = state.deletedById || {};
+                state.deletedById[state.selectedLinkId] = Date.now();
+                delete state.linksById[state.selectedLinkId];
+                state.selectedLinkId = null;
+            } else if (state.selectedNodeId && state.nodesById[state.selectedNodeId]) {
+                pushUndoState();
+                deleteNodeById(state.selectedNodeId);
+                state.selectedNodeId = null;
+            } else {
+                return;
+            }
+            runAutoLayout({ respectSoftManual: true, respectOptOuts: true });
+            saveState();
+            draw();
+        }
+
+        function fitScreen() {
+            const allNodes = Object.values(state.nodesById);
+            if (allNodes.length === 0) {
+                state.camera = { x: 0, y: 0, zoom: 1 };
+                draw();
+                return;
+            }
+            const minTop = Math.min(...allNodes.map(n => n.y));
+            const maxBottom = Math.max(...allNodes.map(n => n.y + n.height));
+            const contentH = Math.max(200, maxBottom - minTop + 100);
+            const headerBottom = STICKY_HEADER_SCREEN_TOP + STICKY_HEADER_HEIGHT;
+            const availableH = window.innerHeight - headerBottom;
+            const zoomY = Math.min(1, availableH / contentH);
+            const finalZoom = Math.max(0.35, zoomY);
+            state.camera.zoom = finalZoom;
+            state.camera.x = 0;
+            state.camera.y = headerBottom + 28 - minTop * finalZoom;
+            const colGeom = computeColumnGeometries();
+            computeHorizontalLinksAndStubs(colGeom);
+            clampCameraBounds();
+            draw();
+        }
+
+        document.getElementById('btnMenu').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVis = fileMenu.style.display === 'flex';
+            hideAllMenus();
+            if (!isVis) placeFloatingElement(fileMenu, 12, 58);
+        });
+
+        document.getElementById('btnSettings').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVis = settingsPanel.style.display === 'flex';
+            hideAllMenus();
+            if (!isVis) placeFloatingElement(settingsPanel, 76, 58);
+        });
+
+        document.getElementById('docTitleBtn').addEventListener('click', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            openInlineEditor('mapTitle', 'mapTitle', rect.left, rect.bottom + 6, state.mapTitle);
+        });
+
+        const btnHelp = document.getElementById('btnHelp');
+        btnHelp.addEventListener('mouseenter', () => {
+            clearTimeout(helpHoverTimeout);
+            helpPopover.style.display = 'block';
+        });
+        btnHelp.addEventListener('mouseleave', () => {
+            helpHoverTimeout = setTimeout(() => { helpPopover.style.display = 'none'; }, 160);
+        });
+        helpPopover.addEventListener('mouseenter', () => {
+            clearTimeout(helpHoverTimeout);
+        });
+        helpPopover.addEventListener('mouseleave', () => {
+            helpPopover.style.display = 'none';
+        });
+
+        document.getElementById('menuNewBdn').addEventListener('click', () => {
+            hideAllMenus();
+            pushUndoState();
+            sessionFileHandle = null;
+            createStarterNetwork(true);
+            fitScreen();
+        });
+        document.getElementById('menuOpenBdn').addEventListener('click', openBdnFile);
+        document.getElementById('menuSaveBdn').addEventListener('click', () => saveBdnFile(false));
+        document.getElementById('menuSaveAsBdn').addEventListener('click', () => saveBdnFile(true));
+        document.getElementById('menuExportPng').addEventListener('click', exportPngDiagram);
+        document.getElementById('menuSaveDefaultCols').addEventListener('click', () => {
+            hideAllMenus();
+            localStorage.setItem(STORAGE_KEY_DEFAULT_COLS, JSON.stringify(state.columns));
+            updateStatusPill('✓ Saved Default Columns');
+        });
+        document.getElementById('menuRestoreFactoryCols').addEventListener('click', () => {
+            hideAllMenus();
+            localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);
+            updateStatusPill('↺ Restored Factory Columns');
+        });
+        document.getElementById('menuResetAllTidy').addEventListener('click', () => {
+            hideAllMenus();
+            pushUndoState();
+            performIdempotentTidy(false);
+            saveState();
+            fitScreen();
+        });
+        document.getElementById('menuLoadDemo').addEventListener('click', () => {
+            hideAllMenus();
+            pushUndoState();
+            sessionFileHandle = null;
+            createStarterNetwork(false);
+            fitScreen();
+        });
+
+        document.querySelectorAll('#themeSelector .seg-btn').forEach(btn => {
+            btn.addEventListener('click', () => { settings.theme = btn.getAttribute('data-theme'); saveSettings(); });
+        });
+        document.querySelectorAll('#shapeSelector .seg-btn').forEach(btn => {
+            btn.addEventListener('click', () => { settings.boxShape = btn.getAttribute('data-shape'); saveSettings(); });
+        });
+        document.querySelectorAll('#fillSelector .seg-btn').forEach(btn => {
+            btn.addEventListener('click', () => { settings.boxFill = btn.getAttribute('data-fill'); saveSettings(); });
+        });
+        document.querySelectorAll('#arrowSelector .seg-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newArrow = btn.getAttribute('data-arrow');
+                settings.defaultArrow = newArrow;
+                pushUndoState();
+                Object.values(state.linksById).forEach(l => {
+                    l.arrowMode = newArrow;
+                    l.updatedAt = Date.now();
+                });
+                saveSettings();
+                saveState();
+                draw();
+            });
+        });
+        document.getElementById('chkShowToolbarAdd').addEventListener('change', (e) => {
+            settings.showAddButtonsInToolbar = e.target.checked;
+            saveSettings();
+        });
+
+        document.getElementById('btnUndo').addEventListener('click', performUndo);
+        document.getElementById('btnRedo').addEventListener('click', performRedo);
+        document.getElementById('btnAddBox').addEventListener('click', addBoxInViewportCenter);
+        document.getElementById('btnAddCol').addEventListener('click', () => {
+            const targetColId = state.selectedColId || state.columns[state.columns.length - 1].id;
+            insertColumnRelative(targetColId, 1);
+        });
+        document.getElementById('btnTidyKeepPins').addEventListener('click', () => {
+            pushUndoState();
+            performIdempotentTidy(true);
+            saveState();
+            draw();
+        });
+        document.getElementById('btnFit').addEventListener('click', fitScreen);
+
+        window.addEventListener('keydown', (e) => {
+            if (inlineEditor.style.display === 'block') return;
+
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+                e.preventDefault(); performUndo(); return;
+            }
+            if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
+                e.preventDefault(); performRedo(); return;
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O')) {
+                e.preventDefault(); openBdnFile(); return;
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault(); saveBdnFile(e.shiftKey); return;
+            }
+
+            const selNode = state.selectedNodeId ? state.nodesById[state.selectedNodeId] : null;
+            const selLink = state.selectedLinkId ? state.linksById[state.selectedLinkId] : null;
+
+            if (e.key === 'Escape') {
+                linkingFromNodeId = null;
+                modeBanner.style.display = 'none';
+                helpPopover.style.display = 'none';
+                conflictModal.style.display = 'none';
+                hideAllMenus();
+                draw();
+                return;
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault(); deleteSelected(); return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault(); addBoxInViewportCenter(); return;
+            }
+            if (e.key === 'Tab' && selNode) {
+                e.preventDefault(); addConnectedLeftNode(selNode); return;
+            }
+            if ((e.key === 'l' || e.key === 'L') && selNode) {
+                e.preventDefault(); startLinkMode(selNode.id); return;
+            }
+            if ((e.key === 'm' || e.key === 'M') && selNode) {
+                e.preventDefault(); clearManualOnNode(selNode.id); return;
+            }
+            if ((e.key === 'p' || e.key === 'P') && selNode) {
+                e.preventDefault(); togglePinNode(selNode.id, e.shiftKey); return;
+            }
+            if ((e.key === 'a' || e.key === 'A') && selLink) {
+                e.preventDefault(); cycleLinkArrow(selLink); return;
+            }
+            if ((e.key === 's' || e.key === 'S') && selLink) {
+                e.preventDefault(); toggleForceSplit(selLink); return;
+            }
+            if (e.key === 'F2') {
+                e.preventDefault();
+                if (selNode) {
+                    const colGeom = computeColumnGeometries();
+                    const sc = worldToScreen(getNodeGlobalX(selNode, colGeom), selNode.y);
+                    openInlineEditor('node', selNode.id, sc.x, sc.y, selNode.text);
+                } else if (selLink) {
+                    openInlineEditor('link', selLink.id, window.innerWidth / 2 - 100, window.innerHeight / 2, selLink.label);
+                } else if (state.selectedColId) {
+                    const col = state.columns.find(c => c.id === state.selectedColId);
+                    if (col) openInlineEditor('col', col.id, window.innerWidth / 2 - 100, STICKY_HEADER_SCREEN_TOP + 4, col.title);
+                }
+            }
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        loadSettings();
+        loadState();
+        updateUndoRedoButtons();
+        resizeCanvas();
+        fitScreen();
     </script>
 </body>
 </html>
