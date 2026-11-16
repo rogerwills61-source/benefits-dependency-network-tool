@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BDN Studio - Benefits Dependency Network Mapper</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiQkROIFN0dWRpbyIsInNob3J0X25hbWUiOiJCRE4iLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZjE3MmEifQ==">
+    <style>
+        :root {
+            --bg-canvas: #090d16;
+            --surface-hud: #0f172a;
+            --border-hud: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: system-ui, -apple-system, sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: var(--bg-canvas); color: var(--text-primary); }
+        
+        /* Top HUD */
+        #topHud {
+            position: fixed; top: 12px; left: 12px; right: 12px; height: 52px;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-hud); border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+            z-index: 50; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .hud-group { display: flex; align-items: center; gap: 12px; }
+        .hud-title { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; color: var(--text-primary); }
+        .hud-pill { font-size: 12px; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-hud); }
+        
+        /* Canvas Viewport */
+        #canvasContainer { width: 100vw; height: 100vh; position: relative; cursor: grab; }
+        #canvasContainer:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Tier Legend Bar */
+        #tierLegend {
+            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-hud); border-radius: 12px;
+            display: flex; align-items: center; gap: 16px; padding: 10px 20px;
+            z-index: 40; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-enabling { background: #38bdf8; }
+        .dot-business { background: #34d399; }
+        .dot-outcome { background: #f472b6; }
+        .dot-strategic { background: #fbbf24; }
+    </style>
+</head>
+<body>
+
+    <div id="topHud">
+        <div class="hud-group">
+            <span class="hud-title">BDN Studio</span>
+            <span class="hud-pill">Benefits Dependency Network</span>
+        </div>
+        <div class="hud-group">
+            <span class="hud-pill" id="saveStatus">✓ Ready</span>
+        </div>
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="bdnCanvas"></canvas>
+    </div>
+
+    <div id="tierLegend">
+        <div class="legend-item"><span class="legend-dot dot-enabling"></span>Enabling Changes</div>
+        <div class="legend-item"><span class="legend-dot dot-business"></span>Business Changes</div>
+        <div class="legend-item"><span class="legend-dot dot-outcome"></span>Outcomes</div>
+        <div class="legend-item"><span class="legend-dot dot-strategic"></span>Strategic Objectives</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('bdnCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            canvas.width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = window.innerHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            // Grid dots pattern
+            ctx.fillStyle = '#1e293b';
+            const spacing = 32;
+            for (let x = 16; x < window.innerWidth; x += spacing) {
+                for (let y = 16; y < window.innerHeight; y += spacing) {
+                    ctx.fillRect(x, y, 1.5, 1.5);
+                }
+            }
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+    </script>
+</body>
+</html>
