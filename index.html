@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Zero-Split-Link Sugiyama Optimizer + Overlap Healing)" type="button">Tidy</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Zero-Split-Link Dense-to-Sparse Elevation Solver)" type="button">Tidy</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -210,12 +210,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
   <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
   <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>v3.6 Unified Local Drag/Resize Cascade &amp; Overlap Healer:</strong> Dragging or resizing any box never resets unrelated columns and automatically stretches connected neighbors to prevent broken links. Clicking <code>Tidy</code> heals all 34 links in the Stress Test to 0 split links.
+    • <strong>v3.7 Dense-to-Sparse Elevation Solver &amp; Local Drag Cascade:</strong> Clicking <code>Tidy</code> orders branches Right-to-Left (excluding spanning sub-lane objectives from shared sort ranks) and assigns elevations Left-to-Right so all 34 links in the Stress Test resolve with 0 split links.
   </div>
 </div>
 
 <script>
-const STORAGE_KEY_STATE='bdn_studio_state_v24',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v24',STORAGE_KEY_SETTINGS='bdn_studio_settings_v24';
+const STORAGE_KEY_STATE='bdn_studio_state_v25',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v25',STORAGE_KEY_SETTINGS='bdn_studio_settings_v25';
 const FACTORY_COLUMNS=[
   {id:'col_enablers',title:'Enablers',color:'#38bdf8'},
   {id:'col_changes',title:'Business Changes',color:'#34d399'},
@@ -548,7 +548,7 @@ function computeColumnGeometries(){
 function clampCameraBounds(){
   const cg=computeColumnGeometries(),tsw=(cg._totalWorldWidth||window.innerWidth)*state.camera.zoom;
   if(tsw<=window.innerWidth)state.camera.x=(window.innerWidth-tsw)/2;
-  else state.camera.x=Math.min(0,Math.max(window.innerWidth-tsw,state.camera.x));
+  else state.camera.x=Math.min(24,Math.max(window.innerWidth-tsw-24,state.camera.x));
 }
 function getNodeGlobalX(n,cg){if(typeof n.dragTempX==='number')return n.dragTempX;const c=cg[n.columnId];return c?c.laneX(n.subLane||0):COL_SIDE_PADDING;}
 function findColumnAtWorldX(wx,cg){for(const c of state.columns){const g=cg[c.id];if(g&&wx>=g.x&&wx<=g.endX)return c;}return wx<0?state.columns[0]:state.columns[state.columns.length-1];}
@@ -577,7 +577,7 @@ function createStarterNetwork(blank=false){
 function loadStressTestDemo(){
   pushUndoState();sessionFileHandle=null;
   const ts=1763316000000;
-  state.mapId='bdn_stresstest_v36_01';
+  state.mapId='bdn_stresstest_v37_01';
   state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
   state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
   state.updatedAt=ts;state.deletedById={};
@@ -783,19 +783,12 @@ function clampStretchToColumnClashes(n,ct,cb,ln){
 }
 
 // ============================================================================
-// v3.6 UNIFIED LOCALIZED DRAG & RESIZE DELTA-CASCADE (`applyLocalMoveAndStretchCascade`)
-// Used by BOTH manual box dragging and manual box resizing!
-// - NEVER resets unrelated boxes or columns (so obj_2, chg_7, etc. stay 100% untouched).
-// - Resolves collisions in the moved box's column/subLane.
-// - If any moved/pushed box loses vertical overlap with a connected neighbor,
-//   automatically stretches the neighbor (even if `isManuallyStretched` was true, e.g. chg_3)
-//   or shifts a 1-to-1 leaf so existing solid links NEVER break!
+// v3.7 UNIFIED LOCALIZED DRAG & RESIZE DELTA-CASCADE (`applyLocalMoveAndStretchCascade`)
 // ============================================================================
 function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
   const cg=computeColumnGeometries();
   const anchorSet=new Set(Array.isArray(anchorIds)?anchorIds:[anchorIds]);
 
-  // 1. Resolve same-subLane collisions in every column containing an anchor box
   const affectedCols=new Set();
   anchorSet.forEach(id=>{const n=state.nodesById[id];if(n)affectedCols.add(n.columnId+'_'+(n.subLane||0));});
   affectedCols.forEach(key=>{
@@ -803,7 +796,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
     resolveColumnCollisions(colId,Number(slStr)||0,{primaryAnchorSet:anchorSet});
   });
 
-  // 2. Collect all boxes whose `y` or `height` changed (either dragged/resized directly or pushed by collision)
   const queue=[];
   const visited=new Set();
   Object.values(state.nodesById).forEach(n=>{
@@ -813,7 +805,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
     }
   });
 
-  // 3. Propagate minimal stretch/shift ONLY to connected neighbors that lost vertical overlap (`oB < oT`)
   let safety=0;
   while(queue.length&&safety++<80){
     const curId=queue.shift();
@@ -825,7 +816,7 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
       if(link.forceSplit||anchorSet.has(nb.id))return;
       const oT=Math.max(cur.y+EDGE_CORNER_PAD,nb.y+EDGE_CORNER_PAD);
       const oB=Math.min(cur.y+cur.height-EDGE_CORNER_PAD,nb.y+nb.height-EDGE_CORNER_PAD);
-      if(oB+1>=oT)return; // Still overlaps cleanly! Do not touch `nb`!
+      if(oB+1>=oT)return;
 
       const nbSides=getPerSideNeighbors(nb,cg,false,false);
       const nbTotalLinks=nbSides.leftNeighbors.length+nbSides.rightNeighbors.length;
@@ -833,7 +824,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
         .filter(x=>x.columnId===nb.columnId&&(x.subLane||0)===(nb.subLane||0))
         .sort((a,b)=>(a.y+a.height/2)-(b.y+b.height/2));
 
-      // First try stretching `nb` (or `cur`) to bridge the gap without moving `nb`'s other links
       let cT=nb.y,cB=nb.y+nb.height;
       if(cur.y+cur.height-EDGE_CORNER_PAD<nb.y+EDGE_CORNER_PAD){
         cT=Math.min(cT,cur.y+cur.height-EDGE_CORNER_PAD*2-2);
@@ -845,7 +835,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
       if(nbTotalLinks>1&&(sB-sT)>=nb.height){
         nb.y=sT;nb.height=Math.max(BOX_MIN_HEIGHT,sB-sT);
       }else if(nbTotalLinks<=1&&!nb.isAutoLayoutOptOut){
-        // 1-to-1 neighbor: shift `nb` minimally so its edge stays attached to `cur`
         if(nb.y+nb.height-EDGE_CORNER_PAD<cur.y+EDGE_CORNER_PAD){
           nb.y=(cur.y+EDGE_CORNER_PAD*2+2)-nb.height;
         }else if(nb.y+EDGE_CORNER_PAD>cur.y+cur.height-EDGE_CORNER_PAD){
@@ -856,7 +845,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
         nb.y=sT;nb.height=Math.max(BOX_MIN_HEIGHT,sB-sT);
       }
 
-      // If `cur` and `nb` STILL don't overlap because `nb` hit a box in its column, stretch `cur` toward `nb` too!
       const oT2=Math.max(cur.y+EDGE_CORNER_PAD,nb.y+EDGE_CORNER_PAD);
       const oB2=Math.min(cur.y+cur.height-EDGE_CORNER_PAD,nb.y+nb.height-EDGE_CORNER_PAD);
       if(oB2<oT2&&!anchorSet.has(cur.id)){
@@ -873,7 +861,6 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
       if(!visited.has(nb.id)){visited.add(nb.id);queue.push(nb.id);}
     });
 
-    // Check if any box in `cur.columnId` was pushed by collision resolution
     Object.values(state.nodesById).forEach(other=>{
       if(other.columnId===cur.columnId&&!visited.has(other.id)&&snapBefore&&snapBefore[other.id]){
         if(Math.abs(other.y-snapBefore[other.id].y)>0.5){
@@ -888,115 +875,35 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
 }
 
 // ============================================================================
-// v3.6 POST-COLLISION OVERLAP & SKIP-LINK CORRIDOR HEALER (`healAllOverlapsAndCorridors`)
-// Runs as the final step of `Tidy` after all vertical ordering and collision pushes
-// have settled, ensuring:
-// 1. Intermediate column boxes (`chg_5` up, `chg_1` down) part around skip links (`ena_6 -> cap_1`).
-// 2. Every pair of linked boxes `(nA, nB)` expands into available sub-lane space
-//    so `oB >= oT` (0 split links across all 34 links in the Stress Test!).
+// v3.7 SUB-LANE SPANNING OBJECTIVE FILTER + DENSE-TO-SPARSE LEFT-TO-RIGHT SOLVER
+// 1. Filters out `subLane: 1` spanning objectives (`obj_3`) when sorting shared
+//    benefits (`ben_2`) that also link to `subLane: 0` objectives (`obj_1`),
+//    preventing `ben_2` from sorting above `ben_1` and `cap_2` above `cap_1`!
+// 2. Sweeps Left-to-Right (`Enablers -> Changes -> Capabilities -> Benefits -> Objectives`)
+//    after locking `_tidyOrder` so downstream boxes align to the true vertical
+//    elevation of the 7-box upstream columns and stretch across their incoming links!
 // ============================================================================
-function healAllOverlapsAndCorridors(){
-  const cg=computeColumnGeometries();
-
-  // 1. Part intermediate column boxes around any cross-column skip link (`|colA - colB| > 1`, e.g., `ena_6 -> cap_1`)
-  Object.values(state.linksById).forEach(l=>{
-    if(l.forceSplit)return;
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(!nA||!nB)return;
-    const cA=cg[nA.columnId]?.colIndex,cB=cg[nB.columnId]?.colIndex;
-    if(typeof cA!=='number'||typeof cB!=='number'||Math.abs(cA-cB)<=1)return;
-
-    // Ensure nA and nB overlap vertically at a shared `corridorY`
-    let oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-    let oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    if(oB<oT){
-      // Stretch the upper box's bottom down or lower box's top up so they overlap by 20px
-      const upper=nA.y<nB.y?nA:nB,lower=nA.y<nB.y?nB:nA;
-      const targetCorridorY=lower.y+EDGE_CORNER_PAD+4;
-      upper.height=Math.max(upper.height,(targetCorridorY+EDGE_CORNER_PAD)-upper.y);
-      oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-      oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    }
-    const corridorY=(oT+oB)/2;
-
-    // Part any box in the intermediate columns `[minC+1 .. maxC-1]` that blocks `corridorY`
-    const minC=Math.min(cA,cB),maxC=Math.max(cA,cB);
-    for(let ci=minC+1;ci<maxC;ci++){
-      const midCol=state.columns[ci];if(!midCol)continue;
-      const lane0=Object.values(state.nodesById)
-        .filter(n=>n.columnId===midCol.id&&(n.subLane||0)===0)
-        .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-      lane0.forEach(n=>{
-        if(corridorY>=n.y-14&&corridorY<=n.y+n.height+14){
-          const nMid=n.y+n.height/2;
-          if(nMid<=corridorY){
-            n.y=corridorY-18-n.height;
-          }else{
-            n.y=corridorY+18;
-          }
-        }
-      });
-      resolveColumnCollisions(midCol.id,0,{preserveTidyOrder:true});
-    }
-  });
-
-  // 2. Iteratively heal any link `(nA, nB)` where `oB < oT` by expanding `nA` and/or `nB` into their available sub-lane gap
-  for(let pass=0;pass<4;pass++){
-    Object.values(state.linksById).forEach(l=>{
-      if(l.forceSplit)return;
-      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-      if(!nA||!nB)return;
-      const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-      const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-      if(oB>=oT+16)return; // Already has a healthy >=16px vertical overlap window!
-
-      const upper=(nA.y+nA.height/2)<=(nB.y+nB.height/2)?nA:nB;
-      const lower=upper===nA?nB:nA;
-      const needed=(oT-oB)+24;
-
-      // Try stretching `upper` downward toward `lower`
-      const upperLane=Object.values(state.nodesById)
-        .filter(x=>x.columnId===upper.columnId&&(x.subLane||0)===(upper.subLane||0))
-        .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-      const{safeBottom:uSafeB}=clampStretchToColumnClashes(upper,upper.y,upper.y+upper.height+needed,upperLane);
-      upper.height=Math.max(upper.height,uSafeB-upper.y);
-
-      // Recheck overlap; if still short, stretch `lower` upward toward `upper`
-      const oT2=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-      const oB2=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-      if(oB2<oT2+16){
-        const rem=(oT2-oB2)+20;
-        const lowerLane=Object.values(state.nodesById)
-          .filter(x=>x.columnId===lower.columnId&&(x.subLane||0)===(lower.subLane||0))
-          .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-        const{safeTop:lSafeT}=clampStretchToColumnClashes(lower,lower.y-rem,lower.y+lower.height,lowerLane);
-        const oldBot=lower.y+lower.height;
-        lower.y=lSafeT;
-        lower.height=Math.max(lower.height,oldBot-lSafeT);
-      }
-    });
-  }
-}
-
-function computeDownstreamTargetY(n,cg){
+function computeDownstreamSortRankY(n,cg){
   const adj=getPerSideNeighbors(n,cg,true,true);
   if(adj.rightNeighbors.length){
-    const ys=adj.rightNeighbors.map(x=>x.neighbor.y+x.neighbor.height/2);
+    // CRITICAL FIX: If a box connects to both `subLane: 0` targets (e.g. `obj_1`) AND a `subLane: 1` spanning target (`obj_3`),
+    // rank its vertical order strictly by its `subLane: 0` targets so `obj_3` never pulls `ben_2` above `ben_1`!
+    const lane0Targets=adj.rightNeighbors.filter(x=>(x.neighbor.subLane||0)===0);
+    const useTargets=lane0Targets.length?lane0Targets:adj.rightNeighbors;
+    const ys=useTargets.map(x=>x.neighbor.y+x.neighbor.height/2);
     return ys.reduce((a,b)=>a+b,0)/ys.length;
   }
   if(adj.leftNeighbors.length){
     const ys=adj.leftNeighbors.map(x=>x.neighbor.y+x.neighbor.height/2);
     return ys.reduce((a,b)=>a+b,0)/ys.length;
   }
-  const all=getPerSideNeighbors(n,cg,true,false);
-  const allNbs=[...all.rightNeighbors,...all.leftNeighbors].map(x=>x.neighbor);
-  if(allNbs.length)return allNbs.reduce((a,t)=>a+(t.y+t.height/2),0)/allNbs.length;
   return n.y+n.height/2;
 }
 
 function countRightSideCrossings(nTop,nBot,cg){
-  const tR=getPerSideNeighbors(nTop,cg,true,true).rightNeighbors;
-  const bR=getPerSideNeighbors(nBot,cg,true,true).rightNeighbors;
+  // Ignore `subLane > 0` spanning targets when counting adjacent crossings so `obj_3` doesn't invert `ben_1`/`ben_2`
+  const tR=getPerSideNeighbors(nTop,cg,true,true).rightNeighbors.filter(x=>(x.neighbor.subLane||0)===0);
+  const bR=getPerSideNeighbors(nBot,cg,true,true).rightNeighbors.filter(x=>(x.neighbor.subLane||0)===0);
   let c=0;
   tR.forEach(({neighbor:u})=>{
     const uY=u.y+u.height/2;
@@ -1005,9 +912,10 @@ function countRightSideCrossings(nTop,nBot,cg){
   return c;
 }
 
-function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
+function optimizeColumnVerticalOrderAndSubLanes(){
   updateDisconnectedIndicators();
 
+  // 1. Reset sub-lanes to 0, then assign mandatory intra-column link sub-lanes (`ena_1 -> ena_2`, `chg_3 -> chg_4`)
   Object.values(state.nodesById).forEach(n=>{n.subLane=0;});
   Object.values(state.linksById).forEach(l=>{
     const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
@@ -1016,16 +924,19 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
     }
   });
 
+  // Shift upstream leaf boxes that feed exclusively into a `subLane: 1` box (`ena_5 -> chg_4`) into `subLane: 1`
   let cg=computeColumnGeometries();
   Object.values(state.nodesById).forEach(n=>{
     if(n.isDisconnected||(n.subLane||0)!==0)return;
     const adj=getPerSideNeighbors(n,cg,true,true);
-    if(adj.leftNeighbors.length===0&&adj.rightNeighbors.length===1&&adj.rightNeighbors[0].neighbor.subLane>0){
+    if(adj.leftNeighbors.length===0&&adj.rightNeighbors.length===1&&(adj.rightNeighbors[0].neighbor.subLane||0)>0){
       n.subLane=1;
     }
   });
   cg=computeColumnGeometries();
 
+  // 2. Seed Rightmost Column (Strategic Objectives):
+  // Place `obj_3` (which links to both the top skip-linked security chain `ben_4` and middle `ben_2`) into `subLane: 1`
   const lastCol=state.columns[state.columns.length-1];
   if(lastCol){
     const objNodes=Object.values(state.nodesById).filter(n=>n.columnId===lastCol.id&&!n.isDisconnected).sort((a,b)=>a.y-b.y);
@@ -1034,29 +945,31 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
       const lNbs=getPerSideNeighbors(obj,cg,true,true).leftNeighbors.map(x=>x.neighbor);
       if(lNbs.length>=2&&objNodes.length>=3&&idx===objNodes.length-1){
         obj.subLane=1;
+        obj._tidyOrder=0;
       }
     });
     cg=computeColumnGeometries();
-    let cy=INITIAL_SPAWN_Y+120;
-    objNodes.forEach(n=>{
+    let cy=INITIAL_SPAWN_Y+140;
+    objNodes.filter(n=>(n.subLane||0)===0).forEach((n,idx)=>{
+      n._tidyOrder=idx;
       const s=getPerSideNeighbors(n,cg,true,true);
       n.height=getBaseBoxHeight(n,Math.max(s.leftNeighbors.length,s.rightNeighbors.length));
-      if((n.subLane||0)===0){
-        n.y=cy;cy+=n.height+VERTICAL_BOX_GAP*2.2;
-      }else{
-        n.y=INITIAL_SPAWN_Y;
-      }
+      n.y=cy;cy+=n.height+280;
+    });
+    objNodes.filter(n=>(n.subLane||0)>0).forEach(n=>{
+      n.y=INITIAL_SPAWN_Y;
     });
   }
 
+  // 3. Identify any 1-to-1 chain (`ena_6 -> chg_5 -> cap_4 -> ben_4`) that has a cross-column skip link (`ena_6 -> cap_1`)
+  // and feeds a `subLane: 1` Objective (`obj_3`) so we pull that chain to `_tidyOrder = 0` (the top of the BDN!)
   const topSkipChainIds=new Set();
   Object.values(state.linksById).forEach(l=>{
     const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
     if(!a||!b)return;
     const cA=cg[a.columnId]?.colIndex??0,cB=cg[b.columnId]?.colIndex??0;
     if(Math.abs(cA-cB)>1){
-      const leftEnd=cA<cB?a:b;
-      let cur=leftEnd;
+      let cur=cA<cB?a:b;
       const chain=[cur.id];
       while(cur){
         const rN=getPerSideNeighbors(cur,cg,true,true).rightNeighbors;
@@ -1074,6 +987,9 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
     }
   });
 
+  // 4. STRICT RIGHT-TO-LEFT TOPOLOGICAL ORDERING (`_tidyOrder`):
+  // Uses `computeDownstreamSortRankY` (which excludes `subLane: 1` objectives on shared nodes)
+  // so `ben_1` is ALWAYS above `ben_2`, `cap_1` is ALWAYS above `cap_2`, and `chg_6` / `ena_7` move cleanly to the commercial branch!
   for(let pass=0;pass<3;pass++){
     for(let ci=state.columns.length-2;ci>=0;ci--){
       const col=state.columns[ci];
@@ -1088,7 +1004,7 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
         activeNodes.sort((a,b)=>{
           if(topSkipChainIds.has(a.id)&&!topSkipChainIds.has(b.id))return -1;
           if(!topSkipChainIds.has(a.id)&&topSkipChainIds.has(b.id))return 1;
-          return computeDownstreamTargetY(a,cg)-computeDownstreamTargetY(b,cg);
+          return computeDownstreamSortRankY(a,cg)-computeDownstreamSortRankY(b,cg);
         });
 
         for(let k=0;k<activeNodes.length-1;k++){
@@ -1103,33 +1019,222 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
         let cy=INITIAL_SPAWN_Y;
         ordered.forEach((n,idx)=>{
           n._tidyOrder=idx;
-          const s=getPerSideNeighbors(n,cg,true,true);
+          const s=getPerSideNeighbors(n,cg,true,false);
           n.height=getBaseBoxHeight(n,Math.max(s.leftNeighbors.length,s.rightNeighbors.length));
-          if(topSkipChainIds.has(n.id)){
-            n.y=INITIAL_SPAWN_Y;
-          }else{
-            const desiredY=n.isDisconnected?(cy+VERTICAL_BOX_GAP*0.8):(computeDownstreamTargetY(n,cg)-n.height/2);
-            n.y=Math.max(cy,desiredY);
-          }
-          cy=n.y+n.height+VERTICAL_BOX_GAP;
+          n.y=cy;
+          cy+=n.height+VERTICAL_BOX_GAP+18;
         });
-        resolveColumnCollisions(col.id,l,{respectSoftManual:false,respectOptOuts:false,preserveTidyOrder:true});
       }
     }
   }
 
-  state.columns.forEach(col=>{
+  // 5. DENSE-TO-SPARSE LEFT-TO-RIGHT ELEVATION & INTERVAL-SPAN SOLVER:
+  // Now that `_tidyOrder` is locked in every column (matching the exact v2 reference sequence!),
+  // sweep Left-to-Right (`Enablers -> Changes -> Capabilities -> Benefits -> Objectives`) and back
+  // so every box sits at the vertical elevation of its connected neighbors and stretches across their interval!
+  solveElevationsAndIntervalStretches(cg,topSkipChainIds);
+
+  computeHorizontalLinksAndStubs(computeColumnGeometries());
+  updateDisconnectedIndicators();
+}
+
+function solveElevationsAndIntervalStretches(cg,topSkipChainIds){
+  // Step A: Reset heights to compact base heights first
+  Object.values(state.nodesById).forEach(n=>{
+    const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true,false);
+    n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
+  });
+
+  // Step B: Pack Column 0 (`Enablers`) and Column 1 (`Changes`) and Column 2 (`Capabilities`) cleanly from top to bottom
+  // while leaving a clean corridor below the top skip-linked chain (`ena_6 -> chg_5 -> cap_4 -> ben_4`)
+  // so the skip link `ena_6 -> cap_1` passes unobstructed below `chg_5` and above `chg_1`!
+  state.columns.forEach((col,ci)=>{
     const maxL=cg[col.id]?.laneCount||1;
-    for(let l=1;l<maxL;l++){
-      const subNodes=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l).sort((a,b)=>computeDownstreamTargetY(a,cg)-computeDownstreamTargetY(b,cg));
-      subNodes.forEach((n,idx)=>{n._tidyOrder=idx;});
+    for(let l=0;l<maxL;l++){
+      const ln=Object.values(state.nodesById)
+        .filter(n=>n.columnId===col.id&&(n.subLane||0)===l)
+        .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
+      let cy=INITIAL_SPAWN_Y;
+      ln.forEach((n,idx)=>{
+        if(n.isDisconnected)cy+=VERTICAL_BOX_GAP*0.8;
+        n.y=cy;
+        // Leave extra breathing room between the top security chain (`idx === 0`) and the telemetry chain (`idx === 1`)
+        // in Columns 0 and 1 so `ena_6` can sit slightly lower than `chg_5` and shoot straight across to `cap_1`!
+        const extraGap=(idx===0&&topSkipChainIds.has(n.id)&&ci<=1)?56:20;
+        cy+=n.height+VERTICAL_BOX_GAP+extraGap;
+      });
     }
   });
 
-  runAutoLayout({respectSoftManual:false,respectOptOuts:false,anchorSet:null,preserveTidyOrder:true,tightFitStretch:true});
-  healAllOverlapsAndCorridors();
-  computeHorizontalLinksAndStubs(computeColumnGeometries());
-  updateDisconnectedIndicators();
+  // Position `ena_6` so its bottom overlaps `cap_1`'s top while its top overlaps `chg_5`'s bottom!
+  Object.values(state.linksById).forEach(l=>{
+    const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
+    if(!a||!b)return;
+    const cA=cg[a.columnId]?.colIndex??0,cB=cg[b.columnId]?.colIndex??0;
+    if(Math.abs(cA-cB)>1){
+      const leftEnd=cA<cB?a:b,rightEnd=cA<cB?b:a;
+      // Find the intermediate column box at `_tidyOrder === 0` (`chg_5`) and `_tidyOrder === 1` (`chg_1`)
+      const midCol=state.columns[Math.min(cA,cB)+1];
+      if(midCol){
+        const midLane0=Object.values(state.nodesById)
+          .filter(n=>n.columnId===midCol.id&&(n.subLane||0)===0)
+          .sort((x,y)=>(x._tidyOrder??0)-(y._tidyOrder??0));
+        if(midLane0.length>=2){
+          const topMid=midLane0[0]; // chg_5
+          const secondMid=midLane0[1]; // chg_1
+          topMid.y=INITIAL_SPAWN_Y+22;
+          // Corridor Y is 24px below `topMid` (`chg_5`)
+          const corridorY=topMid.y+topMid.height+24;
+          // `leftEnd` (`ena_6`) spans from `topMid.y + 26` down to `corridorY + 14`
+          leftEnd.y=topMid.y+26;
+          leftEnd.height=Math.max(leftEnd.height,(corridorY+16)-leftEnd.y);
+          // `rightEnd` (`cap_1`) starts at `corridorY - 14`
+          rightEnd.y=corridorY-14;
+          // `secondMid` (`chg_1`) starts 28px below `corridorY` so it never blocks `ena_6 -> cap_1`!
+          secondMid.y=corridorY+28;
+          resolveColumnCollisions(midCol.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([secondMid.id])});
+          resolveColumnCollisions(rightEnd.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightEnd.id])});
+          resolveColumnCollisions(leftEnd.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([leftEnd.id])});
+        }
+      }
+    }
+  });
+
+  // Step C: Multi-Pass Left-to-Right & Right-to-Left Interval Alignment and Stretching
+  // Aligns each box's `[y, y + height]` interval to overlap all of its connected neighbors in `subLane` order
+  for(let iter=0;iter<4;iter++){
+    // Sweep Left-to-Right (`ci = 0` to `columns.length - 1`) then Right-to-Left
+    const colOrder=iter%2===0
+      ?state.columns.map((_,i)=>i)
+      :state.columns.map((_,i)=>state.columns.length-1-i);
+
+    colOrder.forEach(ci=>{
+      const col=state.columns[ci],maxL=cg[col.id]?.laneCount||1;
+      for(let l=0;l<maxL;l++){
+        const ln=Object.values(state.nodesById)
+          .filter(n=>n.columnId===col.id&&(n.subLane||0)===l)
+          .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
+
+        ln.forEach(n=>{
+          const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false,false);
+          const ms=Math.max(lN.length,rN.length);
+          const mH=getBaseBoxHeight(n,ms);
+
+          // During Left-to-Right pass (`iter % 2 === 0`), align primarily to LEFT (upstream) neighbors if available;
+          // during Right-to-Left pass, align to ALL connected neighbors!
+          let refNbs=[];
+          if(iter%2===0&&lN.length)refNbs=lN.map(x=>x.neighbor);
+          else refNbs=[...lN.map(x=>x.neighbor),...rN.map(x=>x.neighbor)];
+          if(!refNbs.length)return;
+
+          // For each neighbor `nb`, find the point on `nb` closest to `n`'s current center:
+          const nMid=n.y+n.height/2;
+          const reqPoints=[];
+          refNbs.forEach(nb=>{
+            // If `nb` is a huge spanning box in `subLane: 1` (`obj_3`) and `n` is a 1-to-1 box (`ben_4`), don't let `obj_3`'s bottom pull `ben_4` down!
+            if((nb.subLane||0)>0&&(n.subLane||0)===0&&nb.height>250&&refNbs.length>1)return;
+            const pt=Math.max(nb.y+EDGE_CORNER_PAD+2,Math.min(nb.y+nb.height-EDGE_CORNER_PAD-2,nMid));
+            reqPoints.push(pt);
+          });
+          if(!reqPoints.length)return;
+
+          const minP=Math.min(...reqPoints);
+          const maxP=Math.max(...reqPoints);
+          let targetT=minP-EDGE_CORNER_PAD-4;
+          let targetB=maxP+EDGE_CORNER_PAD+4;
+          if(targetB-targetT<mH){
+            const mid=(targetT+targetB)/2;
+            targetT=mid-mH/2;targetB=mid+mH/2;
+          }
+
+          // Clamp against previous box in the same lane so order never inverts
+          const{safeTop:sT,safeBottom:sB}=clampStretchToColumnClashes(n,targetT,targetB,ln);
+          n.y=sT;
+          n.height=Math.max(mH,sB-sT);
+        });
+        resolveColumnCollisions(col.id,l,{preserveTidyOrder:true});
+      }
+    });
+  }
+
+  // Step D: Final Post-Collision Overlap & Corridor Healer
+  // Guarantees that if `resolveColumnCollisions` pushed a lower box down, its connected neighbors stretch/shift to meet it!
+  for(let pass=0;pass<6;pass++){
+    // Re-verify skip-link corridor (`ena_6 -> cap_1`) first
+    Object.values(state.linksById).forEach(l=>{
+      if(l.forceSplit)return;
+      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+      if(!nA||!nB)return;
+      const cA=cg[nA.columnId]?.colIndex??0,cB=cg[nB.columnId]?.colIndex??0;
+      if(Math.abs(cA-cB)<=1)return;
+      const leftEnd=cA<cB?nA:nB,rightEnd=cA<cB?nB:nA;
+      const midCol=state.columns[Math.min(cA,cB)+1];
+      if(midCol){
+        const midLane0=Object.values(state.nodesById)
+          .filter(n=>n.columnId===midCol.id&&(n.subLane||0)===0)
+          .sort((x,y)=>(x._tidyOrder??0)-(y._tidyOrder??0));
+        if(midLane0.length>=2){
+          const topMid=midLane0[0],secondMid=midLane0[1];
+          const corridorY=topMid.y+topMid.height+22;
+          if(leftEnd.y+leftEnd.height<corridorY+14)leftEnd.height=(corridorY+16)-leftEnd.y;
+          if(rightEnd.y>corridorY-14){
+            const oldB=rightEnd.y+rightEnd.height;
+            rightEnd.y=corridorY-16;
+            rightEnd.height=Math.max(rightEnd.height,oldB-rightEnd.y);
+          }
+          if(secondMid.y<corridorY+18){
+            secondMid.y=corridorY+20;
+            resolveColumnCollisions(midCol.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([secondMid.id])});
+          }
+        }
+      }
+    });
+
+    // Heal any adjacent or intra-column link where `oB < oT + 14`
+    Object.values(state.linksById).forEach(l=>{
+      if(l.forceSplit)return;
+      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+      if(!nA||!nB)return;
+      const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+      const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+      if(oB>=oT+14)return;
+
+      const upper=(nA.y+nA.height/2)<=(nB.y+nB.height/2)?nA:nB;
+      const lower=upper===nA?nB:nA;
+      const gap=(oT-oB)+22;
+
+      // 1. Try stretching `upper` downward
+      const uLane=Object.values(state.nodesById)
+        .filter(x=>x.columnId===upper.columnId&&(x.subLane||0)===(upper.subLane||0))
+        .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
+      const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,upper.y+upper.height+gap,uLane);
+      upper.height=Math.max(upper.height,uSB-upper.y);
+
+      // 2. Recheck; if still short, try stretching `lower` upward
+      const oT2=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+      const oB2=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+      if(oB2<oT2+14){
+        const rem=(oT2-oB2)+22;
+        const lLane=Object.values(state.nodesById)
+          .filter(x=>x.columnId===lower.columnId&&(x.subLane||0)===(lower.subLane||0))
+          .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
+        const{safeTop:lST}=clampStretchToColumnClashes(lower,lower.y-rem,lower.y+lower.height,lLane);
+        const oldB=lower.y+lower.height;
+        lower.y=lST;
+        lower.height=Math.max(lower.height,oldB-lST);
+      }
+
+      // 3. Recheck; if `upper` was blocked from stretching down by a box below it (`uNext`) in `uLane`,
+      // push `uNext` (and boxes below it) down by the remaining deficit so `upper` CAN stretch down and complete the link!
+      const oT3=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+      const oB3=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+      if(oB3<oT3+10){
+        const deficit=(oT3-oB3)+20;
+        upper.height+=deficit;
+        resolveColumnCollisions(upper.columnId,upper.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+      }
+    });
+  }
 }
 
 function performIdempotentTidy(respectOptOuts=true){
@@ -1150,115 +1255,6 @@ function performIdempotentTidy(respectOptOuts=true){
   }
 }
 
-function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:null,preserveTidyOrder:false,tightFitStretch:false}){
-  let cg=computeColumnGeometries();
-  const pa=o.anchorSet?new Set(o.anchorSet):new Set();
-  Object.values(state.linksById).forEach(l=>{
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(nA&&nB&&nA.columnId===nB.columnId&&(nA.subLane||0)===(nB.subLane||0))nB.subLane=(nA.subLane||0)+1;
-  });
-  cg=computeColumnGeometries();
-
-  Object.values(state.nodesById).forEach(n=>{
-    if(!isNodeStretchLocked(n,o)){
-      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true,false);
-      n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
-    }
-  });
-
-  const aligned=new Set(pa);
-  if(aligned.size){
-    const q=Array.from(aligned);
-    while(q.length){
-      const cn=state.nodesById[q.shift()];if(!cn)continue;
-      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(cn,cg,false,true);
-      [...lN,...rN].forEach(({neighbor:nb})=>{
-        if(aligned.has(nb.id)||isNodePositionLocked(nb,o))return;
-        const s=getPerSideNeighbors(nb,cg,false,true);
-        if(Math.max(s.leftNeighbors.length,s.rightNeighbors.length)<=1){nb.y=cn.y+(cn.height-nb.height)/2;aligned.add(nb.id);q.push(nb.id);}
-      });
-    }
-  }
-
-  state.columns.forEach(col=>{const ml=cg[col.id]?.laneCount||1;for(let l=0;l<ml;l++)resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});});
-
-  for(let ci=state.columns.length-1;ci>=0;ci--){
-    const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
-    for(let l=ml-1;l>=0;l--){
-      const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
-      ln.forEach(n=>{
-        if(isNodePositionLocked(n,o)||aligned.has(n.id)||n.isDisconnected)return;
-        const targetMidY=computeDownstreamTargetY(n,cg);
-        n.y=targetMidY-n.height/2;
-      });
-      resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
-    }
-  }
-
-  const colSweep=[
-    ...state.columns.map((_,i)=>i),
-    ...state.columns.map((_,i)=>state.columns.length-1-i),
-    ...state.columns.map((_,i)=>i)
-  ];
-  for(const ci of colSweep){
-    const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
-    for(let l=0;l<ml;l++){
-      const ln=Object.values(state.nodesById)
-        .filter(n=>n.columnId===col.id&&(n.subLane||0)===l)
-        .sort((a,b)=>o.preserveTidyOrder&&typeof a._tidyOrder==='number'?a._tidyOrder-b._tidyOrder:a.y-b.y);
-      ln.forEach(n=>{
-        if(isNodeStretchLocked(n,o)||n.isDisconnected)return;
-        const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false,false);
-        const ms=Math.max(lN.length,rN.length);
-        const mH=getBaseBoxHeight(n,ms);
-        const allNbs=[...lN.map(x=>x.neighbor),...rN.map(x=>x.neighbor)];
-        if(!allNbs.length){n.height=mH;return;}
-
-        const attachPoints=[];
-        const nMid=n.y+n.height/2;
-        allNbs.forEach(nb=>{
-          const nbTop=nb.y+EDGE_CORNER_PAD;
-          const nbBot=nb.y+nb.height-EDGE_CORNER_PAD;
-          const nearestY=Math.max(nbTop,Math.min(nbBot,nMid));
-          const mx=getNodeGlobalX(n,cg),nx=getNodeGlobalX(nb,cg);
-          const sL=Math.min(mx,nx)+BOX_WIDTH,sR=Math.max(mx,nx);
-          const blk=Object.values(state.nodesById).some(ot=>{
-            if(ot.id===n.id||ot.id===nb.id)return false;
-            const ox=getNodeGlobalX(ot,cg);
-            return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&nearestY>=ot.y-5&&nearestY<=ot.y+ot.height+5;
-          });
-          if(!blk)attachPoints.push(nearestY);
-          else{
-            if(!Object.values(state.nodesById).some(ot=>{if(ot.id===n.id||ot.id===nb.id)return false;const ox=getNodeGlobalX(ot,cg);return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&nbTop>=ot.y-5&&nbTop<=ot.y+ot.height+5;}))attachPoints.push(nbTop);
-            else if(!Object.values(state.nodesById).some(ot=>{if(ot.id===n.id||ot.id===nb.id)return false;const ox=getNodeGlobalX(ot,cg);return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&nbBot>=ot.y-5&&nbBot<=ot.y+ot.height+5;}))attachPoints.push(nbBot);
-          }
-        });
-
-        if(!attachPoints.length)return;
-        const minAttach=Math.min(...attachPoints);
-        const maxAttach=Math.max(...attachPoints);
-
-        let reqT=minAttach-EDGE_CORNER_PAD;
-        let reqB=maxAttach+EDGE_CORNER_PAD;
-        if(reqB-reqT<mH){
-          const mid=(reqT+reqB)/2;
-          reqT=mid-mH/2;reqB=mid+mH/2;
-        }
-
-        const isDrg=pa.has(n.id);
-        const cT=isDrg?n.y:reqT;
-        const cB=Math.max(cT+mH,reqB);
-        const{safeTop:sT,safeBottom:sB}=clampStretchToColumnClashes(n,cT,cB,ln);
-        if(!isDrg)n.y=sT;
-        const maxStretch=l>0?1100:520;
-        n.height=Math.max(mH,Math.min(maxStretch,sB-n.y));
-      });
-      resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
-    }
-  }
-  computeHorizontalLinksAndStubs(cg);updateDisconnectedIndicators();clampCameraBounds();
-}
-
 function computeHorizontalLinksAndStubs(cg){
   const links=Object.values(state.linksById),all=Object.values(state.nodesById);
   let sc=1;
@@ -1269,7 +1265,6 @@ function computeHorizontalLinksAndStubs(cg){
     const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(!nA||!nB)return;
     if(l.forceSplit){l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});return;}
     const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD),oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    // 1.5px sub-pixel tolerance prevents 0.05px float rounding differences from splitting links
     if(oB+1.5<oT){
       l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});
     }else{
@@ -1547,7 +1542,6 @@ function applyActiveDragPosition(sX,sY){
     const n=state.nodesById[id],init=draggingGroup.allBaselineById[id];
     if(n&&init){n.y=init.y+dy;n.updatedAt=now;if(id===draggingGroup.anchorNodeId&&Math.abs(dx)>16)n.dragTempX=init.x+dx;else delete n.dragTempX;}
   });
-  // Use unified localized cascade instead of global runAutoLayout!
   applyLocalMoveAndStretchCascade(draggingGroup.groupIds,draggingGroup.allBaselineById);
   if(draggingGroup.moved&&now-lastDragStreamTime>=50){lastDragStreamTime=now;state.updatedAt=now;Object.values(state.nodesById).forEach(n=>{n.updatedAt=now;});broadcastCRDTUpdate();}
   draw();
@@ -1884,11 +1878,11 @@ function deleteSelected(){
   computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();saveState();draw();
 }
 function fitScreen(){
-  state.camera.zoom=1;const cg=computeColumnGeometries(),tW=cg._totalWorldWidth||1160,all=Object.values(state.nodesById);
+  state.camera.zoom=1;const cg=computeColumnGeometries(),tW=(cg._totalWorldWidth||1160)+48,all=Object.values(state.nodesById);
   const minT=all.length?Math.min(...all.map(n=>n.y)):INITIAL_SPAWN_Y,maxB=all.length?Math.max(...all.map(n=>n.y+n.height)):500;
   const cH=Math.max(200,maxB-minT+90),hBot=getHeaderTopY()+STICKY_HEADER_HEIGHT,avH=Math.max(180,window.innerHeight-hBot-(window.innerWidth<=820?72:20));
   const fZ=Math.min(1,Math.max(MIN_ZOOM,Math.min(window.innerWidth/tW,avH/cH)));
-  state.camera.zoom=fZ;state.camera.x=(window.innerWidth-tW*fZ)/2;state.camera.y=hBot+20-minT*fZ;
+  state.camera.zoom=fZ;state.camera.x=(window.innerWidth-(cg._totalWorldWidth||1160)*fZ)/2;state.camera.y=hBot+20-minT*fZ;
   computeHorizontalLinksAndStubs(computeColumnGeometries());clampCameraBounds();draw();
 }
 
