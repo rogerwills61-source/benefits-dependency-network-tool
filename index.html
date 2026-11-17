@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Reorders Vertically & Uses Sub-Lanes to Minimise Split Links)" type="button">Tidy</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (5-Pillar Sugiyama Optimizer — Keeps Pinned 📌 Boxes Fixed)" type="button">Tidy</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -210,12 +210,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
   <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
   <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>Barycentric Vertical Reordering &amp; Sub-Lane Evasion (v3.1):</strong> <code>Tidy</code> automatically permutes vertical box order and shifts sandwiched blockers into sub-lanes so boxes can stretch past them and eliminate split links.
+    • <strong>5-Pillar Sugiyama Engine (v3.2):</strong> Combines 70/30 Median-Barycenter ordering, exact bipartite crossing minimization, virtual skip-link corridors, sub-lane evasion, and Brandes-Köpf pipeline alignment.
   </div>
 </div>
 
 <script>
-const STORAGE_KEY_STATE='bdn_studio_state_v19',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v19',STORAGE_KEY_SETTINGS='bdn_studio_settings_v19';
+const STORAGE_KEY_STATE='bdn_studio_state_v20',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v20',STORAGE_KEY_SETTINGS='bdn_studio_settings_v20';
 const FACTORY_COLUMNS=[
   {id:'col_enablers',title:'Enablers',color:'#38bdf8'},
   {id:'col_changes',title:'Business Changes',color:'#34d399'},
@@ -576,7 +576,7 @@ function createStarterNetwork(blank=false){
 function loadStressTestDemo(){
   pushUndoState();sessionFileHandle=null;
   const ts=1763316000000;
-  state.mapId='bdn_stresstest_v31_01';
+  state.mapId='bdn_stresstest_v32_01';
   state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
   state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
   state.updatedAt=ts;state.deletedById={};
@@ -631,7 +631,7 @@ function loadStressTestDemo(){
     ['cap_2','ben_2','Gold command speed'],['cap_3','ben_2','Rapid restoration'],['cap_3','ben_3','Fewer truck rolls'],['cap_4','ben_4','Audit pass'],
     ['cap_5','ben_3','Rebate recovery'],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
     ['ben_2','obj_3','Statutory SLA'],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
-    ['ena_6','cap_1','Secure edge telemetry',true],['chg_7','cap_6','Orphaned link']
+    ['ena_6','cap_1','Secure edge telemetry'],['chg_7','cap_6','Orphaned link']
   ];
   lnks.forEach(([f,t,lbl,sp],idx)=>{
     const id='lnk_'+(idx+1);
@@ -768,16 +768,56 @@ function clampStretchToColumnClashes(n,ct,cb,ln){
 }
 
 // ============================================================================
-// v3.1 BARYCENTRIC VERTICAL ORDERING, PAIRWISE SWAP OPTIMIZER & SUB-LANE EVASION
+// v3.2 5-PILLAR SUGIYAMA HIERARCHICAL ENGINE
+// 1. Connected-Component Island Segregation
+// 2. 70% Median / 30% Barycenter Hybrid Target Positioning (Outlier Immunity)
+// 3. Explicit Two-Layer Crossing Matrix (`countPairwiseCrossings`)
+// 4. Virtual "Dummy" Corridors for Long-Span Skip Links (`carveSkipLinkCorridors`)
+// 5. Sub-Lane Corridor Evasion & Brandes-Kopf Bidirectional Flat Pipelines
 // ============================================================================
-function computeNodeBarycenterY(n,cg,preferSide='both'){
+function computeMedianValue(arr){
+  if(!arr.length)return 0;
+  const s=[...arr].sort((a,b)=>a-b),m=Math.floor(s.length/2);
+  return s.length%2===1?s[m]:(s[m-1]+s[m])/2;
+}
+
+function computeNodeHybridTargetY(n,cg,preferSide='both'){
   const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
   let targets=[];
   if(preferSide==='right'&&rN.length)targets=rN.map(x=>x.neighbor);
   else if(preferSide==='left'&&lN.length)targets=lN.map(x=>x.neighbor);
   else targets=[...rN.map(x=>x.neighbor),...lN.map(x=>x.neighbor)];
   if(!targets.length)return n.y+n.height/2;
-  return targets.reduce((acc,t)=>acc+(t.y+t.height/2),0)/targets.length;
+  const ys=targets.map(t=>t.y+t.height/2);
+  const med=computeMedianValue(ys);
+  const mean=ys.reduce((a,b)=>a+b,0)/ys.length;
+  return med*0.7+mean*0.3;
+}
+
+// Counts exact bipartite edge crossings if `nTop` is placed above `nBot`
+function countPairwiseCrossings(nTop,nBot,cg){
+  const topSides=getPerSideNeighbors(nTop,cg,false);
+  const botSides=getPerSideNeighbors(nBot,cg,false);
+  let crossings=0;
+  // Right-side bipartite inversions: u is above v, so any right neighbor of u that is BELOW a right neighbor of v crosses!
+  topSides.rightNeighbors.forEach(({neighbor:uNb})=>{
+    const uY=uNb.y+uNb.height/2;
+    botSides.rightNeighbors.forEach(({neighbor:vNb})=>{
+      if(uNb.id===vNb.id)return;
+      const vY=vNb.y+vNb.height/2;
+      if(uY>vY+4)crossings++;
+    });
+  });
+  // Left-side bipartite inversions
+  topSides.leftNeighbors.forEach(({neighbor:uNb})=>{
+    const uY=uNb.y+uNb.height/2;
+    botSides.leftNeighbors.forEach(({neighbor:vNb})=>{
+      if(uNb.id===vNb.id)return;
+      const vY=vNb.y+vNb.height/2;
+      if(uY>vY+4)crossings++;
+    });
+  });
+  return crossings;
 }
 
 function computeNodeVerticalSpanError(n,testCenterY,cg){
@@ -785,18 +825,70 @@ function computeNodeVerticalSpanError(n,testCenterY,cg){
   const allNbs=[...lN.map(x=>x.neighbor),...rN.map(x=>x.neighbor)];
   let err=0;
   allNbs.forEach(nb=>{
-    const nbMid=nb.y+nb.height/2;
-    const dist=Math.abs(testCenterY-nbMid);
-    // Heavily penalize vertical distances that exceed normal stretch reach (which would cause a split link!)
-    err+=dist+(dist>110?(dist-110)*4:0);
+    const dist=Math.abs(testCenterY-(nb.y+nb.height/2));
+    err+=dist+(dist>105?(dist-105)*4:0);
   });
   return err;
 }
 
+// Pillar 4: Virtual "Dummy" Corridors for Long-Span Skip Links (|colA - colB| > 1)
+function getSkipLinkCorridorsForColumn(colId,cg){
+  const targetColIdx=cg[colId]?.colIndex;
+  if(typeof targetColIdx!=='number')return[];
+  const corridors=[];
+  Object.values(state.linksById).forEach(l=>{
+    if(l.forceSplit)return;
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+    if(!nA||!nB)return;
+    const cA=cg[nA.columnId]?.colIndex,cB=cg[nB.columnId]?.colIndex;
+    if(typeof cA!=='number'||typeof cB!=='number')return;
+    const minC=Math.min(cA,cB),maxC=Math.max(cA,cB);
+    if(targetColIdx>minC&&targetColIdx<maxC){
+      const yA=nA.y+nA.height/2,yB=nB.y+nB.height/2;
+      corridors.push({linkId:l.id,y:(yA+yB)/2,nA,nB});
+    }
+  });
+  return corridors;
+}
+
+function carveSkipLinkCorridors(cg,options={}){
+  const SKIP_CORRIDOR_HALF_GAP=16;
+  Object.values(state.linksById).forEach(l=>{
+    if(l.forceSplit)return;
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+    if(!nA||!nB)return;
+    const cA=cg[nA.columnId]?.colIndex,cB=cg[nB.columnId]?.colIndex;
+    if(typeof cA!=='number'||typeof cB!=='number'||Math.abs(cA-cB)<=1)return;
+
+    // Align the two endpoints of the skip link toward a shared corridor Y if unlocked
+    const midY=((nA.y+nA.height/2)+(nB.y+nB.height/2))/2;
+    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+    const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+    const corridorY=oB>=oT?(oT+oB)/2:midY;
+
+    const minC=Math.min(cA,cB),maxC=Math.max(cA,cB);
+    for(let ci=minC+1;ci<maxC;ci++){
+      const midCol=state.columns[ci];if(!midCol)continue;
+      const colNodes=Object.values(state.nodesById).filter(n=>n.columnId===midCol.id).sort((a,b)=>a.y-b.y);
+      colNodes.forEach(n=>{
+        if(isNodePositionLocked(n,options))return;
+        if(corridorY>=n.y-SKIP_CORRIDOR_HALF_GAP&&corridorY<=n.y+n.height+SKIP_CORRIDOR_HALF_GAP){
+          const nMid=n.y+n.height/2;
+          if(nMid<corridorY)n.y=corridorY-SKIP_CORRIDOR_HALF_GAP-n.height;
+          else n.y=corridorY+SKIP_CORRIDOR_HALF_GAP;
+        }
+      });
+      const ml=cg[midCol.id]?.laneCount||1;
+      for(let s=0;s<ml;s++)resolveColumnCollisions(midCol.id,s,options);
+    }
+  });
+}
+
 function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
+  // Pillar 1: Run Connected-Component Island Detection FIRST so disconnected branches/nodes are segregated at the bottom
+  updateDisconnectedIndicators();
   let cg=computeColumnGeometries();
 
-  // Reset unlocked sub-lanes to 0 first, then re-apply mandatory intra-column link sub-lanes
   Object.values(state.nodesById).forEach(n=>{
     if(!respectOptOuts||!n.isAutoLayoutOptOut)n.subLane=0;
   });
@@ -806,7 +898,7 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
   });
   cg=computeColumnGeometries();
 
-  // 1. 4-Pass Alternating Barycentric Vertical Ordering + Adjacent Pairwise Swap Optimization
+  // Pillar 2 & 3: 4-Pass Alternating 70/30 Median-Barycenter Ordering + Explicit Two-Layer Crossing Matrix Swaps
   for(let sweep=0;sweep<4;sweep++){
     const rightToLeft=(sweep%2===0);
     const colIndices=rightToLeft
@@ -821,43 +913,58 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
         const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
         if(ln.length<=1)continue;
 
-        // Partition into pinned/locked anchors vs free nodes
         const freeNodes=ln.filter(n=>!(respectOptOuts&&n.isAutoLayoutOptOut)&&!n.isDisconnected);
         const disconnectedNodes=ln.filter(n=>!(respectOptOuts&&n.isAutoLayoutOptOut)&&n.isDisconnected);
 
-        freeNodes.sort((a,b)=>computeNodeBarycenterY(a,cg,preferSide)-computeNodeBarycenterY(b,cg,preferSide));
+        freeNodes.sort((a,b)=>computeNodeHybridTargetY(a,cg,preferSide)-computeNodeHybridTargetY(b,cg,preferSide));
 
-        // Adjacent Pairwise Swap Optimizer: test swapping (k, k+1) to see if swapping reduces link crossing/split penalty
-        for(let pass=0;pass<2;pass++){
+        // Explicit Bipartite Crossing Count + Vertical Span Pairwise Swap Optimizer
+        for(let pass=0;pass<3;pass++){
           for(let k=0;k<freeNodes.length-1;k++){
             const n1=freeNodes[k],n2=freeNodes[k+1];
-            const y1= INITIAL_SPAWN_Y + k*(BOX_MIN_HEIGHT+VERTICAL_BOX_GAP) + BOX_MIN_HEIGHT/2;
-            const y2= INITIAL_SPAWN_Y + (k+1)*(BOX_MIN_HEIGHT+VERTICAL_BOX_GAP) + BOX_MIN_HEIGHT/2;
-            const curCost=computeNodeVerticalSpanError(n1,y1,cg)+computeNodeVerticalSpanError(n2,y2,cg);
-            const swapCost=computeNodeVerticalSpanError(n1,y2,cg)+computeNodeVerticalSpanError(n2,y1,cg);
-            if(swapCost+8<curCost){
+            const y1=INITIAL_SPAWN_Y+k*(BOX_MIN_HEIGHT+VERTICAL_BOX_GAP)+BOX_MIN_HEIGHT/2;
+            const y2=INITIAL_SPAWN_Y+(k+1)*(BOX_MIN_HEIGHT+VERTICAL_BOX_GAP)+BOX_MIN_HEIGHT/2;
+            const crossCur=countPairwiseCrossings(n1,n2,cg)*1000;
+            const crossSwap=countPairwiseCrossings(n2,n1,cg)*1000;
+            const curCost=crossCur+computeNodeVerticalSpanError(n1,y1,cg)+computeNodeVerticalSpanError(n2,y2,cg);
+            const swapCost=crossSwap+computeNodeVerticalSpanError(n1,y2,cg)+computeNodeVerticalSpanError(n2,y1,cg);
+            if(swapCost+6<curCost){
               freeNodes[k]=n2;freeNodes[k+1]=n1;
             }
           }
         }
 
-        const ordered=[...freeNodes,...disconnectedNodes];
+        const corridors=getSkipLinkCorridorsForColumn(col.id,cg);
         let cursorY=INITIAL_SPAWN_Y;
-        ordered.forEach(n=>{
+        freeNodes.forEach(n=>{
           const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
           n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
+          // Leave a virtual dummy corridor gap if a skip link crosses right at cursorY
+          corridors.forEach(c=>{
+            if(cursorY<=c.y+16&&cursorY+n.height>=c.y-16){
+              cursorY=c.y+20;
+            }
+          });
           n.y=cursorY;
           cursorY+=n.height+VERTICAL_BOX_GAP;
         });
+
+        // Segregate disconnected islands cleanly below the active network
+        if(disconnectedNodes.length){
+          cursorY+=VERTICAL_BOX_GAP*0.6;
+          disconnectedNodes.forEach(n=>{
+            const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
+            n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
+            n.y=cursorY;
+            cursorY+=n.height+VERTICAL_BOX_GAP;
+          });
+        }
         resolveColumnCollisions(col.id,l,{respectSoftManual:false,respectOptOuts});
       }
     });
   }
 
-  // 2. Automatic Sub-Lane Corridor Evasion:
-  // If a box `spanner` in subLane 0 needs to stretch across a vertical range [minTargetY, maxTargetY] to reach >=2 neighbors
-  // in an adjacent column, and another box `blocker` in the SAME column (subLane 0) sits inside that vertical range,
-  // shifting `blocker` into subLane 1 frees `spanner` in subLane 0 to stretch past `blocker` and complete its solid links!
+  // Pillar 5A: Automatic Sub-Lane Corridor Evasion
   state.columns.forEach(col=>{
     const lane0=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===0&&!n.isDisconnected).sort((a,b)=>a.y-b.y);
     if(lane0.length<2)return;
@@ -877,14 +984,12 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
         if(respectOptOuts&&blocker.isAutoLayoutOptOut)return;
         const bMid=blocker.y+blocker.height/2;
         const spMid=spanner.y+spanner.height/2;
-        // If `blocker` sits vertically between `spanner` and one of `spanner`'s targets (blocking `spanner`'s stretch):
-        const blocksUpward=(bMid<spMid && bMid>minT-20);
-        const blocksDownward=(bMid>spMid && bMid<maxB+20);
+        const blocksUpward=(bMid<spMid&&bMid>minT-20);
+        const blocksDownward=(bMid>spMid&&bMid<maxB+20);
         if(blocksUpward||blocksDownward){
           const bSides=getPerSideNeighbors(blocker,cg,false);
           const spSides=getPerSideNeighbors(spanner,cg,false);
-          // Shift the node with fewer links into subLane 1 so the multi-link hub can stretch unimpeded in subLane 0
-          if(bSides.leftNeighbors.length+bSides.rightNeighbors.length <= spSides.leftNeighbors.length+spSides.rightNeighbors.length){
+          if(bSides.leftNeighbors.length+bSides.rightNeighbors.length<=spSides.leftNeighbors.length+spSides.rightNeighbors.length){
             blocker.subLane=1;
           }
         }
@@ -894,26 +999,20 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
 }
 
 function performIdempotentTidy(respectOptOuts=true){
-  let cg=computeColumnGeometries();
   Object.values(state.nodesById).forEach(n=>{
     if(!respectOptOuts||!n.isAutoLayoutOptOut){
       n.isManuallyPositioned=false;n.isManuallyStretched=false;n.updatedAt=Date.now();
     }
   });
+  // Clear forceSplit on all links during Tidy so both adjacent links AND skip links with virtual corridors can heal into solid lines!
   Object.values(state.linksById).forEach(l=>{
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(nA&&nB&&Math.abs((cg[nA.columnId]?.colIndex||0)-(cg[nB.columnId]?.colIndex||0))<=1){
-      l.forceSplit=false;l.updatedAt=Date.now();
-    }else if(!respectOptOuts){
-      l.forceSplit=false;l.updatedAt=Date.now();
-    }
+    l.forceSplit=false;l.updatedAt=Date.now();
   });
 
-  // Run Barycentric Vertical Ordering + Pairwise Swap + Sub-Lane Corridor Evasion
   optimizeColumnVerticalOrderAndSubLanes(respectOptOuts);
-
   runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null});
-  cg=computeColumnGeometries();
+
+  const cg=computeColumnGeometries();
   const all=Object.values(state.nodesById),hasPin=respectOptOuts&&all.some(n=>n.isAutoLayoutOptOut);
   if(all.length&&!hasPin){
     const sy=INITIAL_SPAWN_Y-Math.min(...all.map(n=>n.y));
@@ -921,9 +1020,6 @@ function performIdempotentTidy(respectOptOuts=true){
   }
 }
 
-// ============================================================================
-// v3.1 MINIMAL-REACH STRETCHING & SUB-LANE CORRIDOR ROUTING
-// ============================================================================
 function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:null}){
   let cg=computeColumnGeometries();
   const pa=o.anchorSet?new Set(o.anchorSet):new Set();
@@ -956,26 +1052,30 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
 
   state.columns.forEach(col=>{const ml=cg[col.id]?.laneCount||1;for(let l=0;l<ml;l++)resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});});
 
-  for(let ci=state.columns.length-1;ci>=0;ci--){
-    const col=state.columns[ci];
-    const ml=cg[col.id]?.laneCount||1;
-    for(let l=0;l<ml;l++){
-      const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
-      ln.forEach(n=>{
-        if(isNodePositionLocked(n,o)||aligned.has(n.id))return;
-        const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false);
-        const conn=[...lN,...rN].map(x=>x.neighbor);
-        if(conn.length){
-          n.y=(conn.reduce((a,t)=>a+(t.y+t.height/2),0)/conn.length)-n.height/2;
-        }
-      });
-      resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
-    }
-  }
+  // Pillar 5B: Brandes-Kopf Bidirectional Hybrid Median/Barycenter Centering (Right-to-Left then Left-to-Right)
+  const centerSweeps=[
+    {indices:state.columns.map((_,i)=>state.columns.length-1-i),prefer:'right'},
+    {indices:state.columns.map((_,i)=>i),prefer:'both'}
+  ];
+  centerSweeps.forEach(({indices,prefer})=>{
+    indices.forEach(ci=>{
+      const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
+      for(let l=0;l<ml;l++){
+        const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
+        ln.forEach(n=>{
+          if(isNodePositionLocked(n,o)||aligned.has(n.id)||n.isDisconnected)return;
+          const targetMidY=computeNodeHybridTargetY(n,cg,prefer);
+          n.y=targetMidY-n.height/2;
+        });
+        resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
+      }
+    });
+  });
 
-  // Bidirectional Minimal-Reach Stretching (Right-to-Left then Left-to-Right):
-  // Boxes in `subLane: 0` only clash with other boxes in `subLane: 0`, so if a blocker was moved to `subLane: 1`,
-  // a box in `subLane: 0` can stretch vertically past the `subLane: 1` box and route its links above and below it!
+  // Carve Virtual Skip-Link Corridors through intermediate columns
+  carveSkipLinkCorridors(cg,{...o,primaryAnchorSet:aligned});
+
+  // Bidirectional Minimal-Reach Stretching (per-subLane clamped)
   const colSweep=[
     ...state.columns.map((_,i)=>state.columns.length-1-i),
     ...state.columns.map((_,i)=>i)
@@ -994,7 +1094,6 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
 
         let reqT=n.y,reqB=n.y+n.height;
         allNbs.forEach(nb=>{
-          // If already overlapping vertically by >= EDGE_CORNER_PAD*2, no stretch needed for this neighbor!
           const curOT=Math.max(reqT+EDGE_CORNER_PAD,nb.y+EDGE_CORNER_PAD);
           const curOB=Math.min(reqB-EDGE_CORNER_PAD,nb.y+nb.height-EDGE_CORNER_PAD);
           if(curOB>=curOT)return;
@@ -1005,7 +1104,6 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
           const sL=Math.min(mx,nx)+BOX_WIDTH,sR=Math.max(mx,nx);
           const testY=nbBotAttach<reqT+EDGE_CORNER_PAD?nbBotAttach:nbTopAttach;
 
-          // Check if horizontal line at `testY` is clear of any intermediate box (including sub-lane boxes!)
           const blk=Object.values(state.nodesById).some(ot=>{
             if(ot.id===n.id||ot.id===nb.id)return false;
             const ox=getNodeGlobalX(ot,cg);
@@ -1020,7 +1118,6 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
         const isDrg=pa.has(n.id);
         const cT=isDrg?n.y:reqT;
         const cB=Math.max(cT+mH,reqB);
-        // Only clamp against boxes in the SAME `subLane` (`ln`)! Boxes in another sub-lane do not block vertical stretching!
         const{safeTop:sT,safeBottom:sB}=clampStretchToColumnClashes(n,cT,cB,ln);
         if(!isDrg)n.y=sT;
         n.height=Math.max(mH,Math.min(260,sB-n.y));
@@ -1696,7 +1793,7 @@ window.addEventListener('keydown',(e)=>{
   if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){e.preventDefault();performUndo();return;}
   if((e.ctrlKey||e.metaKey)&&((e.key==='y'||e.key==='Y')||(e.shiftKey&&(e.key==='z'||e.key==='Z')))){e.preventDefault();performRedo();return;}
   if((e.ctrlKey||e.metaKey)&&(e.key==='o'||e.key==='O')){e.preventDefault();openBdnFile();return;}
-  if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')) {e.preventDefault();saveBdnFile(e.shiftKey);return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){e.preventDefault();saveBdnFile(e.shiftKey);return;}
   const sN=state.selectedNodeId?state.nodesById[state.selectedNodeId]:null,sL=state.selectedLinkId?state.linksById[state.selectedLinkId]:null;
   if(e.key==='Escape'){linkingFromNodeId=null;modeBanner.style.display='none';helpPopover.style.display='none';conflictModal.style.display='none';hideAllMenus();draw();return;}
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();return;}
