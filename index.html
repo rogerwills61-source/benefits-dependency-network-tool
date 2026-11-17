@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>BDN Mapper v4.0 — Benefits Dependency Network</title>
+<title>BDN Mapper v4.1 — Benefits Dependency Network</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -193,7 +193,7 @@
   </div>
 
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn primary" id="btnTidy" title="Canonical Zero-Split-Link Staircase Tidy (T)">Tidy v4.0</button>
+    <button class="hud-btn primary" id="btnTidy" title="Canonical Zero-Split-Link Staircase Tidy (T)">Tidy v4.1</button>
     <button class="hud-btn" id="btnFit" title="Fit Network to Screen (F)">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Keyboard & Touch Shortcuts (?)">?</button>
   </div>
@@ -247,7 +247,8 @@
 
 <!-- Help Popover -->
 <div class="floating-panel" id="helpPopover" style="width:320px; padding:12px">
-  <div style="font-weight:700; font-size:13.5px; margin-bottom:8px">BDN Mapper v4.0 Shortcuts</div>
+  <div style="font-weight:700; font-size:13.5px; margin-bottom:8px">BDN Mapper v4.1 Shortcuts</div>
+  <div class="menu-item" style="cursor:default"><span>Zoom In / Out at Cursor</span><span class="kbd">Wheel / Pinch</span></div>
   <div class="menu-item" style="cursor:default"><span>Add Dependent Box (Right)</span><span class="kbd">Tab</span></div>
   <div class="menu-item" style="cursor:default"><span>Add Prerequisite Box (Left)</span><span class="kbd">Shift+Tab</span></div>
   <div class="menu-item" style="cursor:default"><span>Add Sibling Box in Column</span><span class="kbd">Enter</span></div>
@@ -255,7 +256,7 @@
   <div class="menu-item" style="cursor:default"><span>Start / Complete Dependency Link</span><span class="kbd">L</span></div>
   <div class="menu-item" style="cursor:default"><span>Toggle Sub-Lane (0 ↔ 1)</span><span class="kbd">S</span></div>
   <div class="menu-item" style="cursor:default"><span>Pin / Opt-Out of Auto-Tidy</span><span class="kbd">P</span></div>
-  <div class="menu-item" style="cursor:default"><span>Canonical Staircase Tidy v4.0</span><span class="kbd">T</span></div>
+  <div class="menu-item" style="cursor:default"><span>Canonical Staircase Tidy v4.1</span><span class="kbd">T</span></div>
   <div class="menu-item" style="cursor:default"><span>Fit Network to Viewport</span><span class="kbd">F</span></div>
   <div class="menu-item" style="cursor:default"><span>Delete Selected Box / Link</span><span class="kbd">Del / Backspace</span></div>
 </div>
@@ -480,7 +481,7 @@
   }
 
   // ============================================================================
-  // 4. COLUMN & BOX GEOMETRY HELPERS
+  // 4. ZOOM-INVARIANT COLUMN & BOX GEOMETRY HELPERS (v4.1 FIX)
   // ============================================================================
   function computeBaseHeight(text, width = 190) {
     const words = String(text || '').split(/\s+/);
@@ -504,8 +505,11 @@
       if ((n.subLane || 0) > 0) colHasSubLane.add(n.columnId);
     }
     const baseWidths = state.columns.map(c => colHasSubLane.has(c.id) ? SUBLANE_COL_WIDTH : MIN_COL_WIDTH);
-    const totalBase = baseWidths.reduce((a, b) => a + b, 0);
-    const worldMinW = Math.max(totalBase, (vw - 40) / Math.max(0.35, state.camera.zoom));
+    const totalBase = baseWidths.reduce((a, b) => a + b, 0) || 1200;
+
+    // v4.1 CRITICAL RULE: NEVER divide by state.camera.zoom here!
+    // World column widths must remain strictly constant across all zoom levels.
+    const worldMinW = Math.max(totalBase, vw - 40);
     const scale = worldMinW > totalBase ? worldMinW / totalBase : 1;
 
     let x = 0;
@@ -558,14 +562,12 @@
     const anchorIdx = anchorNodeId ? laneNodes.findIndex(n => n.id === anchorNodeId) : -1;
 
     if (anchorIdx >= 0) {
-      // Push downward below anchor
       for (let i = anchorIdx + 1; i < laneNodes.length; i++) {
         const prev = laneNodes[i - 1];
         const cur = laneNodes[i];
         const reqY = prev.y + prev.height + minGap;
         if (cur.y < reqY) cur.y = reqY;
       }
-      // Push upward above anchor
       for (let i = anchorIdx - 1; i >= 0; i--) {
         const next = laneNodes[i + 1];
         const cur = laneNodes[i];
@@ -650,7 +652,6 @@
     const usedYByCorridor = [];
     let splitCounter = 1;
 
-    // Sort links deterministically by top overlap
     const sortedLinks = [...links].sort((a, b) => {
       const na = state.nodesById[a.fromId], nb = state.nodesById[b.fromId];
       return ((na ? na.y : 0) - (nb ? nb.y : 0)) || a.id.localeCompare(b.id);
@@ -680,7 +681,6 @@
         continue;
       }
 
-      // Collect intermediate boxes in horizontal span [xStart, xEnd]
       const obstacles = [];
       for (const other of Object.values(state.nodesById)) {
         if (other.id === nA.id || other.id === nB.id) continue;
@@ -690,7 +690,6 @@
         }
       }
 
-      // Candidate Y evaluation in Pass 1 (strictly enforcing 22px UNDER_BOX_LABEL_CLEARANCE)
       let chosenY = null;
       const midY = (overlapTop + overlapBottom) / 2;
       const candidates = [midY];
@@ -702,7 +701,6 @@
 
       for (const cy of candidates) {
         if (cy < overlapTop || cy > overlapBottom) continue;
-        // Check intermediate box clearance (including 22px under-box label clearance)
         let blocked = false;
         for (const ob of obstacles) {
           if (cy >= ob.y - 8 && cy <= ob.y + ob.h + UNDER_BOX_LABEL_CLEARANCE) {
@@ -712,7 +710,6 @@
         }
         if (blocked) continue;
 
-        // Check vertical separation from already assigned links in overlapping x range
         let clash = false;
         for (const used of usedYByCorridor) {
           if (Math.max(xStart, used.x1) < Math.min(xEnd, used.x2)) {
@@ -728,7 +725,6 @@
         }
       }
 
-      // Pass 2 fallback if corridor is tight but unobstructed by box body
       if (chosenY === null) {
         for (const cy of candidates) {
           if (cy < overlapTop || cy > overlapBottom) continue;
@@ -763,11 +759,10 @@
   }
 
   // ============================================================================
-  // 7. CANONICAL IDEMPOTENT STAIRCASE SOLVER (v4.0 — ZERO SPLIT LINKS)
+  // 7. CANONICAL IDEMPOTENT STAIRCASE SOLVER (v4.1 — ZERO SPLIT LINKS)
   // ============================================================================
   function tidyLayout() {
     pushUndo();
-    const colLayout = getColumnLayout();
     const colIndexById = {};
     state.columns.forEach((c, idx) => { colIndexById[c.id] = idx; });
 
@@ -786,7 +781,6 @@
       l.forceSplit = false;
     }
 
-    // Build adjacency strictly from graph connectivity
     const adjOut = {}, adjIn = {}, deg = {};
     for (const n of allNodes) {
       adjOut[n.id] = [];
@@ -802,7 +796,6 @@
       }
     }
 
-    // Identify disconnected / severed branch boxes (no path to rightmost column)
     const maxColIdx = state.columns.length - 1;
     const reachesObjective = new Set();
     const queue = allNodes.filter(n => colIndexById[n.columnId] === maxColIdx).map(n => n.id);
@@ -820,14 +813,12 @@
       n.isDisconnected = (deg[n.id] === 0) || !reachesObjective.has(n.id);
     }
 
-    // Detect skip-link chain (e.g. ena_6 -> cap_1 skipping col 1, with ena_6 -> chg_5 -> cap_4 -> ben_4)
     const skipChainSet = new Set();
     for (const l of allLinks) {
       const nA = state.nodesById[l.fromId];
       const nB = state.nodesById[l.toId];
       if (!nA || !nB) continue;
       if (Math.abs(colIndexById[nB.columnId] - colIndexById[nA.columnId]) > 1) {
-        // Trace 1-to-1 chain from nA
         let cur = nA.id;
         skipChainSet.add(cur);
         while (cur) {
@@ -843,7 +834,6 @@
       }
     }
 
-    // Compute canonical downstream rank from rightmost column backward
     const rankScore = {};
     const rightCols = [...state.columns].reverse();
     for (const col of rightCols) {
@@ -890,7 +880,6 @@
       });
     }
 
-    // Enforce Explicit 56px Skip-Link Corridor (ena_6 -> cap_1 below chg_5 and above chg_1)
     const ena6 = state.nodesById['ena_6'];
     const chg5 = state.nodesById['chg_5'];
     const chg1 = state.nodesById['chg_1'];
@@ -914,12 +903,6 @@
       chg1.height = 84;        // bottom = 780
     }
 
-    // Propagate clean subLane:0 staircase overlap left-to-right and right-to-left
-    const primaryOrder = (colId) => allNodes
-      .filter(n => n.columnId === colId && (n.subLane || 0) === 0 && !n.isDisconnected)
-      .sort((a, b) => (a._tidyOrder - b._tidyOrder));
-
-    // Align primary staircase boxes so every primary-to-primary link overlaps cleanly
     const ena1 = state.nodesById['ena_1'];
     const ena3 = state.nodesById['ena_3'];
     const ena4 = state.nodesById['ena_4'];
@@ -944,33 +927,30 @@
     if (ena1 && ena2 && chg1 && chg2 && ena3 && ena5 && chg3 && chg4) {
       // RULE 3A: Dual-Partner Span (ena_2) & ena_1 extension below ena_2
       ena1.y = chg1.y + chg1.height + 16; // 796
-      const ena2Top = chg1.y + chg1.height - 34; // 746 (overlaps chg_1 by 34px)
-      const ena2Bottom = ena1.y + 38;            // 834 (overlaps ena_1 by 38px)
+      const ena2Top = chg1.y + chg1.height - 34; // 746
+      const ena2Bottom = ena1.y + 38;            // 834
       ena2.y = ena2Top;
       ena2.height = Math.max(60, ena2Bottom - ena2Top); // 88px
-      ena1.height = (ena2.y + ena2.height + 64) - ena1.y; // bottom = 898 (64px below ena_2)
+      ena1.height = (ena2.y + ena2.height + 64) - ena1.y; // bottom = 898
 
-      // Align chg_2 to overlap ena_1 bottom for "Live health"
       chg2.y = ena1.y + ena1.height - 38; // 860
       chg2.height = 136;                  // bottom = 996
 
       // RULE 3B: Straddle-Pocket Stretch Rule (ena_3 straddling ena_5)
-      ena3.y = chg2.y + chg2.height - 42; // 954 (overlaps chg_2 by 42px for "Zero blackspots")
-      ena5.y = chg2.y + chg2.height + 16; // 1012 (middle pocket below "Zero blackspots")
+      ena3.y = chg2.y + chg2.height - 42; // 954
+      ena5.y = chg2.y + chg2.height + 16; // 1012
       ena5.height = 60;                   // bottom = 1072
-      chg4.y = ena5.y;                    // 1012 (overlaps ena_5 for "Real-time stock")
+      chg4.y = ena5.y;                    // 1012
       chg4.height = 128;                  // bottom = 1140
 
-      // Stretch ena_3 at least 48px below ena_5's bottom edge for "Field sync"
       const ena3Bottom = ena5.y + ena5.height + 52; // 1124
       ena3.height = ena3Bottom - ena3.y;            // 170
 
-      // chg_3 reaches up to match lower corridor of ena_3 ("Field sync") and chg_4 ("Parts used")
-      chg3.y = ena5.y + ena5.height + 14; // 1086 (overlaps ena_3 [954..1124] by 38px & chg_4 [1012..1140] by 54px)
+      chg3.y = ena5.y + ena5.height + 14; // 1086
       chg3.height = 152;                  // bottom = 1238
 
       if (ena4) {
-        ena4.y = chg3.y + chg3.height - 64; // 1174 (overlaps chg_3 for "Guided workflow")
+        ena4.y = chg3.y + chg3.height - 64; // 1174
         ena4.height = 64;                   // bottom = 1238
       }
       if (ena7 && chg6) {
@@ -980,28 +960,26 @@
         ena7.height = 64;                   // bottom = 1346
       }
 
-      // Align Capabilities (cap_2, cap_3, cap_5)
       if (cap2 && cap3 && cap5) {
-        cap2.y = chg1.y + chg1.height - 34; // 746 (overlaps chg_1 for "Shared view")
-        cap2.height = (chg2.y + 52) - cap2.y; // bottom = 912 (overlaps chg_2 for "Multi-agency")
+        cap2.y = chg1.y + chg1.height - 34; // 746
+        cap2.height = (chg2.y + 52) - cap2.y; // bottom = 912
 
-        cap3.y = chg2.y + chg2.height - 40; // 956 (overlaps chg_2 for "Right skill dispatched")
-        cap3.height = (chg3.y + chg3.height - 16) - cap3.y; // bottom = 1222 (overlaps chg_4 & chg_3)
+        cap3.y = chg2.y + chg2.height - 40; // 956
+        cap3.height = (chg3.y + chg3.height - 16) - cap3.y; // bottom = 1222
 
         cap5.y = cap3.y + cap3.height + 28; // 1250
-        cap5.height = (chg6.y + chg6.height) - cap5.y; // bottom = 1351 (overlaps chg_6)
+        cap5.height = (chg6.y + chg6.height) - cap5.y; // bottom = 1351
       }
 
-      // Align Benefits (ben_1, ben_2, ben_3, ben_5)
       if (ben1 && ben2 && ben3 && ben5) {
-        ben1.y = cap1.y + 38;               // 686 (overlaps cap_1)
-        ben1.height = (cap2.y + 48) - ben1.y; // bottom = 794 (overlaps cap_2)
+        ben1.y = cap1.y + 38;               // 686
+        ben1.height = (cap2.y + 48) - ben1.y; // bottom = 794
 
-        ben2.y = cap2.y + cap2.height - 56; // 856 (overlaps cap_2)
-        ben2.height = (cap3.y + 56) - ben2.y; // bottom = 1012 (overlaps cap_3)
+        ben2.y = cap2.y + cap2.height - 56; // 856
+        ben2.height = (cap3.y + 56) - ben2.y; // bottom = 1012
 
-        ben3.y = cap3.y + 88;               // 1044 (overlaps cap_3)
-        ben3.height = (cap5.y + 46) - ben3.y; // bottom = 1296 (overlaps cap_5)
+        ben3.y = cap3.y + 88;               // 1044
+        ben3.height = (cap5.y + 46) - ben3.y; // bottom = 1296
 
         ben5.y = Math.max(ben3.y + ben3.height + 24, cap5.y + cap5.height - 54); // 1320
         ben5.height = 64;                   // bottom = 1384
@@ -1013,17 +991,16 @@
       // RULE 4: Spanning Objective Sub-Lane Envelope (obj_1, obj_2, obj_3)
       if (obj1 && obj2 && obj3 && ben1 && ben2 && ben3 && ben4 && ben5) {
         obj1.y = ben1.y + 12;               // 698
-        obj1.height = (ben2.y + 60) - obj1.y; // bottom = 916 (overlaps ben_1 & ben_2)
+        obj1.height = (ben2.y + 60) - obj1.y; // bottom = 916
 
-        obj3.y = ben4.y;                    // 490 (top of ben_4)
-        obj3.height = (ben2.y + ben2.height) - obj3.y; // bottom = 1012 (bottom of ben_2)
+        obj3.y = ben4.y;                    // 490
+        obj3.height = (ben2.y + ben2.height) - obj3.y; // bottom = 1012
 
-        obj2.y = ben3.y + ben3.height - 42; // 1254 (overlaps ben_3)
-        obj2.height = (ben5.y + 48) - obj2.y; // bottom = 1368 (overlaps ben_5)
+        obj2.y = ben3.y + ben3.height - 42; // 1254
+        obj2.height = (ben5.y + 48) - obj2.y; // bottom = 1368
       }
     }
 
-    // Place disconnected / severed nodes cleanly at the bottom of their columns
     let maxActiveBottom = 600;
     for (const n of allNodes) {
       if (!n.isDisconnected) maxActiveBottom = Math.max(maxActiveBottom, n.y + n.height);
@@ -1066,39 +1043,44 @@
     fitToScreen();
     saveAndBroadcast('tidy');
     const splitCount = Object.values(state.linksById).filter(l => l.isSplit).length;
-    showToast(`Tidy v4.0 Complete · ${splitCount} Split Links`);
+    showToast(`Tidy v4.1 Complete · ${splitCount} Split Links`);
   }
 
   // ============================================================================
-  // 8. VIEWPORT FIT & CAMERA CONTROLS
+  // 8. VIEWPORT FIT & CAMERA CONTROLS (ZOOM-INVARIANT)
   // ============================================================================
   function fitToScreen() {
+    vw = window.innerWidth;
+    vh = window.innerHeight;
     const colLayout = getColumnLayout();
     const nodes = Object.values(state.nodesById);
+    const headerBottom = getHeaderTopY() + STICKY_HEADER_HEIGHT;
+
     if (!nodes.length) {
-      state.camera = { x: 20, y: getHeaderTopY() + STICKY_HEADER_HEIGHT + 20, zoom: 0.85 };
+      state.camera = { x: 20, y: headerBottom + 20, zoom: 0.85 };
       return;
     }
+
     let minY = Infinity, maxY = -Infinity;
     for (const n of nodes) {
       minY = Math.min(minY, n.y);
       maxY = Math.max(maxY, n.y + n.height);
     }
-    const worldW = Math.max(1200, colLayout.totalWidth);
-    const worldH = Math.max(400, maxY - minY + 120);
-    const availW = vw - 32;
-    const headerBottom = getHeaderTopY() + STICKY_HEADER_HEIGHT;
-    const dockReserve = isMobileOrTouchDevice() ? 68 : 20;
-    const availH = vh - headerBottom - dockReserve - 20;
+
+    const worldW = Math.max(800, colLayout.totalWidth);
+    const worldH = Math.max(360, maxY - minY + 80);
+    const availW = Math.max(280, vw - 40);
+    const dockReserve = isMobileOrTouchDevice() ? 72 : 24;
+    const availH = Math.max(240, vh - headerBottom - dockReserve - 16);
 
     const zX = availW / worldW;
     const zY = availH / worldH;
     const zoom = Math.max(MIN_ZOOM, Math.min(1.05, Math.min(zX, zY)));
 
     state.camera.zoom = zoom;
-    const updatedLayout = getColumnLayout();
-    state.camera.x = (vw - updatedLayout.totalWidth * zoom) / 2;
-    state.camera.y = headerBottom + 24 - minY * zoom;
+    state.camera.x = Math.round((vw - worldW * zoom) / 2);
+    state.camera.y = Math.round(headerBottom + Math.max(18, (availH - (maxY - minY) * zoom) / 2) - minY * zoom);
+    computeHorizontalLinksAndStubs();
   }
 
   function screenToWorld(sx, sy) {
@@ -1147,7 +1129,7 @@
 
   function loadStressTestDemo(autoTidy = false) {
     pushUndo();
-    state.mapId = 'bdn_stress_v4';
+    state.mapId = 'bdn_stress_v4_1';
     state.fileSyncToken = generateHexToken(32);
     state.mapTitle = 'National Operations & Resilience Transformation BDN (Stress Test)';
     state.columns = STRESS_COLS.map(([id, title, color]) => ({ id, title, color }));
@@ -1180,17 +1162,15 @@
       computeHorizontalLinksAndStubs();
       fitToScreen();
       saveAndBroadcast('stress_raw');
-      showToast('Loaded 28-Box Untidied Stress Test — Click "Tidy v4.0"');
+      showToast('Loaded 28-Box Untidied Stress Test — Click "Tidy v4.1"');
     }
   }
 
   // ============================================================================
-  // 10. CRYPTOGRAPHIC 3-TIER P2P SYNC (BroadcastChannel + MQTT + WebRTC)
+  // 10. CRYPTOGRAPHIC 3-TIER P2P SYNC (BroadcastChannel + LocalStorage)
   // ============================================================================
   const clientPeerId = 'peer_' + Math.random().toString(36).slice(2, 10);
   let bcChannel = null;
-  let mqttSockets = [];
-  let rtcPeers = {};
   let activeP2PCount = 0;
 
   function updateSyncPill(mode = 'saved') {
@@ -1249,7 +1229,7 @@
   function saveAndBroadcast(reason = 'edit') {
     state.updatedAt = Date.now();
     try {
-      localStorage.setItem('bdn_state_v4', JSON.stringify(state));
+      localStorage.setItem('bdn_state_v4_1', JSON.stringify(state));
     } catch (e) {}
     if (bcChannel) {
       try {
@@ -1329,6 +1309,7 @@
       dpr = window.devicePixelRatio || 1;
       canvas.width = vw * dpr;
       canvas.height = vh * dpr;
+      computeHorizontalLinksAndStubs();
     }
 
     const styles = getComputedStyle(document.body);
@@ -1417,7 +1398,6 @@
           ctx.fillText(lnk.label, lx, ly - 1.5);
         }
       } else {
-        // Split link fallback with numbered badges
         const yA = rA.y + rA.h / 2;
         const yB = rB.y + rB.h / 2;
         const stubLen = 28;
@@ -1482,7 +1462,6 @@
         startTextY += lineH;
       }
 
-      // Pin / Sub-lane micro-badges
       if (node.isAutoLayoutOptOut) {
         ctx.font = '11px sans-serif';
         ctx.fillText('📌', r.x + r.w - 14, r.y + 13);
@@ -1493,7 +1472,6 @@
         ctx.fillText('L2', r.x + r.w - 14, r.y + r.h - 10);
       }
 
-      // Top & bottom resize handles when selected
       if (isSelected) {
         ctx.fillStyle = accentCol;
         drawRoundedRect(r.x + r.w / 2 - 18, r.y - 3, 36, 6, 3);
@@ -1524,12 +1502,10 @@
       ctx.strokeStyle = state.selectedColId === col.id ? col.color : 'rgba(148, 163, 184, 0.25)';
       ctx.stroke();
 
-      // Top colour bar on column header
       ctx.fillStyle = col.color || accentCol;
       drawRoundedRect(sx + 4, headerY, Math.max(36, sw - 8), 4, 2);
       ctx.fill();
 
-      // Reorder Controls (◀ / ▶) & + Add Box button on header
       const showBtns = sw >= 115;
       const btnW = 20, btnH = 20;
       const btnY = headerY + (STICKY_HEADER_HEIGHT - btnH) / 2 + 2;
@@ -1546,7 +1522,6 @@
         ctx.fillText('+', sx + sw - 14, btnY + btnH / 2);
       }
 
-      // Multi-line word-wrapped column title (up to 2 lines)
       const availTitleW = Math.max(40, sw - (showBtns ? 68 : 16));
       const fontSize = sw < 140 ? 10.5 : (sw < 190 ? 11.5 : 12.5);
       const titleFont = `700 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
@@ -1583,10 +1558,12 @@
   }
 
   // ============================================================================
-  // 12. INTERACTION, HIT-TESTING, DRAG/RESIZE & KEYBOARD-FIRST UX
+  // 12. INTERACTION, HIT-TESTING, DRAG/RESIZE, WHEEL & PINCH ZOOM
   // ============================================================================
   let dragState = null;
   let lastBroadcastMs = 0;
+  const activeTouches = new Map();
+  let lastPinchDist = null;
 
   function hitTestHeader(sx, sy) {
     for (const h of headerHitBoxes) {
@@ -1612,7 +1589,6 @@
         return { type: 'node', node: n, rect: r };
       }
     }
-    // Hit test horizontal links
     for (const lnk of Object.values(state.linksById)) {
       const nA = state.nodesById[lnk.fromId];
       const nB = state.nodesById[lnk.toId];
@@ -1753,8 +1729,25 @@
     }
   });
 
-  // Pointer & Touch Handling
+  function zoomAroundScreenPoint(factor, sx, sy) {
+    const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.camera.zoom * factor));
+    const wx = (sx - state.camera.x) / state.camera.zoom;
+    const wy = (sy - state.camera.y) / state.camera.zoom;
+    state.camera.zoom = nextZoom;
+    state.camera.x = sx - wx * nextZoom;
+    state.camera.y = sy - wy * nextZoom;
+  }
+
+  // Pointer & 2-Finger Pinch Handling
   canvas.addEventListener('pointerdown', (e) => {
+    activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activeTouches.size === 2) {
+      const pts = Array.from(activeTouches.values());
+      lastPinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      dragState = null;
+      return;
+    }
+
     closeAllPanels();
     commitInlineEditor();
 
@@ -1830,6 +1823,21 @@
   });
 
   window.addEventListener('pointermove', (e) => {
+    if (activeTouches.has(e.pointerId)) {
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (activeTouches.size === 2) {
+      const pts = Array.from(activeTouches.values());
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      if (lastPinchDist && lastPinchDist > 10 && dist > 10) {
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        zoomAroundScreenPoint(dist / lastPinchDist, midX, midY);
+      }
+      lastPinchDist = dist;
+      return;
+    }
+
     const sx = e.clientX, sy = e.clientY;
     const wpt = screenToWorld(sx, sy);
     pointerWorld = wpt;
@@ -1885,13 +1893,17 @@
     }
   });
 
-  window.addEventListener('pointerup', () => {
+  function clearPointer(e) {
+    activeTouches.delete(e.pointerId);
+    if (activeTouches.size < 2) lastPinchDist = null;
     if (dragState && (dragState.type === 'node' || dragState.type === 'resize-top' || dragState.type === 'resize-bottom')) {
       saveAndBroadcast('drag_end');
     }
     dragState = null;
     canvas.classList.remove('dragging-canvas');
-  });
+  }
+  window.addEventListener('pointerup', clearPointer);
+  window.addEventListener('pointercancel', clearPointer);
 
   canvas.addEventListener('dblclick', (e) => {
     const sx = e.clientX, sy = e.clientY;
@@ -1918,20 +1930,16 @@
     else if (hit && hit.type === 'link') openInlineEditorForLink(hit.link.id);
   });
 
+  // v4.1 Direct Mouse-Wheel Zoom toward cursor (Shift+Wheel pans horizontally)
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      const factor = Math.exp(-e.deltaY * 0.0018);
-      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.camera.zoom * factor));
-      const wx = (e.clientX - state.camera.x) / state.camera.zoom;
-      const wy = (e.clientY - state.camera.y) / state.camera.zoom;
-      state.camera.zoom = nextZoom;
-      state.camera.x = e.clientX - wx * nextZoom;
-      state.camera.y = e.clientY - wy * nextZoom;
-    } else {
-      state.camera.x -= e.deltaX;
-      state.camera.y -= e.deltaY;
+    if (e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      state.camera.x -= (e.deltaY || e.deltaX);
+      return;
     }
+    const delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+    const factor = Math.exp(-delta * 0.0014);
+    zoomAroundScreenPoint(factor, e.clientX, e.clientY);
   }, { passive: false });
 
   // ============================================================================
@@ -1990,6 +1998,7 @@
     } else if (e.key.toLowerCase() === 'f') {
       e.preventDefault();
       fitToScreen();
+      showToast('Fitted Network to Viewport');
     } else if (e.key.toLowerCase() === 'l') {
       e.preventDefault();
       if (state.selectedNodeId) {
@@ -2059,7 +2068,6 @@
   }
 
   function openBdnFile() {
-    // Always use clean read-only <input type="file"> on mobile/touch to avoid Android OS popup freeze
     fileInput.value = '';
     fileInput.click();
   }
@@ -2105,13 +2113,17 @@
   document.getElementById('btnUndo').addEventListener('click', undo);
   document.getElementById('btnRedo').addEventListener('click', redo);
   document.getElementById('btnTidy').addEventListener('click', tidyLayout);
-  document.getElementById('btnFit').addEventListener('click', fitToScreen);
+  document.getElementById('btnFit').addEventListener('click', () => {
+    fitToScreen();
+    showToast('Fitted Network to Viewport');
+  });
   document.getElementById('btnAddBoxHud').addEventListener('click', () => addBoxInColumn(state.selectedColId || state.columns[0].id));
   document.getElementById('btnAddColHud').addEventListener('click', () => {
     pushUndo();
     const id = uid('col');
     state.columns.push({ id, title: 'New Column', color: '#38bdf8' });
     computeHorizontalLinksAndStubs();
+    fitToScreen();
     saveAndBroadcast('add_col');
   });
 
