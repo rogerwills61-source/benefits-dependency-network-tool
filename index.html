@@ -2128,7 +2128,8 @@ document.getElementById('menuSaveDefaultCols').addEventListener('click',()=>{hid
 document.getElementById('menuRestoreFactoryCols').addEventListener('click',()=>{hideAllMenus();localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);updateStatusPill('↺ Factory Cols');});
 document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();performIdempotentTidy();saveState();fitScreen();});
 document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(false);fitScreen();});
-document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
+document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();
+  document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});loadStressTestDemo();});
 
 document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
 document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
@@ -2178,6 +2179,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
