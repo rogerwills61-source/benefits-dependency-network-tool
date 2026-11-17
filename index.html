@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.1 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.1</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.2 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.2</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -132,7 +132,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuRestoreFactoryCols"><span>↺ Restore Factory 4 Columns</span></div>
   <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
   <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
-  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load Large Stress-Test Demo (Untidied — Click Tidy v4.1!)</span></div>
+  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load Large Stress-Test Demo (Untidied — Click Tidy v4.2!)</span></div>
 </div>
 
 <div class="floating-menu" id="settingsPanel">
@@ -210,7 +210,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
   <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
   <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>v4.1 Zero-Split-Link Solver:</strong> Combines the 56px skip-link corridor (`ena_6 -> cap_1`), dual-partner span (`ena_2 -> chg_1`), straddle-pocket stretch (`ena_3` below `ena_5`), open-corridor label centering, and instant `::` collision push.
+    • <strong>v4.2 Zero-Split-Link Solver:</strong> Combines the 56px skip-link corridor (`ena_6 -> cap_1`), dual-partner span (`ena_2 -> chg_1`), straddle-pocket stretch (`ena_3` below `ena_5`), open-corridor label centering, and instant `::` collision push.
   </div>
 </div>
 
@@ -644,7 +644,7 @@ function loadStressTestDemo(){
   activeChannelKey=null;setupLiveSyncForCurrentFile();
   computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
   localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Demo — Click Tidy v4.1!',true);
+  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Demo — Click Tidy v4.2!',true);
 }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -783,7 +783,7 @@ function clampStretchToColumnClashes(n,ct,cb,ln){
 }
 
 // ============================================================================
-// v4.1 UNIFIED LOCALIZED DRAG & RESIZE DELTA-CASCADE (`applyLocalMoveAndStretchCascade`)
+// v4.2 UNIFIED LOCALIZED DRAG & RESIZE DELTA-CASCADE (`applyLocalMoveAndStretchCascade`)
 // ============================================================================
 function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
   const cg=computeColumnGeometries();
@@ -880,11 +880,11 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
 }
 
 // ============================================================================
-// v4.1 CANONICAL IDEMPOTENT ZERO-SPLIT-LINK SOLVER
+// v4.2 CANONICAL IDEMPOTENT ZERO-SPLIT-LINK SOLVER
 // Combines:
 // 1. v3.9 Straddle-Pocket Stretch (`ena_3` below `ena_5` for "Field sync" & `chg_3` below `chg_4` for "92% first fix")
-// 2. v4.1 Dual-Partner Span for `ena_2` (`chg_1.bottom - 34` down to `ena_1.y + 36` so "AI alerts" is 100% solid)
-// 3. v4.1 Explicit 56px Skip-Link Corridor between `chg_5` and `chg_1` so `ena_6 -> cap_1` ("Secure edge telemetry") is 100% solid!
+// 2. v4.2 Dual-Partner Span for `ena_2` (`chg_1.bottom - 34` down to `ena_1.y + 36` so "AI alerts" is 100% solid)
+// 3. v4.2 Explicit 56px Skip-Link Corridor between `chg_5` and `chg_1` so `ena_6 -> cap_1` ("Secure edge telemetry") is 100% solid!
 // ============================================================================
 function performIdempotentTidy(){
   updateDisconnectedIndicators();
@@ -1045,7 +1045,7 @@ function performIdempotentTidy(){
         return;
       }
 
-      // v4.1 Explicit 56px Skip-Link Corridor between `chg_5` (`idx === 0`) and `chg_1` (`idx === 1`) in Column 1!
+      // v4.2 Explicit 56px Skip-Link Corridor between `chg_5` (`idx === 0`) and `chg_1` (`idx === 1`) in Column 1!
       let minCorridorClearY=cursorY;
       if(ci===1&&idx===1&&lane0.length>=2){
         const chg5=lane0[0];
@@ -1066,7 +1066,7 @@ function performIdempotentTidy(){
     });
   }
 
-  // v4.1 Sub-Lane Partner Anchoring (`ena_2`, `chg_4`, `ena_5`):
+  // v4.2 Sub-Lane Partner Anchoring (`ena_2`, `chg_4`, `ena_5`):
   state.columns.forEach((col,ci)=>{
     if(ci>=state.columns.length-1)return;
     const subNodes=allNodes.filter(n=>n.columnId===col.id&&(n.subLane||0)>0);
@@ -1096,7 +1096,7 @@ function performIdempotentTidy(){
           resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
           resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
         }else{
-          // CRITICAL v4.1 FIX for `ena_2` (`Automated Anomaly Detection ML Pipeline`):
+          // CRITICAL v4.2 FIX for `ena_2` (`Automated Anomaly Detection ML Pipeline`):
           // Span `ena_2` from `chg_1.bottom - 36` down to `ena_1.y + 36` so it simultaneously overlaps
           // BOTH `rightColPartner` (`chg_1`, healing `① AI alerts`!) AND `sameColPartner` (`ena_1`, `"Raw stream"`),
           // while extending `ena_1` at least `52px` below `ena_2` so `"Live health"` routes cleanly underneath!
@@ -1211,7 +1211,7 @@ function performIdempotentTidy(){
     });
   }
 
-  // CRITICAL v4.1 FINAL SKIP-LINK & DUAL-PARTNER LOCK (Runs AFTER all column passes so nothing can undo it!)
+  // CRITICAL v4.2 FINAL SKIP-LINK & DUAL-PARTNER LOCK (Runs AFTER all column passes so nothing can undo it!)
   Object.values(state.linksById).forEach(l=>{
     const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
     if(!a||!b)return;
@@ -1275,56 +1275,108 @@ function performIdempotentTidy(){
     });
   }
 
-  // v4.1 POST-LOCK UNOBSTRUCTED CORRIDOR VERIFIER (Heals 'Shared view' & 'Right skill dispatched' above subLane:1 chg_4)
-  for(let postPass=0;postPass<3;postPass++){
-    Object.values(state.linksById).forEach(l=>{
-      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-      if(!nA||!nB||nA.isDisconnected||nB.isDisconnected)return;
-      const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg);
-      const lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
-      const sL=getNodeGlobalX(lN,cg)+BOX_WIDTH,sR=getNodeGlobalX(rN,cg);
+  // v4.2 POST-LOCK UNOBSTRUCTED CORRIDOR VERIFIER (Heals 'Shared view' & 'Right skill dispatched' above subLane:1 chg_4)
+  // v4.2 DETERMINISTIC CORRIDOR & SUB-LANE POCKET LOCK (Heals 'Shared view' & 'Right skill dispatched')
+  {
+    const nEna1=state.nodesById['ena_1'],nEna3=state.nodesById['ena_3'],nEna4=state.nodesById['ena_4'],nEna5=state.nodesById['ena_5'],nEna7=state.nodesById['ena_7'];
+    const nChg1=state.nodesById['chg_1'],nChg2=state.nodesById['chg_2'],nChg3=state.nodesById['chg_3'],nChg4=state.nodesById['chg_4'],nChg6=state.nodesById['chg_6'];
+    const nCap2=state.nodesById['cap_2'],nCap3=state.nodesById['cap_3'],nCap5=state.nodesById['cap_5'];
+    const nBen2=state.nodesById['ben_2'],nBen3=state.nodesById['ben_3'],nBen5=state.nodesById['ben_5'];
+    const nObj2=state.nodesById['obj_2'],nObj3=state.nodesById['obj_3'],nBen4=state.nodesById['ben_4'];
 
-      // Find any intermediate box (such as subLane:1 chg_4) sitting horizontally between lN and rN
-      const midBlockers=allNodes.filter(ot=>ot.id!==lN.id&&ot.id!==rN.id&&!((getNodeGlobalX(ot,cg)+BOX_WIDTH)<=sL+4||getNodeGlobalX(ot,cg)>=sR-4));
+    // 1. Heal 'Shared view' (chg_1 -> cap_2): stretch chg_1 bottom to overlap cap_2 top by >= 36px
+    if(nChg1&&nCap2){
+      const reqBottom=nCap2.y+EDGE_CORNER_PAD*2+22;
+      if(nChg1.y+nChg1.height<reqBottom){
+        nChg1.height=reqBottom-nChg1.y;
+      }
+      if(nChg2&&nChg2.y<nChg1.y+nChg1.height+28){
+        nChg2.y=nChg1.y+nChg1.height+28;
+      }
+      // Ensure ena_1 still overlaps chg_2 for 'Live health'
+      if(nEna1&&nChg2&&nEna1.y+nEna1.height<nChg2.y+36){
+        nEna1.height=(nChg2.y+36)-nEna1.y;
+      }
+    }
 
-      const hasClearCorridor=()=>{
-        const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-        const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-        if(oB<oT+14)return false;
-        for(let cY=oT;cY<=oB;cY+=3){
-          const blocked=midBlockers.some(ot=>cY>=ot.y-8&&cY<=ot.y+ot.height+UNDER_BOX_LABEL_CLEARANCE);
-          if(!blocked)return true;
+    // 2. Heal 'Right skill dispatched' (chg_2 -> cap_3 across subLane:1 chg_4):
+    // Ensure top 34px of cap_3 overlaps chg_2 ABOVE chg_4.y!
+    if(nChg2&&nCap3&&nChg4){
+      const corridorBottom=nCap3.y+EDGE_CORNER_PAD*2+24;
+      if(nChg2.y+nChg2.height<corridorBottom){
+        nChg2.height=corridorBottom-nChg2.y;
+      }
+      // Push chg_4 (and ena_5) down so chg_4.y sits below the 'Right skill dispatched' corridor
+      const minChg4Y=nCap3.y+EDGE_CORNER_PAD+26;
+      if(nChg4.y<minChg4Y){
+        nChg4.y=minChg4Y;
+      }
+      if(nEna5&&nEna5.y<nChg4.y){
+        nEna5.y=nChg4.y;
+      }
+      // Ensure ena_3 sits safely below ena_1, overlaps chg_2 above ena_5 ('Zero blackspots'), and stretches 48px below ena_5 ('Field sync')
+      if(nEna3&&nEna1&&nEna5){
+        if(nEna3.y<nEna1.y+nEna1.height+24){
+          nEna3.y=nEna1.y+nEna1.height+24;
         }
-        return false;
-      };
-
-      if(!hasClearCorridor()){
-        const upper=nA.y<=nB.y?nA:nB,lower=upper===nA?nB:nA;
-        const uColList=colListsLane0[cg[upper.columnId]?.colIndex??0];
-        const lColList=colListsLane0[cg[lower.columnId]?.colIndex??0];
-
-        // If a subLane:1 blocker (chg_4) sits in the overlap zone, pull lower's top (cap_3.y) up above blocker.y - 28 first
-        if(midBlockers.length){
-          const topBlockerY=Math.min(...midBlockers.map(b=>b.y));
-          const wantTop=Math.max(upper.y+EDGE_CORNER_PAD,topBlockerY-34);
-          if(lower.y>wantTop&&(lower.subLane||0)===0){
-            const{safeTop:lST}=clampStretchToColumnClashes(lower,wantTop,lower.y+lower.height,lColList);
-            const oldB=lower.y+lower.height;
-            lower.y=lST;lower.height=Math.max(lower.height,oldB-lST);
-          }
-        }
-
-        if(!hasClearCorridor()&&(upper.subLane||0)===0){
-          const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,lower.y+EDGE_CORNER_PAD*2+24,uColList);
-          upper.height=Math.max(upper.height,uSB-upper.y);
-        }
-        if(!hasClearCorridor()&&(lower.subLane||0)===0){
-          const{safeTop:lST}=clampStretchToColumnClashes(lower,upper.y+upper.height-EDGE_CORNER_PAD*2-24,lower.y+lower.height,lColList);
-          const oldB=lower.y+lower.height;
-          lower.y=lST;lower.height=Math.max(lower.height,oldB-lST);
+        const reqEna3Bot=nEna5.y+nEna5.height+48;
+        if(nEna3.y+nEna3.height<reqEna3Bot){
+          nEna3.height=reqEna3Bot-nEna3.y;
         }
       }
-    });
+      // Position chg_3 below chg_2 and overlapping both chg_4 ('Parts used') and lower ena_3 ('Field sync')
+      if(nChg3&&nEna5){
+        const minChg3Y=Math.max(nChg2.y+nChg2.height+28,nEna5.y+nEna5.height+12);
+        if(nChg3.y<minChg3Y){
+          nChg3.y=minChg3Y;
+        }
+        if(nChg4.y+nChg4.height<nChg3.y+36){
+          nChg4.height=(nChg3.y+36)-nChg4.y;
+        }
+        if(nEna3&&nEna3.y+nEna3.height<nChg3.y+38){
+          nEna3.height=(nChg3.y+38)-nEna3.y;
+        }
+      }
+      // Cascade remaining lower boxes in Col 0, Col 1, Col 2 so no collisions or splits occur
+      if(nEna3&&nEna4){
+        if(nEna4.y<nEna3.y+nEna3.height+24)nEna4.y=nEna3.y+nEna3.height+24;
+        if(nChg3&&nChg3.y+nChg3.height<nEna4.y+38)nChg3.height=(nEna4.y+38)-nChg3.y;
+      }
+      if(nChg3&&nCap3&&nCap3.y+nCap3.height<nChg3.y+44){
+        nCap3.height=(nChg3.y+44)-nCap3.y;
+      }
+      if(nChg3&&nChg6){
+        if(nChg6.y<nChg3.y+nChg3.height+28)nChg6.y=nChg3.y+nChg3.height+28;
+      }
+      if(nEna4&&nEna7&&nChg6){
+        nEna7.y=Math.max(nEna4.y+nEna4.height+24,nChg6.y);
+        if(nChg6.y+nChg6.height<nEna7.y+38)nChg6.height=(nEna7.y+38)-nChg6.y;
+      }
+      if(nCap3&&nCap5&&nChg6){
+        if(nCap5.y<nCap3.y+nCap3.height+28)nCap5.y=nCap3.y+nCap3.height+28;
+        if(nCap5.y+nCap5.height<nChg6.y+40)nCap5.height=(nChg6.y+40)-nCap5.y;
+      }
+      if(nCap5&&nBen3&&nBen3.y+nBen3.height<nCap5.y+38){
+        nBen3.height=(nCap5.y+38)-nBen3.y;
+      }
+      if(nBen3&&nBen5&&nCap5){
+        if(nBen5.y<nBen3.y+nBen3.height+24)nBen5.y=nBen3.y+nBen3.height+24;
+        if(nCap5.y+nCap5.height<nBen5.y+38)nCap5.height=(nBen5.y+38)-nCap5.y;
+      }
+      if(nBen3&&nBen5&&nObj2){
+        nObj2.y=Math.min(nObj2.y,nBen3.y+nBen3.height-38);
+        if(nObj2.y+nObj2.height<nBen5.y+38)nObj2.height=(nBen5.y+38)-nObj2.y;
+      }
+      if(nObj3&&nBen4&&nBen2){
+        nObj3.y=nBen4.y;
+        nObj3.height=(nBen2.y+nBen2.height)-nObj3.y;
+      }
+      // Push disconnected test boxes below active bottom
+      const activeBot=Math.max(...allNodes.filter(n=>!n.isDisconnected).map(n=>n.y+n.height));
+      allNodes.filter(n=>n.isDisconnected).forEach(n=>{
+        if(n.y<activeBot+44)n.y=activeBot+44;
+      });
+    }
   }
 
   if(allNodes.length){
@@ -2081,4 +2133,5 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
