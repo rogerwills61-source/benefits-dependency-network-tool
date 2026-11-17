@@ -209,13 +209,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
   <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
   <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>Built-In Stress Test:</strong> Click <code>☰ Menu</code> → <code>🚀 Load Large Stress-Test Demo</code> to load a 28-box, 5-column network instantly with one click!<br>
+    • <strong>Built-In Stress Test:</strong> Click <code>☰ Menu</code> → <code>🚀 Load Large Stress-Test Demo</code> to load and sync the 28-box, 5-column network with one click.<br>
     • <strong>Self-Healing Sub-50ms Sync:</strong> Automatically discovers peers, reconnects on wake, and never prompts mobile devices to save on load.
   </div>
 </div>
 
 <script>
-const STORAGE_KEY_STATE='bdn_studio_state_v16',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v16',STORAGE_KEY_SETTINGS='bdn_studio_settings_v16';
+const STORAGE_KEY_STATE='bdn_studio_state_v17',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v17',STORAGE_KEY_SETTINGS='bdn_studio_settings_v17';
 const FACTORY_COLUMNS=[
   {id:'col_enablers',title:'Enablers',color:'#38bdf8'},
   {id:'col_changes',title:'Business Changes',color:'#34d399'},
@@ -487,117 +487,1040 @@ function loadBdnJsonString(str,fn=''){
   }catch(e){alert('Could not parse BDN JSON file.');}
 }
 
-// Built-in Large Stress-Test Demo Data loader (28 boxes, 5 columns, multi-link scenarios)
+async function saveBdnFile(saveAs=false){
+  hideAllMenus();
+  if(saveAs){state.mapId='bdn_'+Math.random().toString(36).slice(2,10);state.fileSyncToken=generateCryptographicFileToken();activeChannelKey=null;setupLiveSyncForCurrentFile();}
+  const ser=JSON.stringify(state,null,2);
+  if('showSaveFilePicker' in window&&!isMobileOrTouchDevice()&&(saveAs||!sessionFileHandle)){
+    try{sessionFileHandle=await window.showSaveFilePicker({suggestedName:getCleanFileName('.bdn.json'),types:[{description:'BDN Studio Network (.bdn.json)',accept:{'application/json':['.bdn.json','.json']}}]});}
+    catch(err){if(err&&err.name==='AbortError')return;}
+  }
+  if(sessionFileHandle&&!isMobileOrTouchDevice()){
+    try{const w=await sessionFileHandle.createWritable();await w.write(ser);await w.close();const f=await sessionFileHandle.getFile();lastFileModifiedTime=f.lastModified;updateStatusPill('✓ Saved',true);return;}
+    catch(e){sessionFileHandle=null;}
+  }
+  const blob=new Blob([ser],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=u;a.download=getCleanFileName('.bdn.json');a.click();URL.revokeObjectURL(u);updateStatusPill('✓ Downloaded');
+}
+
+function exportPngDiagram(){hideAllMenus();draw();const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=getCleanFileName('.png');a.click();updateStatusPill('✓ PNG Saved');}
+
+function createSnapshot(){return JSON.stringify({mapTitle:state.mapTitle,columns:state.columns,nodesById:state.nodesById,linksById:state.linksById,deletedById:state.deletedById,selectedNodeId:state.selectedNodeId,selectedLinkId:state.selectedLinkId,selectedColId:state.selectedColId});}
+function pushUndoState(){const s=createSnapshot();if(undoStack.length&&undoStack[undoStack.length-1]===s)return;undoStack.push(s);if(undoStack.length>MAX_HISTORY)undoStack.shift();redoStack.length=0;updateUndoRedoButtons();}
+function restoreSnapshot(s){
+  try{
+    const p=JSON.parse(s);state.mapTitle=p.mapTitle||state.mapTitle;state.columns=p.columns||[];state.nodesById=p.nodesById||{};state.linksById=p.linksById||{};state.deletedById=p.deletedById||{};
+    state.selectedNodeId=p.selectedNodeId||null;state.selectedLinkId=p.selectedLinkId||null;state.selectedColId=p.selectedColId||(state.columns[0]?.id||null);
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();saveState();updateUndoRedoButtons();draw();
+  }catch(e){}
+}
+function performUndo(){if(undoStack.length){redoStack.push(createSnapshot());restoreSnapshot(undoStack.pop());}}
+function performRedo(){if(redoStack.length){undoStack.push(createSnapshot());restoreSnapshot(redoStack.pop());}}
+function updateUndoRedoButtons(){document.getElementById('btnUndo').disabled=undoStack.length===0;document.getElementById('btnRedo').disabled=redoStack.length===0;}
+
+function getDefaultColumns(){
+  try{const s=localStorage.getItem(STORAGE_KEY_DEFAULT_COLS);if(s){const p=JSON.parse(s);if(Array.isArray(p)&&p.length)return p;}}catch(e){}
+  return JSON.parse(JSON.stringify(FACTORY_COLUMNS));
+}
+
+function computeColumnGeometries(){
+  const cg={},cnt=Math.max(1,state.columns.length),z=state.camera.zoom||1,mob=window.innerWidth<=820;
+  const minW=mob?290:Math.max(290,Math.floor((window.innerWidth/Math.min(1,z))/cnt));
+  let rx=0;
+  state.columns.forEach((col,idx)=>{
+    const sx=rx,cNodes=Object.values(state.nodesById).filter(n=>n.columnId===col.id);
+    let maxL=0;cNodes.forEach(n=>{if(typeof n.subLane!=='number'||n.subLane<0)n.subLane=0;if(n.subLane>maxL)maxL=n.subLane;});
+    const lc=maxL+1,reqW=lc*BOX_WIDTH+(lc-1)*SUBLANE_GAP+COL_SIDE_PADDING*2,cw=Math.max(minW,reqW),ex=sx+cw;
+    cg[col.id]={
+      colIndex:idx,x:sx,endX:ex,width:cw,laneCount:lc,
+      laneX:(sl=0)=>{
+        const s=Math.max(0,Math.min(lc-1,sl||0)),tw=lc*BOX_WIDTH+(lc-1)*SUBLANE_GAP,fx=sx+Math.max(COL_SIDE_PADDING,(cw-tw)/2);
+        return Math.min(ex-BOX_WIDTH-14,Math.max(sx+14,fx+s*(BOX_WIDTH+SUBLANE_GAP)));
+      }
+    };
+    rx+=cw;
+  });
+  cg._totalWorldWidth=rx;return cg;
+}
+
+function clampCameraBounds(){
+  const cg=computeColumnGeometries(),tsw=(cg._totalWorldWidth||window.innerWidth)*state.camera.zoom;
+  if(tsw<=window.innerWidth)state.camera.x=(window.innerWidth-tsw)/2;
+  else state.camera.x=Math.min(0,Math.max(window.innerWidth-tsw,state.camera.x));
+}
+function getNodeGlobalX(n,cg){if(typeof n.dragTempX==='number')return n.dragTempX;const c=cg[n.columnId];return c?c.laneX(n.subLane||0):COL_SIDE_PADDING;}
+function findColumnAtWorldX(wx,cg){for(const c of state.columns){const g=cg[c.id];if(g&&wx>=g.x&&wx<=g.endX)return c;}return wx<0?state.columns[0]:state.columns[state.columns.length-1];}
+
+function createStarterNetwork(blank=false){
+  state.mapId='bdn_'+Math.random().toString(36).slice(2,10);state.fileSyncToken=generateCryptographicFileToken();
+  state.mapTitle=blank?'Untitled BDN':'Service Transformation BDN';state.updatedAt=Date.now();state.deletedById={};
+  state.columns=getDefaultColumns();state.nodesById={};state.linksById={};state.camera={x:0,y:0,zoom:1};
+  document.getElementById('docTitleBtn').textContent=state.mapTitle;
+  const cols=state.columns,cObj=cols[cols.length-1]?.id||cols[0].id;
+  if(!blank){
+    const cBen=cols[Math.max(0,cols.length-2)]?.id||cols[0].id,cChg=cols[Math.max(0,cols.length-3)]?.id||cols[0].id,cEna=cols[0].id;
+    const o1=addNodeInternal(cObj,'Reduce Operational Cost by 15%',0,165),o2=addNodeInternal(cObj,'Improve Service Resilience & SLA',0,355);
+    const b1=addNodeInternal(cBen,'Automated Triage & Dispatch Efficiency',0,165),b2=addNodeInternal(cBen,'Fewer Field Repeat Visits',0,265),b3=addNodeInternal(cBen,'Faster Incident Recovery',0,375);
+    const ch1=addNodeInternal(cChg,'Dispatchers Use Real-Time Telemetry',0,165),ch2=addNodeInternal(cChg,'Standardised Remote Diagnostics Workflow',0,305);
+    const e1=addNodeInternal(cEna,'Unified Telemetry Platform',0,205),e2=addNodeInternal(cEna,'Field Engineer Mobile Diagnostic App',0,335);
+    addLinkInternal(b1.id,o1.id,'Drives 60%',settings.defaultArrow);addLinkInternal(b2.id,o1.id,'Drives 40%',settings.defaultArrow);
+    addLinkInternal(b2.id,o2.id,'Reduces backlog',settings.defaultArrow);addLinkInternal(b3.id,o2.id,'Core SLA',settings.defaultArrow);
+    addLinkInternal(ch1.id,b1.id,'',settings.defaultArrow);addLinkInternal(ch2.id,b2.id,'',settings.defaultArrow);addLinkInternal(ch2.id,b3.id,'',settings.defaultArrow);
+    addLinkInternal(e1.id,ch1.id,'',settings.defaultArrow);addLinkInternal(e1.id,ch2.id,'',settings.defaultArrow);addLinkInternal(e2.id,ch2.id,'',settings.defaultArrow);
+    state.selectedNodeId=o1.id;
+  }else state.selectedNodeId=null;
+  state.selectedColId=cObj;activeChannelKey=null;setupLiveSyncForCurrentFile();performIdempotentTidy(false);saveState();
+}
+
+// Compact programmatic 28-box, 5-column Stress-Test loader (deterministic mapId & token so clicking it on Laptop + Mobile syncs immediately!)
 function loadStressTestDemo(){
-  pushUndoState();
-  const demoData={
-    "mapId": "bdn_stresstest_v27_01",
-    "fileSyncToken": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    "mapTitle": "National Operations & Resilience Transformation BDN (Stress Test)",
-    "updatedAt": 1763316000000,
-    "deletedById": {},
-    "columns": [
-      { "id": "col_enablers", "title": "Technology & Infrastructure Enablers", "color": "#38bdf8" },
-      { "id": "col_changes", "title": "Frontline Business Changes", "color": "#34d399" },
-      { "id": "col_capabilities", "title": "Operational Capabilities", "color": "#a78bfa" },
-      { "id": "col_benefits", "title": "Measurable Programme Benefits", "color": "#f472b6" },
-      { "id": "col_objectives", "title": "Strategic Mandate & Objectives", "color": "#fbbf24" }
-    ],
-    "nodesById": {
-      "ena_1": { "id": "ena_1", "columnId": "col_enablers", "text": "Core Cloud Telemetry & IoT Ingestion Platform", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_2": { "id": "ena_2", "columnId": "col_enablers", "text": "Automated Anomaly Detection ML Pipeline", "subLane": 1, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_3": { "id": "ena_3", "columnId": "col_enablers", "text": "Resilient Multi-Bearer Radio & Satellite Network", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_4": { "id": "ena_4", "columnId": "col_enablers", "text": "Offline-First Field Engineer Mobile App", "subLane": 0, "y": 415, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_5": { "id": "ena_5", "columnId": "col_enablers", "text": "Unified Digital Asset & Spares Inventory DB", "subLane": 0, "y": 525, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_6": { "id": "ena_6", "columnId": "col_enablers", "text": "Zero-Trust Identity & Biometric Access Gateway", "subLane": 0, "y": 640, "height": 72, "color": "#60a5fa", "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_7": { "id": "ena_7", "columnId": "col_enablers", "text": "Automated Supplier SLA & Contract Portal", "subLane": 0, "y": 765, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ena_8": { "id": "ena_8", "columnId": "col_enablers", "text": "Legacy Decommissioning Archive (Unlinked Test Box)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
-      "chg_1": { "id": "chg_1", "columnId": "col_changes", "text": "Control Room Shifts from Reactive to Predictive Triage", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_2": { "id": "chg_2", "columnId": "col_changes", "text": "Dynamic Multi-Agency Incident Routing Protocols", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_3": { "id": "chg_3", "columnId": "col_changes", "text": "Engineers Complete Guided Pre-Visit Diagnostics", "subLane": 0, "y": 415, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_4": { "id": "chg_4", "columnId": "col_changes", "text": "Automated Van-Stock Replenishment Triggers", "subLane": 1, "y": 470, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_5": { "id": "chg_5", "columnId": "col_changes", "text": "Role-Based Just-in-Time Security Elevation", "subLane": 0, "y": 640, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_6": { "id": "chg_6", "columnId": "col_changes", "text": "Commercial Teams Enforce Real-Time Penalty Credits", "subLane": 0, "y": 765, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "chg_7": { "id": "chg_7", "columnId": "col_changes", "text": "Ad-Hoc Paper Logbooks Retired (Severed Branch Test)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
-      "cap_1": { "id": "cap_1", "columnId": "col_capabilities", "text": "Automated Pre-Failure Dispatch & Self-Healing", "subLane": 0, "y": 165, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "cap_2": { "id": "cap_2", "columnId": "col_capabilities", "text": "Continuous Gold-Command Situational Awareness", "subLane": 0, "y": 290, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "cap_3": { "id": "cap_3", "columnId": "col_capabilities", "text": "Single-Visit First-Time Fix Capability", "subLane": 0, "y": 430, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "cap_4": { "id": "cap_4", "columnId": "col_capabilities", "text": "Continuous NIS2 & ISO27001 Audit Readiness", "subLane": 0, "y": 640, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "cap_5": { "id": "cap_5", "columnId": "col_capabilities", "text": "Transparent Vendor Performance & Cost Governance", "subLane": 0, "y": 765, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "cap_6": { "id": "cap_6", "columnId": "col_capabilities", "text": "Local Depot Manual Archiving (Severed Branch Test)", "subLane": 0, "y": 900, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": true, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": true },
-      "ben_1": { "id": "ben_1", "columnId": "col_benefits", "text": "40% Reduction in Unplanned Critical Outages", "subLane": 0, "y": 180, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ben_2": { "id": "ben_2", "columnId": "col_benefits", "text": "25% Faster Emergency Response & Recovery Time", "subLane": 0, "y": 310, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ben_3": { "id": "ben_3", "columnId": "col_benefits", "text": "£14.5m Annual Savings in Fleet & Repeat Visits", "subLane": 0, "y": 445, "height": 72, "color": "#2dd4bf", "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ben_4": { "id": "ben_4", "columnId": "col_benefits", "text": "Zero Critical Cyber Breaches or Regulatory Fines", "subLane": 0, "y": 640, "height": 72, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "ben_5": { "id": "ben_5", "columnId": "col_benefits", "text": "18% Reduction in Third-Party Supplier Spend", "subLane": 0, "y": 765, "height": 54, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "obj_1": { "id": "obj_1", "columnId": "col_objectives", "text": "99.99% National Critical Infrastructure Availability", "subLane": 0, "y": 210, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": true, "isDisconnected": false },
-      "obj_2": { "id": "obj_2", "columnId": "col_objectives", "text": "Deliver £22m Run-Rate Operational Cost Efficiency", "subLane": 0, "y": 470, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": false, "isDisconnected": false },
-      "obj_3": { "id": "obj_3", "columnId": "col_objectives", "text": "Full Statutory & Cyber Security Compliance (NIS2)", "subLane": 0, "y": 660, "height": 88, "color": null, "updatedAt": 1763316000000, "isManuallyPositioned": false, "isManuallyStretched": false, "isAutoLayoutOptOut": true, "isDisconnected": false }
-    },
-    "linksById": {
-      "lnk_1": { "id": "lnk_1", "fromId": "ena_1", "toId": "ena_2", "label": "Raw stream", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_2": { "id": "lnk_2", "fromId": "ena_2", "toId": "chg_1", "label": "AI alerts", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_3": { "id": "lnk_3", "fromId": "ena_1", "toId": "chg_2", "label": "Live health", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_4": { "id": "lnk_4", "fromId": "ena_3", "toId": "chg_2", "label": "Zero blackspots", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_5": { "id": "lnk_5", "fromId": "ena_3", "toId": "chg_3", "label": "Field sync", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_6": { "id": "lnk_6", "fromId": "ena_4", "toId": "chg_3", "label": "Guided workflow", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_7": { "id": "lnk_7", "fromId": "ena_5", "toId": "chg_4", "label": "Real-time stock", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_8": { "id": "lnk_8", "fromId": "chg_3", "toId": "chg_4", "label": "Parts used", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_9": { "id": "lnk_9", "fromId": "ena_6", "toId": "chg_5", "label": "SSO & MFA", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_10": { "id": "lnk_10", "fromId": "ena_7", "toId": "chg_6", "label": "Auto-audit", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_11": { "id": "lnk_11", "fromId": "chg_1", "toId": "cap_1", "label": "Proactive", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_12": { "id": "lnk_12", "fromId": "chg_1", "toId": "cap_2", "label": "Shared view", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_13": { "id": "lnk_13", "fromId": "chg_2", "toId": "cap_2", "label": "Multi-agency", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_14": { "id": "lnk_14", "fromId": "chg_2", "toId": "cap_3", "label": "Right skill dispatched", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_15": { "id": "lnk_15", "fromId": "chg_3", "toId": "cap_3", "label": "92% first fix", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_16": { "id": "lnk_16", "fromId": "chg_4", "toId": "cap_3", "label": "Zero parts delay", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_17": { "id": "lnk_17", "fromId": "chg_5", "toId": "cap_4", "label": "Zero standing privs", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_18": { "id": "lnk_18", "fromId": "chg_6", "toId": "cap_5", "label": "SLA tracking", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_19": { "id": "lnk_19", "fromId": "cap_1", "toId": "ben_1", "label": "65% call reduction", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_20": { "id": "lnk_20", "fromId": "cap_2", "toId": "ben_1", "label": "Prevents cascade", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_21": { "id": "lnk_21", "fromId": "cap_2", "toId": "ben_2", "label": "Gold command speed", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_22": { "id": "lnk_22", "fromId": "cap_3", "toId": "ben_2", "label": "Rapid restoration", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_23": { "id": "lnk_23", "fromId": "cap_3", "toId": "ben_3", "label": "Fewer truck rolls", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_24": { "id": "lnk_24", "fromId": "cap_4", "toId": "ben_4", "label": "Audit pass", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_25": { "id": "lnk_25", "fromId": "cap_5", "toId": "ben_3", "label": "Rebate recovery", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
-      "lnk_26": { "id": "lnk_26", "fromId": "cap_5", "toId": "ben_5", "label": "Vendor consolidation", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_27": { "id": "lnk_27", "fromId": "ben_1", "toId": "obj_1", "label": "Primary uptime driver", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_28": { "id": "lnk_28", "fromId": "ben_2", "toId": "obj_1", "label": "MTTR target", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_29": { "id": "lnk_29", "fromId": "ben_2", "toId": "obj_3", "label": "Statutory SLA", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
-      "lnk_30": { "id": "lnk_30", "fromId": "ben_3", "toId": "obj_2", "label": "65% of savings", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_31": { "id": "lnk_31", "fromId": "ben_5", "toId": "obj_2", "label": "35% of savings", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_32": { "id": "lnk_32", "fromId": "ben_4", "toId": "obj_3", "label": "Mandatory compliance", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false },
-      "lnk_33": { "id": "lnk_33", "fromId": "ena_6", "toId": "cap_1", "label": "Secure edge telemetry", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": true, "forceSplit": true },
-      "lnk_34": { "id": "lnk_34", "fromId": "chg_7", "toId": "cap_6", "label": "Orphaned link", "arrowMode": "right", "updatedAt": 1763316000000, "isSplit": false, "forceSplit": false }
-    },
-    "selectedNodeId": "obj_1",
-    "selectedLinkId": null,
-    "selectedColId": "col_objectives",
-    "camera": { "x": 0, "y": 0, "zoom": 1 }
-  };
-  state.mapId=demoData.mapId;
-  state.fileSyncToken=demoData.fileSyncToken;
-  state.mapTitle=demoData.mapTitle;
-  state.updatedAt=Date.now();
-  state.deletedById={};
-  state.columns=demoData.columns;
-  state.nodesById=demoData.nodesById;
-  state.linksById=demoData.linksById;
-  state.selectedNodeId=demoData.selectedNodeId;
-  state.selectedLinkId=null;
-  state.selectedColId=demoData.selectedColId;
+  pushUndoState();sessionFileHandle=null;
+  const ts=1763316000000;
+  state.mapId='bdn_stresstest_v29_01';
+  state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
+  state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
+  state.updatedAt=ts;state.deletedById={};
+  state.columns=[
+    {id:'col_enablers',title:'Technology & Infrastructure Enablers',color:'#38bdf8'},
+    {id:'col_changes',title:'Frontline Business Changes',color:'#34d399'},
+    {id:'col_capabilities',title:'Operational Capabilities',color:'#a78bfa'},
+    {id:'col_benefits',title:'Measurable Programme Benefits',color:'#f472b6'},
+    {id:'col_objectives',title:'Strategic Mandate & Objectives',color:'#fbbf24'}
+  ];
+  state.nodesById={};state.linksById={};
+  const boxes=[
+    ['ena_1','col_enablers','Core Cloud Telemetry & IoT Ingestion Platform',0,165],
+    ['ena_2','col_enablers','Automated Anomaly Detection ML Pipeline',1,165],
+    ['ena_3','col_enablers','Resilient Multi-Bearer Radio & Satellite Network',0,290],
+    ['ena_4','col_enablers','Offline-First Field Engineer Mobile App',0,415],
+    ['ena_5','col_enablers','Unified Digital Asset & Spares Inventory DB',0,525],
+    ['ena_6','col_enablers','Zero-Trust Identity & Biometric Access Gateway',0,640,'#60a5fa'],
+    ['ena_7','col_enablers','Automated Supplier SLA & Contract Portal',0,765],
+    ['ena_8','col_enablers','Legacy Decommissioning Archive (Unlinked Test Box)',0,900,null,true,false],
+    ['chg_1','col_changes','Control Room Shifts from Reactive to Predictive Triage',0,165],
+    ['chg_2','col_changes','Dynamic Multi-Agency Incident Routing Protocols',0,290],
+    ['chg_3','col_changes','Engineers Complete Guided Pre-Visit Diagnostics',0,415],
+    ['chg_4','col_changes','Automated Van-Stock Replenishment Triggers',1,470],
+    ['chg_5','col_changes','Role-Based Just-in-Time Security Elevation',0,640],
+    ['chg_6','col_changes','Commercial Teams Enforce Real-Time Penalty Credits',0,765],
+    ['chg_7','col_changes','Ad-Hoc Paper Logbooks Retired (Severed Branch Test)',0,900,null,true,false],
+    ['cap_1','col_capabilities','Automated Pre-Failure Dispatch & Self-Healing',0,165],
+    ['cap_2','col_capabilities','Continuous Gold-Command Situational Awareness',0,290],
+    ['cap_3','col_capabilities','Single-Visit First-Time Fix Capability',0,430],
+    ['cap_4','col_capabilities','Continuous NIS2 & ISO27001 Audit Readiness',0,640],
+    ['cap_5','col_capabilities','Transparent Vendor Performance & Cost Governance',0,765],
+    ['cap_6','col_capabilities','Local Depot Manual Archiving (Severed Branch Test)',0,900,null,true,false],
+    ['ben_1','col_benefits','40% Reduction in Unplanned Critical Outages',0,180],
+    ['ben_2','col_benefits','25% Faster Emergency Response & Recovery Time',0,310],
+    ['ben_3','col_benefits','£14.5m Annual Savings in Fleet & Repeat Visits',0,445,'#2dd4bf'],
+    ['ben_4','col_benefits','Zero Critical Cyber Breaches or Regulatory Fines',0,640],
+    ['ben_5','col_benefits','18% Reduction in Third-Party Supplier Spend',0,765],
+    ['obj_1','col_objectives','99.99% National Critical Infrastructure Availability',0,210,null,false,true],
+    ['obj_2','col_objectives','Deliver £22m Run-Rate Operational Cost Efficiency',0,470],
+    ['obj_3','col_objectives','Full Statutory & Cyber Security Compliance (NIS2)',0,660,null,false,true]
+  ];
+  boxes.forEach(([id,cId,txt,sl,y,col,man,pin])=>{
+    state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+  });
+  const lnks=[
+    ['ena_1','ena_2','Raw stream'],['ena_2','chg_1','AI alerts'],['ena_1','chg_2','Live health'],['ena_3','chg_2','Zero blackspots'],
+    ['ena_3','chg_3','Field sync'],['ena_4','chg_3','Guided workflow'],['ena_5','chg_4','Real-time stock'],['chg_3','chg_4','Parts used'],
+    ['ena_6','chg_5','SSO & MFA'],['ena_7','chg_6','Auto-audit'],['chg_1','cap_1','Proactive'],['chg_1','cap_2','Shared view'],
+    ['chg_2','cap_2','Multi-agency'],['chg_2','cap_3','Right skill dispatched'],['chg_3','cap_3','92% first fix'],['chg_4','cap_3','Zero parts delay'],
+    ['chg_5','cap_4','Zero standing privs'],['chg_6','cap_5','SLA tracking'],['cap_1','ben_1','65% call reduction'],['cap_2','ben_1','Prevents cascade'],
+    ['cap_2','ben_2','Gold command speed'],['cap_3','ben_2','Rapid restoration'],['cap_3','ben_3','Fewer truck rolls'],['cap_4','ben_4','Audit pass'],
+    ['cap_5','ben_3','Rebate recovery',true],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
+    ['ben_2','obj_3','Statutory SLA',true],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
+    ['ena_6','cap_1','Secure edge telemetry',true],['chg_7','cap_6','Orphaned link']
+  ];
+  lnks.forEach(([f,t,lbl,sp],idx)=>{
+    const id='lnk_'+(idx+1);
+    state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+  });
+  state.selectedNodeId='obj_1';state.selectedLinkId=null;state.selectedColId='col_objectives';
   document.getElementById('docTitleBtn').textContent=state.mapTitle;
   activeChannelKey=null;setupLiveSyncForCurrentFile();
   runAutoLayout({respectSoftManual:true,respectOptOuts:true});
   localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-  sendHelloAnnouncement();fitScreen();
-  updateStatusPill('⚡ Demo Loaded',true);
+  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Stress Demo',true);
 }
 
-document.getElementById('menuLoadStressTest').addEventListener('click',()=>{
-  hideAllMenus();
-  loadStressTestDemo();
+function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
+  const id='node_'+Math.random().toString(36).slice(2,9);
+  const n={id,columnId:colId,text:txt||'New BDN Box',subLane:sl||0,y,height:BOX_MIN_HEIGHT,color:null,updatedAt:Date.now(),isManuallyPositioned:false,isManuallyStretched:false,isAutoLayoutOptOut:false,isDisconnected:false};
+  state.nodesById[id]=n;return n;
+}
+function addLinkInternal(fId,tId,lbl='',arr=settings.defaultArrow){
+  if(!fId||!tId||fId===tId)return null;
+  for(const l of Object.values(state.linksById))if((l.fromId===fId&&l.toId===tId)||(l.fromId===tId&&l.toId===fId))return l;
+  const id='link_'+Math.random().toString(36).slice(2,9);
+  const l={id,fromId:fId,toId:tId,label:lbl||'',arrowMode:arr||settings.defaultArrow||'right',updatedAt:Date.now(),isSplit:false,forceSplit:false,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+  state.linksById[id]=l;return l;
+}
+
+function updateStatusPill(prefix='✓ Saved',isLive=false){
+  const pill=document.getElementById('saveStatus'),now=new Date(),hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
+  const hasP2P=Object.values(rtcDataChannels).some(dc=>dc&&dc.readyState==='open'),eff=isLive||hasP2P;
+  pill.textContent=window.innerWidth<=760?`${eff?'⚡ Live':'✓ Saved'} · ${hh}:${mm}`:`${hasP2P?'⚡ P2P Live':prefix} · ${hh}:${mm}`;
+  pill.classList.toggle('live',eff);
+}
+
+function saveState(){
+  state.updatedAt=Date.now();
+  try{localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));updateStatusPill(sessionFileHandle?'✓ File':'✓ Saved',!!sessionFileHandle);}catch(e){}
+  broadcastCRDTUpdate();
+  if(sessionFileHandle&&!isMobileOrTouchDevice()){
+    clearTimeout(fileSaveDebounceTimer);
+    fileSaveDebounceTimer=setTimeout(async()=>{
+      try{const w=await sessionFileHandle.createWritable();await w.write(JSON.stringify(state,null,2));await w.close();const f=await sessionFileHandle.getFile();lastFileModifiedTime=f.lastModified;}
+      catch(e){sessionFileHandle=null;}
+    },450);
+  }
+}
+
+function loadState(){
+  try{
+    const r=localStorage.getItem(STORAGE_KEY_STATE);
+    if(r){
+      const p=JSON.parse(r);
+      if(p&&Array.isArray(p.columns)&&p.columns.length&&p.nodesById){
+        state=Object.assign(state,p);
+        if(!state.fileSyncToken||state.fileSyncToken.length<32)state.fileSyncToken=generateCryptographicFileToken();
+        const vc=new Set(state.columns.map(c=>c.id)),fb=state.columns[state.columns.length-1].id;
+        Object.values(state.nodesById).forEach(n=>{if(!vc.has(n.columnId))n.columnId=fb;delete n.dragTempX;});
+        document.getElementById('docTitleBtn').textContent=state.mapTitle||'Untitled BDN';
+        setupLiveSyncForCurrentFile();runAutoLayout({respectSoftManual:true,respectOptOuts:true});return;
+      }
+    }
+  }catch(e){}
+  createStarterNetwork(false);
+}
+
+function getUpstreamLeftChain(sId){
+  const cg=computeColumnGeometries(),vis=new Set([sId]),q=[sId];
+  while(q.length){
+    const cId=q.shift(),cn=state.nodesById[cId];if(!cn)continue;const cx=getNodeGlobalX(cn,cg);
+    for(const l of Object.values(state.linksById)){
+      const oId=l.fromId===cId?l.toId:(l.toId===cId?l.fromId:null);if(!oId||vis.has(oId))continue;
+      const on=state.nodesById[oId];if(on&&getNodeGlobalX(on,cg)<cx){vis.add(oId);q.push(oId);}
+    }
+  }
+  return Array.from(vis);
+}
+
+function updateDisconnectedIndicators(){
+  const all=Object.values(state.nodesById);if(!all.length)return;
+  const adj={};all.forEach(n=>adj[n.id]=[]);
+  Object.values(state.linksById).forEach(l=>{if(adj[l.fromId]&&adj[l.toId]){adj[l.fromId].push(l.toId);adj[l.toId].push(l.fromId);}});
+  const vis=new Set(),comps=[];
+  all.forEach(n=>{
+    if(vis.has(n.id))return;const c=[],q=[n.id];vis.add(n.id);
+    while(q.length){const cur=q.shift();c.push(cur);for(const nb of(adj[cur]||[]))if(!vis.has(nb)){vis.add(nb);q.push(nb);}}
+    comps.push(c);
+  });
+  let rCol=null;
+  for(let i=state.columns.length-1;i>=0;i--){const cid=state.columns[i].id;if(all.some(n=>n.columnId===cid&&(adj[n.id]?.length||0)>0)){rCol=cid;break;}}
+  const maxC=Math.max(1,...comps.map(c=>c.length));
+  comps.forEach(c=>{
+    if(c.length===1){state.nodesById[c[0]].isDisconnected=true;return;}
+    const r=rCol&&c.some(id=>state.nodesById[id]?.columnId===rCol),disc=!r&&c.length!==maxC;
+    c.forEach(id=>{if(state.nodesById[id])state.nodesById[id].isDisconnected=disc;});
+  });
+}
+
+function isNodePositionLocked(n,o={}){return(o.anchorSet&&o.anchorSet.has(n.id))||(o.respectOptOuts!==false&&n.isAutoLayoutOptOut)||!!(o.respectSoftManual&&n.isManuallyPositioned);}
+function isNodeStretchLocked(n,o={}){return(o.respectOptOuts!==false&&n.isAutoLayoutOptOut)||!!(o.respectSoftManual&&n.isManuallyStretched);}
+function getBaseBoxHeight(n,ms){const tl=Math.max(1,Math.ceil((n.text||'').length/22)),th=Math.max(BOX_MIN_HEIGHT,26+tl*17);return ms<=1?th:Math.max(th,EDGE_CORNER_PAD*2+(ms-1)*LINK_SLOT_SPACING);}
+
+function getPerSideNeighbors(n,cg,incSplit=true){
+  const mx=getNodeGlobalX(n,cg),ln=[],rn=[];
+  Object.values(state.linksById).forEach(l=>{
+    if(!incSplit&&l.forceSplit)return;if(l.fromId!==n.id&&l.toId!==n.id)return;
+    const o=state.nodesById[l.fromId===n.id?l.toId:l.fromId];if(!o)return;
+    if(getNodeGlobalX(o,cg)<mx)ln.push({link:l,neighbor:o});else rn.push({link:l,neighbor:o});
+  });
+  return{leftNeighbors:ln,rightNeighbors:rn};
+}
+
+function resolveColumnCollisions(colId,sl,o={}){
+  const ps=o.primaryAnchorSet||o.anchorSet||new Set();
+  const ln=Object.values(state.nodesById).filter(n=>n.columnId===colId&&(n.subLane||0)===sl).sort((a,b)=>(a.y+a.height/2)-(b.y+b.height/2));
+  if(ln.length<=1)return;
+  const aIdx=ln.findIndex(n=>ps.has(n.id));
+  if(aIdx!==-1){
+    for(let i=aIdx-1;i>=0;i--){const lw=ln[i+1],up=ln[i],lim=lw.y-VERTICAL_BOX_GAP;if(up.y+up.height>lim)up.y=lim-up.height;}
+    for(let i=aIdx+1;i<ln.length;i++){const up=ln[i-1],lw=ln[i],lim=up.y+up.height+VERTICAL_BOX_GAP;if(lw.y<lim)lw.y=lim;}
+  }else{
+    for(let i=1;i<ln.length;i++){const pr=ln[i-1],cr=ln[i],lim=pr.y+pr.height+VERTICAL_BOX_GAP;if(cr.y<lim)cr.y=lim;}
+  }
+}
+
+function clampStretchToColumnClashes(n,ct,cb,ln,o){
+  let st=ct,sb=cb;
+  ln.forEach(ot=>{
+    if(ot.id===n.id||!isNodePositionLocked(ot,o))return;
+    const om=ot.y+ot.height/2,nm=(ct+cb)/2;
+    if(om<nm)st=Math.max(st,ot.y+ot.height+VERTICAL_BOX_GAP);else sb=Math.min(sb,ot.y-VERTICAL_BOX_GAP);
+  });
+  return{safeTop:st,safeBottom:sb};
+}
+
+function performIdempotentTidy(respectOptOuts=true){
+  const cg=computeColumnGeometries();
+  Object.values(state.nodesById).forEach(n=>{if(!respectOptOuts||!n.isAutoLayoutOptOut){n.isManuallyPositioned=false;n.isManuallyStretched=false;n.updatedAt=Date.now();}});
+  if(!respectOptOuts)Object.values(state.linksById).forEach(l=>{l.forceSplit=false;l.updatedAt=Date.now();});
+  state.columns.forEach(col=>{
+    const ml=cg[col.id]?.laneCount||1;
+    for(let l=0;l<ml;l++){
+      const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l).sort((a,b)=>a.y-b.y);
+      let cy=INITIAL_SPAWN_Y;
+      ln.forEach(n=>{
+        if(!(respectOptOuts&&n.isAutoLayoutOptOut)){const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));n.y=cy;}
+        cy=Math.max(cy,n.y)+n.height+VERTICAL_BOX_GAP;
+      });
+    }
+  });
+  runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null});
+  const all=Object.values(state.nodesById),hasPin=respectOptOuts&&all.some(n=>n.isAutoLayoutOptOut);
+  if(all.length&&!hasPin){
+    const sy=INITIAL_SPAWN_Y-Math.min(...all.map(n=>n.y));
+    if(Math.abs(sy)>1){all.forEach(n=>{n.y+=sy;});computeHorizontalLinksAndStubs(cg);}
+  }
+}
+
+function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:null}){
+  let cg=computeColumnGeometries();
+  const pa=o.anchorSet?new Set(o.anchorSet):new Set();
+  Object.values(state.linksById).forEach(l=>{
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+    if(nA&&nB&&nA.columnId===nB.columnId&&(nA.subLane||0)===(nB.subLane||0))nB.subLane=(nA.subLane||0)+1;
+  });
+  cg=computeColumnGeometries();
+  Object.values(state.nodesById).forEach(n=>{
+    if(!isNodeStretchLocked(n,o)){const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));}
+  });
+  const aligned=new Set(pa);
+  if(aligned.size){
+    const q=Array.from(aligned);
+    while(q.length){
+      const cn=state.nodesById[q.shift()];if(!cn)continue;
+      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(cn,cg,false);
+      [...lN,...rN].forEach(({neighbor:nb})=>{
+        if(aligned.has(nb.id)||isNodePositionLocked(nb,o))return;
+        const s=getPerSideNeighbors(nb,cg,false);
+        if(Math.max(s.leftNeighbors.length,s.rightNeighbors.length)<=1){nb.y=cn.y+(cn.height-nb.height)/2;aligned.add(nb.id);q.push(nb.id);}
+      });
+    }
+  }
+  state.columns.forEach(col=>{const ml=cg[col.id]?.laneCount||1;for(let l=0;l<ml;l++)resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});});
+  for(let ci=state.columns.length-1;ci>=0;ci--){
+    const col=state.columns[ci];
+    Object.values(state.nodesById).filter(n=>n.columnId===col.id).forEach(n=>{
+      if(isNodePositionLocked(n,o)||aligned.has(n.id))return;
+      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false);
+      if(Math.max(lN.length,rN.length)<=1){
+        const conn=[...lN,...rN].map(x=>x.neighbor);
+        if(conn.length)n.y=(conn.reduce((a,t)=>a+(t.y+t.height/2),0)/conn.length)-n.height/2;
+      }
+    });
+    const ml=cg[col.id]?.laneCount||1;for(let l=0;l<ml;l++)resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
+  }
+  for(let pass=0;pass<2;pass++){
+    const ord=pass===0?state.columns.map((_,i)=>i):state.columns.map((_,i)=>state.columns.length-1-i);
+    for(const ci of ord){
+      const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
+      for(let l=0;l<ml;l++){
+        const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l).sort((a,b)=>a.y-b.y);
+        ln.forEach(n=>{
+          if(isNodeStretchLocked(n,o))return;
+          const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false),ms=Math.max(lN.length,rN.length);
+          let br=false;
+          if(ms===1&&lN.length===1&&rN.length===1){
+            const l1=lN[0].neighbor,r1=rN[0].neighbor;
+            if(Math.min(l1.y+l1.height-EDGE_CORNER_PAD,r1.y+r1.height-EDGE_CORNER_PAD)<Math.max(l1.y+EDGE_CORNER_PAD,r1.y+EDGE_CORNER_PAD))br=true;
+          }
+          if(ms<=1&&!br){n.height=getBaseBoxHeight(n,1);return;}
+          const tNbs=br?[lN[0].neighbor,rN[0].neighbor]:[...lN.map(x=>x.neighbor),...rN.map(x=>x.neighbor)];
+          let rT=Infinity,rB=-Infinity;
+          tNbs.forEach(nb=>{
+            const bA=nb.y+nb.height-EDGE_CORNER_PAD,tA=nb.y+EDGE_CORNER_PAD,mx=getNodeGlobalX(n,cg),nx=getNodeGlobalX(nb,cg);
+            const sL=Math.min(mx,nx)+BOX_WIDTH,sR=Math.max(mx,nx),tY=(tA+bA)/2;
+            const blk=Object.values(state.nodesById).some(ot=>{
+              if(ot.id===n.id||ot.id===nb.id)return false;const ox=getNodeGlobalX(ot,cg);
+              return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&tY>=ot.y-4&&tY<=ot.y+ot.height+4;
+            });
+            if(!blk){rT=Math.min(rT,bA-EDGE_CORNER_PAD);rB=Math.max(rB,tA+EDGE_CORNER_PAD);}
+          });
+          if(rT===Infinity||rB===-Infinity)return;
+          const mH=getBaseBoxHeight(n,ms),isDrg=pa.has(n.id),cT=isDrg?n.y:rT,cB=Math.max(cT+mH,rB);
+          const{safeTop:sT,safeBottom:sB}=clampStretchToColumnClashes(n,cT,cB,ln,o);
+          if(!isDrg)n.y=sT;n.height=Math.max(mH,sB-n.y);
+        });
+        resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
+      }
+    }
+  }
+  computeHorizontalLinksAndStubs(cg);updateDisconnectedIndicators();clampCameraBounds();
+}
+
+function computeHorizontalLinksAndStubs(cg){
+  const links=Object.values(state.linksById),all=Object.values(state.nodesById);
+  let sc=1;const used={},getU=(k)=>(used[k]=used[k]||[]),solid=[],split=[];
+  links.forEach(l=>{
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(!nA||!nB)return;
+    if(l.forceSplit){l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});return;}
+    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD),oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+    if(oB<oT){l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});}
+    else{l.isSplit=false;l.splitBadgeId=null;solid.push({link:l,nA,nB,overlapTop:oT,overlapBottom:oB});}
+  });
+  solid.sort((a,b)=>((a.overlapTop+a.overlapBottom)/2)-((b.overlapTop+b.overlapBottom)/2));
+  solid.forEach(({link:l,nA,nB,overlapTop:oT,overlapBottom:oB})=>{
+    const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
+    const lK=lN.id+'_right',rK=rN.id+'_left',ex=[...getU(lK),...getU(rK)],mid=(oT+oB)/2,sp=oB-oT,cands=[mid];
+    for(let s=8;s<=sp/2+2;s+=8){if(mid-s>=oT)cands.push(mid-s);if(mid+s<=oB)cands.push(mid+s);}
+    let bY=mid,bC=-1;
+    for(const cY of cands){
+      const sL=getNodeGlobalX(lN,cg)+BOX_WIDTH,sR=getNodeGlobalX(rN,cg);
+      const blk=all.some(ot=>{
+        if(ot.id===lN.id||ot.id===rN.id)return false;const ox=getNodeGlobalX(ot,cg);
+        return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&cY>=ot.y-6&&cY<=ot.y+ot.height+6;
+      });
+      if(blk)continue;
+      const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
+      if(mD>bC){bC=mD;bY=cY;}
+    }
+    if(bC===-1){l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});}
+    else{l.anchorY=Math.round(bY);getU(lK).push(l.anchorY);getU(rK).push(l.anchorY);}
+  });
+  function allocStub(n,side,prefY){
+    const u=getU(n.id+'_'+side),tB=n.y+EDGE_CORNER_PAD,bB=n.y+n.height-EDGE_CORNER_PAD,m=(tB+bB)/2,cands=[];
+    if(prefY<m){for(let y=tB;y<=bB;y+=6)cands.push(y);}else{for(let y=bB;y>=tB;y-=6)cands.push(y);}
+    cands.push(m);let bY=m,mD=-1;
+    for(const c of cands){const d=u.length===0?999:Math.min(...u.map(x=>Math.abs(x-c)));if(d>mD){mD=d;bY=c;}}
+    const fY=Math.round(bY);u.push(fY);return fY;
+  }
+  split.forEach(({link:l,nA,nB})=>{
+    const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
+    l.leftStubY=allocStub(lN,'right',rN.y+rN.height/2);l.rightStubY=allocStub(rN,'left',lN.y+lN.height/2);
+  });
+}
+
+function checkAndPromptLinkConflict(l){
+  if(!l||!l.isSplit||l.forceSplit)return;
+  pendingConflictLinkId=l.id;const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+  document.getElementById('conflictMessage').textContent=`The link between "${nA?.text||'Box A'}" and "${nB?.text||'Box B'}" is blocked from forming a straight horizontal line by a clashing box or lock. Would you like to revert those boxes to Auto-Layout or keep a numbered Split Link stub (①—①)?`;
+  conflictModal.style.display='flex';
+}
+document.getElementById('btnConflictSplit').addEventListener('click',()=>{
+  if(pendingConflictLinkId&&state.linksById[pendingConflictLinkId]){state.linksById[pendingConflictLinkId].forceSplit=true;state.linksById[pendingConflictLinkId].updatedAt=Date.now();runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();}
+  pendingConflictLinkId=null;conflictModal.style.display='none';
 });
+document.getElementById('btnConflictAuto').addEventListener('click',()=>{
+  if(pendingConflictLinkId&&state.linksById[pendingConflictLinkId]){
+    const l=state.linksById[pendingConflictLinkId];l.forceSplit=false;l.updatedAt=Date.now();
+    [l.fromId,l.toId].forEach(id=>{const n=state.nodesById[id];if(n){n.isManuallyPositioned=false;n.isManuallyStretched=false;n.isAutoLayoutOptOut=false;n.updatedAt=Date.now();}});
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(nA&&nB)nA.y=nB.y;
+    runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+  }
+  pendingConflictLinkId=null;conflictModal.style.display='none';
+});
+
+function resizeCanvas(){const dpr=window.devicePixelRatio||1;canvas.width=window.innerWidth*dpr;canvas.height=window.innerHeight*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);clampCameraBounds();draw();}
+function worldToScreen(wx,wy){return{x:wx*state.camera.zoom+state.camera.x,y:wy*state.camera.zoom+state.camera.y};}
+function screenToWorld(sx,sy){return{x:(sx-state.camera.x)/state.camera.zoom,y:(sy-state.camera.y)/state.camera.zoom};}
+function drawRoundedRect(x,y,w,h,r){
+  const rd=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rd,y);ctx.lineTo(x+w-rd,y);ctx.quadraticCurveTo(x+w,y,x+w,y+rd);
+  ctx.lineTo(x+w,y+h-rd);ctx.quadraticCurveTo(x+w,y+h,x+w-rd,y+h);ctx.lineTo(x+rd,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-rd);
+  ctx.lineTo(x,y+rd);ctx.quadraticCurveTo(x,y,x+rd,y);ctx.closePath();
+}
+function hexToRgba(hex,a){const n=parseInt((hex||'#38bdf8').replace('#',''),16);return`rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;}
+function drawArrowhead(x,y,dX,c){const s=7;ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-dX*s*1.35,y-s);ctx.lineTo(x-dX*s*1.35,y+s);ctx.closePath();ctx.fill();}
+function wrapTextLines(txt,maxW){
+  const words=(txt||'').split(/\s+/),lines=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>Math.max(28,maxW)&&cur){lines.push(cur);cur=w;}else cur=t;}
+  if(cur)lines.push(cur);return lines.length?lines:[''];
+}
+function getHeaderActionRects(sEndX,hTopY){
+  const bY=hTopY+12,bH=24,bW=24;
+  return{moveLeft:{x:sEndX-86,y:bY,w:bW,h:bH},moveRight:{x:sEndX-58,y:bY,w:bW,h:bH},insertCol:{x:sEndX-30,y:bY,w:bW,h:bH}};
+}
+
+function draw(){
+  clampCameraBounds();
+  const th=THEMES[settings.theme]||THEMES.dark;ctx.fillStyle=th.bgCanvas;ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+  const cg=computeColumnGeometries(),all=Object.values(state.nodesById),hTopY=getHeaderTopY(),hBotY=hTopY+STICKY_HEADER_HEIGHT;
+
+  state.columns.forEach((col,idx)=>{
+    const g=cg[col.id];if(!g)return;
+    const sX=g.x*state.camera.zoom+state.camera.x,sW=g.width*state.camera.zoom,sEX=sX+sW,sel=state.selectedColId===col.id;
+    ctx.fillStyle=sel?hexToRgba(col.color,0.06):(idx%2===0?th.colTintEven:th.colTintOdd);
+    ctx.fillRect(sX,hBotY,sW,window.innerHeight-hBotY);
+    ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle=sel?col.color:'rgba(148,163,184,0.42)';ctx.lineWidth=sel?2:1.5;
+    ctx.beginPath();ctx.moveTo(sEX,hTopY);ctx.lineTo(sEX,window.innerHeight);ctx.stroke();
+    if(idx===0){ctx.beginPath();ctx.moveTo(sX,hTopY);ctx.lineTo(sX,window.innerHeight);ctx.stroke();}
+    ctx.restore();
+  });
+
+  ctx.save();ctx.beginPath();ctx.rect(0,hBotY,window.innerWidth,window.innerHeight-hBotY);ctx.clip();
+  ctx.translate(state.camera.x,state.camera.y);ctx.scale(state.camera.zoom,state.camera.zoom);
+
+  Object.values(state.linksById).forEach(l=>{
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(!nA||!nB)return;
+    const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
+    const sel=state.selectedLinkId===l.id||highlightedStubLinkId===l.id,sCol=sel?'#38bdf8':th.linkStroke;
+    if(!l.isSplit){
+      const sX=getNodeGlobalX(lN,cg)+BOX_WIDTH,eX=getNodeGlobalX(rN,cg),y=l.anchorY;
+      ctx.strokeStyle=sCol;ctx.lineWidth=sel?2.8:2;ctx.beginPath();ctx.moveTo(sX,y);ctx.lineTo(eX,y);ctx.stroke();
+      if(l.arrowMode==='right'||l.arrowMode==='both')drawArrowhead(eX,y,1,sCol);
+      if(l.arrowMode==='left'||l.arrowMode==='both')drawArrowhead(sX,y,-1,sCol);
+      if(l.label){
+        const mX=(sX+eX)/2,avW=Math.max(56,(eX-sX)-18);
+        ctx.font='600 10.5px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        const lns=wrapTextLines(l.label,avW),lh=12.5,bLY=y-8,tLY=bLY-(lns.length-1)*lh;
+        ctx.lineWidth=6.5;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=sel?'#38bdf8':th.textPrimary;
+        lns.forEach((ln,i)=>{const ly=tLY+i*lh;ctx.strokeText(ln,mX,ly);ctx.fillText(ln,mX,ly);});
+      }
+    }else{
+      const yL=l.leftStubY||(lN.y+lN.height/2),xLS=getNodeGlobalX(lN,cg)+BOX_WIDTH,xLC=xLS+STUB_LENGTH;
+      const yR=l.rightStubY||(rN.y+rN.height/2),xRS=getNodeGlobalX(rN,cg),xRC=xRS-STUB_LENGTH,stC=sel?'#38bdf8':'#f59e0b';
+      ctx.strokeStyle=stC;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(xLS,yL);ctx.lineTo(xLC-STUB_RADIUS,yL);ctx.stroke();
+      ctx.fillStyle=th.surfaceBox;ctx.beginPath();ctx.arc(xLC,yL,STUB_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle=stC;ctx.font='700 11px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(l.splitBadgeId||'?',xLC,yL);
+      ctx.beginPath();ctx.moveTo(xRS,yR);ctx.lineTo(xRC+STUB_RADIUS,yR);ctx.stroke();
+      ctx.fillStyle=th.surfaceBox;ctx.beginPath();ctx.arc(xRC,yR,STUB_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle=stC;ctx.fillText(l.splitBadgeId||'?',xRC,yR);
+      if(l.label){
+        ctx.font='500 10px system-ui,sans-serif';ctx.lineWidth=5;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=th.textSecondary;
+        ctx.strokeText(l.label,xLC,yL-17);ctx.fillText(l.label,xLC,yL-17);ctx.strokeText(l.label,xRC,yR-17);ctx.fillText(l.label,xRC,yR-17);
+      }
+    }
+  });
+
+  const cRad=settings.boxShape==='sharp'?2:(settings.boxShape==='pill'?24:10);
+  all.forEach(n=>{
+    const col=state.columns.find(c=>c.id===n.columnId),bCol=n.color||(col?col.color:'#38bdf8');
+    const x=getNodeGlobalX(n,cg),y=n.y,w=BOX_WIDTH,h=n.height,sel=state.selectedNodeId===n.id,lSrc=linkingFromNodeId===n.id;
+    drawRoundedRect(x,y,w,h,cRad);
+    ctx.fillStyle=settings.boxFill==='tinted'?hexToRgba(bCol,sel?0.26:0.14):(settings.boxFill==='outline'?th.bgCanvas:(sel?th.surfaceBoxSel:th.surfaceBox));
+    ctx.fill();
+    if(n.isDisconnected){ctx.setLineDash([6,4]);ctx.lineWidth=sel?2.5:1.8;ctx.strokeStyle=sel?'#38bdf8':'#f59e0b';ctx.stroke();ctx.setLineDash([]);}
+    else{ctx.lineWidth=sel||lSrc?2.5:1.6;ctx.strokeStyle=lSrc?'#10b981':(sel?'#38bdf8':bCol);ctx.stroke();}
+    if(settings.boxFill==='card'){drawRoundedRect(x+3,y+6,4,h-12,2);ctx.fillStyle=bCol;ctx.fill();}
+    let bX=x+w-8;ctx.font='600 10px system-ui,sans-serif';ctx.textAlign='right';ctx.textBaseline='top';
+    if(n.isAutoLayoutOptOut){ctx.fillStyle='#38bdf8';ctx.fillText('📌 Pinned',bX,y+7);bX-=54;}
+    else if(n.isManuallyPositioned||n.isManuallyStretched){ctx.fillStyle=th.textSecondary;ctx.fillText('✋ Manual',bX,y+7);bX-=52;}
+    if(n.isDisconnected){ctx.fillStyle='#f59e0b';ctx.fillText('⚠ Unlinked',bX,y+7);}
+    ctx.fillStyle=th.textPrimary;ctx.font='500 12.5px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+    const lns=wrapTextLines(n.text,w-26),lh=16.5,stY=y+h/2-(lns.length*lh)/2+lh/2+4;
+    lns.forEach((ln,i)=>ctx.fillText(ln,x+14,stY+i*lh));
+    ctx.fillStyle=sel?'#38bdf8':'rgba(148,163,184,0.38)';
+    ctx.fillRect(x+w/2-16,y+3,32,2.5);ctx.fillRect(x+w/2-16,y+h-5.5,32,2.5);
+  });
+  ctx.restore();
+
+  state.columns.forEach((col,idx)=>{
+    const g=cg[col.id];if(!g)return;
+    const sX=g.x*state.camera.zoom+state.camera.x,sW=g.width*state.camera.zoom,sEX=sX+sW;
+    ctx.fillStyle=th.surfaceHeader;ctx.fillRect(sX,hTopY,sW,STICKY_HEADER_HEIGHT);
+    ctx.fillStyle=col.color;ctx.fillRect(sX,hTopY,sW,3);
+    ctx.strokeStyle=th.borderHud;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sX,hBotY);ctx.lineTo(sEX,hBotY);ctx.stroke();
+    ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(148,163,184,0.45)';ctx.beginPath();ctx.moveTo(sEX,hTopY);ctx.lineTo(sEX,hBotY);ctx.stroke();ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sX+2,hTopY,Math.max(0,sW-4),STICKY_HEADER_HEIGHT);ctx.clip();
+    const shBtns=sW>175,dR=sW<105?3.5:4.5,dX=sX+(sW<105?8:13),tSX=dX+(sW<105?7:10),avTW=Math.max(30,sW-(tSX-sX)-(shBtns?94:6));
+    const fS=sW<95?10:(sW<130?11:13);ctx.font=`600 ${fS}px system-ui,sans-serif`;
+    const tLns=wrapTextLines(col.title,avTW).slice(0,2),tLH=fS+2.5,cHY=hTopY+STICKY_HEADER_HEIGHT/2+1;
+    ctx.fillStyle=col.color;ctx.beginPath();ctx.arc(dX,cHY,dR,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=th.textPrimary;ctx.textAlign='left';ctx.textBaseline='middle';
+    if(tLns.length===1)ctx.fillText(tLns[0],tSX,cHY);
+    else{ctx.fillText(tLns[0],tSX,cHY-tLH/2);ctx.fillText(tLns[1],tSX,cHY+tLH/2);}
+    if(shBtns){
+      const rcts=getHeaderActionRects(sEX,hTopY);
+      const dBtn=(r,sym,en=true)=>{
+        drawRoundedRect(r.x,r.y,r.w,r.h,5);ctx.fillStyle=en?'rgba(148,163,184,0.12)':'rgba(148,163,184,0.03)';ctx.fill();
+        ctx.strokeStyle=th.borderHud;ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=en?th.textPrimary:th.textMuted;
+        ctx.font='600 11px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(sym,r.x+r.w/2,r.y+r.h/2+0.5);
+      };
+      dBtn(rcts.moveLeft,'◀',idx>0);dBtn(rcts.moveRight,'▶',idx<state.columns.length-1);dBtn(rcts.insertCol,'+',true);
+    }
+    ctx.restore();
+  });
+}
+
+function hitTest(sX,sY){
+  const cg=computeColumnGeometries(),w=screenToWorld(sX,sY),wx=w.x,wy=w.y,hTopY=getHeaderTopY();
+  if(sY>=hTopY&&sY<=hTopY+STICKY_HEADER_HEIGHT){
+    for(let i=0;i<state.columns.length;i++){
+      const col=state.columns[i],g=cg[col.id];
+      if(g&&wx>=g.x&&wx<=g.endX){
+        const sEX=g.endX*state.camera.zoom+state.camera.x,sW=g.width*state.camera.zoom;
+        if(sW>175){
+          const r=getHeaderActionRects(sEX,hTopY),inR=(b)=>sX>=b.x&&sX<=b.x+b.w&&sY>=b.y&&sY<=b.y+b.h;
+          if(inR(r.moveLeft))return{type:'col-btn-left',col};if(inR(r.moveRight))return{type:'col-btn-right',col};if(inR(r.insertCol))return{type:'col-btn-insert',col};
+        }
+        return{type:'column-header',col};
+      }
+    }
+  }
+  for(const l of Object.values(state.linksById)){
+    if(!l.isSplit)continue;const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(!nA||!nB)continue;
+    const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
+    const yL=l.leftStubY||(lN.y+lN.height/2),xLC=getNodeGlobalX(lN,cg)+BOX_WIDTH+STUB_LENGTH;
+    const yR=l.rightStubY||(rN.y+rN.height/2),xRC=getNodeGlobalX(rN,cg)-STUB_LENGTH;
+    if(Math.hypot(wx-xLC,wy-yL)<=STUB_RADIUS+6)return{type:'stub',link:l,targetNode:rN};
+    if(Math.hypot(wx-xRC,wy-yR)<=STUB_RADIUS+6)return{type:'stub',link:l,targetNode:lN};
+  }
+  const nds=Object.values(state.nodesById);
+  for(let i=nds.length-1;i>=0;i--){
+    const n=nds[i],x=getNodeGlobalX(n,cg);
+    if(wx>=x&&wx<=x+BOX_WIDTH&&wy>=n.y&&wy<=n.y+n.height){
+      if(wy<=n.y+RESIZE_HANDLE_ZONE)return{type:'resize-node-top',node:n};
+      if(wy>=n.y+n.height-RESIZE_HANDLE_ZONE)return{type:'resize-node-bottom',node:n};
+      return{type:'node',node:n};
+    }
+  }
+  for(const l of Object.values(state.linksById)){
+    if(l.isSplit)continue;const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];if(!nA||!nB)continue;
+    const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
+    const sX=getNodeGlobalX(lN,cg)+BOX_WIDTH,eX=getNodeGlobalX(rN,cg);
+    if(wx>=sX&&wx<=eX&&Math.abs(wy-l.anchorY)<=14)return{type:'link',link:l};
+  }
+  return null;
+}
+
+function updateHoverCursor(sX,sY){
+  if(resizingNode){canvas.style.cursor='ns-resize';return;}
+  if(draggingGroup||isPanning||draggingColumn){canvas.style.cursor='grabbing';return;}
+  const h=hitTest(sX,sY);
+  if(h?.type==='resize-node-top'||h?.type==='resize-node-bottom')canvas.style.cursor='ns-resize';
+  else if(h?.type==='node'||h?.type==='column-header')canvas.style.cursor=linkingFromNodeId?'crosshair':'grab';
+  else if(h?.type==='stub'||h?.type==='link'||h?.type?.startsWith('col-btn-'))canvas.style.cursor='pointer';
+  else canvas.style.cursor='default';
+}
+
+function teleportToNode(tN,lId){
+  if(!tN)return;const cg=computeColumnGeometries(),tX=getNodeGlobalX(tN,cg)+BOX_WIDTH/2,tY=tN.y+tN.height/2;
+  state.camera.x=window.innerWidth/2-tX*state.camera.zoom;state.camera.y=window.innerHeight/2-tY*state.camera.zoom;clampCameraBounds();
+  state.selectedNodeId=tN.id;state.selectedLinkId=lId;highlightedStubLinkId=lId;
+  setTimeout(()=>{highlightedStubLinkId=null;draw();},1800);draw();
+}
+
+function applyActiveDragPosition(sX,sY){
+  if(!draggingGroup)return;
+  const w=screenToWorld(sX,sY),dx=w.x-draggingGroup.startMouseX,dy=w.y-draggingGroup.startMouseY;
+  if(Math.hypot(dx,dy)>3){clearTimeout(longPressTimer);if(!draggingGroup.undoPushed){pushUndoState();draggingGroup.undoPushed=true;}draggingGroup.moved=true;}
+  Object.entries(draggingGroup.allBaselineById).forEach(([id,b])=>{const n=state.nodesById[id];if(n&&!draggingGroup.groupIds.includes(id)){n.y=b.y;n.height=b.height;}});
+  const now=Date.now();
+  draggingGroup.groupIds.forEach(id=>{
+    const n=state.nodesById[id],init=draggingGroup.allBaselineById[id];
+    if(n&&init){n.y=init.y+dy;n.updatedAt=now;if(id===draggingGroup.anchorNodeId&&Math.abs(dx)>16)n.dragTempX=init.x+dx;else delete n.dragTempX;}
+  });
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true,anchorSet:new Set(draggingGroup.groupIds)});
+  if(draggingGroup.moved&&now-lastDragStreamTime>=50){lastDragStreamTime=now;state.updatedAt=now;Object.values(state.nodesById).forEach(n=>{n.updatedAt=now;});broadcastCRDTUpdate();}
+  draw();
+}
+
+function startEdgeAutoScrollLoop(){
+  if(autoScrollTimer)return;
+  autoScrollTimer=setInterval(()=>{
+    if(!draggingGroup&&!resizingNode){stopEdgeAutoScrollLoop();return;}
+    const tE=getHeaderTopY()+STICKY_HEADER_HEIGHT+36,bE=window.innerHeight-36;let pDY=0;
+    if(lastPointerScreen.y<tE)pDY=Math.min(22,Math.max(6,(tE-lastPointerScreen.y)*0.35));
+    else if(lastPointerScreen.y>bE)pDY=-Math.min(22,Math.max(6,(lastPointerScreen.y-bE)*0.35));
+    if(pDY!==0){state.camera.y+=pDY;if(draggingGroup)applyActiveDragPosition(lastPointerScreen.x,lastPointerScreen.y);}
+  },16);
+}
+function stopEdgeAutoScrollLoop(){if(autoScrollTimer){clearInterval(autoScrollTimer);autoScrollTimer=null;}}
+function hideAllMenus(){contextMenu.style.display='none';fileMenu.style.display='none';settingsPanel.style.display='none';}
+
+canvas.addEventListener('pointerdown',(e)=>{
+  hideAllMenus();if(e.button===2)return;
+  try{canvas.setPointerCapture(e.pointerId);}catch(err){}
+  activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(activePointers.size===2){
+    clearTimeout(longPressTimer);stopEdgeAutoScrollLoop();draggingGroup=null;resizingNode=null;draggingColumn=null;isPanning=false;
+    const pts=Array.from(activePointers.values());
+    pinchStartDist=Math.max(10,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y));pinchStartZoom=state.camera.zoom;
+    pinchWorldCenter=screenToWorld((pts[0].x+pts[1].x)/2,(pts[0].y+pts[1].y)/2);return;
+  }
+  lastPointerScreen={x:e.clientX,y:e.clientY};
+  const w=screenToWorld(e.clientX,e.clientY),hit=hitTest(e.clientX,e.clientY),now=Date.now();
+  if(e.pointerType==='touch'&&now-lastTapTime<300&&hit){
+    lastTapTime=0;
+    if(hit.type==='node'||hit.type==='resize-node-top'||hit.type==='resize-node-bottom'){openInlineEditor('node',hit.node.id,e.clientX-90,e.clientY-25,hit.node.text);return;}
+    if(hit.type==='column-header'){openInlineEditor('col',hit.col.id,e.clientX-90,getHeaderTopY()+4,hit.col.title);return;}
+    if(hit.type==='link'){openInlineEditor('link',hit.link.id,e.clientX-90,e.clientY-25,hit.link.label);return;}
+  }
+  lastTapTime=now;
+  if(e.pointerType==='touch'){
+    const sX=e.clientX,sY=e.clientY;clearTimeout(longPressTimer);
+    longPressTimer=setTimeout(()=>{draggingGroup=null;isPanning=false;resizingNode=null;openContextMenuAtPoint(sX,sY);},480);
+  }
+  if(hit?.type==='col-btn-left'){state.selectedColId=hit.col.id;moveColumn(hit.col.id,-1);return;}
+  if(hit?.type==='col-btn-right'){state.selectedColId=hit.col.id;moveColumn(hit.col.id,1);return;}
+  if(hit?.type==='col-btn-insert'){state.selectedColId=hit.col.id;insertColumnRelative(hit.col.id,1);return;}
+  if(hit?.type==='stub'){teleportToNode(hit.targetNode,hit.link.id);return;}
+  if(linkingFromNodeId){
+    if(hit?.type==='node'&&hit.node.id!==linkingFromNodeId){
+      pushUndoState();const nL=addLinkInternal(linkingFromNodeId,hit.node.id,'',settings.defaultArrow);
+      linkingFromNodeId=null;modeBanner.style.display='none';runAutoLayout({respectSoftManual:true,respectOptOuts:true});
+      saveState();draw();checkAndPromptLinkConflict(nL);
+    }else{linkingFromNodeId=null;modeBanner.style.display='none';draw();}
+    return;
+  }
+  if(hit?.type==='resize-node-top'||hit?.type==='resize-node-bottom'){
+    pushUndoState();state.selectedNodeId=hit.node.id;state.selectedLinkId=null;
+    resizingNode={nodeId:hit.node.id,edge:hit.type==='resize-node-top'?'top':'bottom',startMouseY:w.y,initialY:hit.node.y,initialHeight:hit.node.height};
+    startEdgeAutoScrollLoop();updateHoverCursor(e.clientX,e.clientY);draw();return;
+  }
+  if(hit?.type==='node'){
+    state.selectedNodeId=hit.node.id;state.selectedColId=hit.node.columnId;state.selectedLinkId=null;
+    const cg=computeColumnGeometries(),gIds=e.shiftKey?getUpstreamLeftChain(hit.node.id):[hit.node.id],base={};
+    Object.values(state.nodesById).forEach(n=>{base[n.id]={x:getNodeGlobalX(n,cg),y:n.y,height:n.height};});
+    draggingGroup={anchorNodeId:hit.node.id,groupIds:gIds,startMouseX:w.x,startMouseY:w.y,allBaselineById:base,moved:false,undoPushed:false};
+    startEdgeAutoScrollLoop();updateHoverCursor(e.clientX,e.clientY);draw();return;
+  }
+  if(hit?.type==='column-header'){
+    state.selectedColId=hit.col.id;state.selectedNodeId=null;state.selectedLinkId=null;
+    draggingColumn={colId:hit.col.id,startScreenX:e.clientX,undoPushed:false};updateHoverCursor(e.clientX,e.clientY);draw();return;
+  }
+  if(hit?.type==='link'){state.selectedLinkId=hit.link.id;state.selectedNodeId=null;draw();return;}
+  const cCol=findColumnAtWorldX(w.x,computeColumnGeometries());if(cCol)state.selectedColId=cCol.id;
+  state.selectedNodeId=null;state.selectedLinkId=null;isPanning=true;panStart={x:e.clientX-state.camera.x,y:e.clientY-state.camera.y};
+  updateHoverCursor(e.clientX,e.clientY);draw();
+});
+
+window.addEventListener('pointermove',(e)=>{
+  if(activePointers.has(e.pointerId)){
+    const pr=activePointers.get(e.pointerId);if(Math.hypot(e.clientX-pr.x,e.clientY-pr.y)>8)clearTimeout(longPressTimer);
+    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  }
+  if(activePointers.size===2){
+    const pts=Array.from(activePointers.values()),dist=Math.max(10,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y));
+    const mX=(pts[0].x+pts[1].x)/2,mY=(pts[0].y+pts[1].y)/2,nZ=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,pinchStartZoom*(dist/pinchStartDist)));
+    state.camera.zoom=nZ;state.camera.x=mX-pinchWorldCenter.x*nZ;state.camera.y=mY-pinchWorldCenter.y*nZ;
+    computeHorizontalLinksAndStubs(computeColumnGeometries());clampCameraBounds();draw();return;
+  }
+  lastPointerScreen={x:e.clientX,y:e.clientY};const w=screenToWorld(e.clientX,e.clientY);
+  if(draggingColumn){
+    if(Math.abs(e.clientX-draggingColumn.startScreenX)>18){
+      const hCol=findColumnAtWorldX(w.x,computeColumnGeometries());
+      if(hCol&&hCol.id!==draggingColumn.colId){
+        if(!draggingColumn.undoPushed){pushUndoState();draggingColumn.undoPushed=true;}
+        const fI=state.columns.findIndex(c=>c.id===draggingColumn.colId),tI=state.columns.findIndex(c=>c.id===hCol.id);
+        if(fI!==-1&&tI!==-1){const[mC]=state.columns.splice(fI,1);state.columns.splice(tI,0,mC);draggingColumn.startScreenX=e.clientX;runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();}
+      }
+    }
+    return;
+  }
+  if(resizingNode){
+    const n=state.nodesById[resizingNode.nodeId];
+    if(n){
+      const dy=w.y-resizingNode.startMouseY;
+      if(resizingNode.edge==='bottom')n.height=Math.max(BOX_MIN_HEIGHT,resizingNode.initialHeight+dy);
+      else{const fB=resizingNode.initialY+resizingNode.initialHeight,nT=Math.min(fB-BOX_MIN_HEIGHT,resizingNode.initialY+dy);n.y=nT;n.height=fB-nT;n.isManuallyPositioned=true;}
+      n.isManuallyStretched=true;n.updatedAt=Date.now();computeHorizontalLinksAndStubs(computeColumnGeometries());draw();
+    }
+    return;
+  }
+  if(draggingGroup){applyActiveDragPosition(e.clientX,e.clientY);return;}
+  if(isPanning){state.camera.x=e.clientX-panStart.x;state.camera.y=e.clientY-panStart.y;clampCameraBounds();draw();return;}
+  updateHoverCursor(e.clientX,e.clientY);
+});
+
+function handlePointerEnd(e){
+  clearTimeout(longPressTimer);activePointers.delete(e.pointerId);
+  if(activePointers.size<2)pinchStartDist=0;
+  if(activePointers.size===1){const rem=Array.from(activePointers.values())[0];isPanning=true;panStart={x:rem.x-state.camera.x,y:rem.y-state.camera.y};return;}
+  stopEdgeAutoScrollLoop();
+  if(draggingColumn){draggingColumn=null;draw();return;}
+  if(resizingNode){const n=state.nodesById[resizingNode.nodeId];resizingNode=null;runAutoLayout({respectSoftManual:true,respectOptOuts:true,anchorSet:n?new Set([n.id]):null});saveState();draw();return;}
+  if(draggingGroup){
+    if(draggingGroup.moved){
+      const cg=computeColumnGeometries(),aN=state.nodesById[draggingGroup.anchorNodeId];
+      if(aN&&typeof aN.dragTempX==='number'){const tC=findColumnAtWorldX(aN.dragTempX+BOX_WIDTH/2,cg);if(tC){aN.columnId=tC.id;state.selectedColId=tC.id;}delete aN.dragTempX;}
+      const now=Date.now();if(aN){aN.isManuallyPositioned=true;aN.updatedAt=now;}
+      draggingGroup.groupIds.forEach(id=>{if(state.nodesById[id])delete state.nodesById[id].dragTempX;});
+      runAutoLayout({respectSoftManual:true,respectOptOuts:true,anchorSet:aN?new Set([aN.id]):null});
+      Object.values(state.nodesById).forEach(n=>{n.updatedAt=now;});saveState();
+    }else draggingGroup.groupIds.forEach(id=>{if(state.nodesById[id])delete state.nodesById[id].dragTempX;});
+    draggingGroup=null;draw();
+  }
+  isPanning=false;
+}
+window.addEventListener('pointerup',handlePointerEnd);window.addEventListener('pointercancel',handlePointerEnd);
+
+canvas.addEventListener('wheel',(e)=>{
+  e.preventDefault();const zF=e.deltaY<0?1.08:0.92,nZ=Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,state.camera.zoom*zF));
+  const wx=(e.clientX-state.camera.x)/state.camera.zoom,wy=(e.clientY-state.camera.y)/state.camera.zoom;
+  state.camera.zoom=nZ;state.camera.x=e.clientX-wx*nZ;state.camera.y=e.clientY-wy*nZ;
+  computeHorizontalLinksAndStubs(computeColumnGeometries());clampCameraBounds();draw();
+},{passive:false});
+
+function addBoxAtWorldPoint(wx,wy,cColId=null){
+  const now=Date.now();if(now-lastSpawnTimestamp<350||now-lastEditorCloseTime<350)return;lastSpawnTimestamp=now;
+  if(document.activeElement&&document.activeElement!==document.body){try{document.activeElement.blur();}catch(e){}}
+  pushUndoState();const cg=computeColumnGeometries(),tCol=cColId?state.columns.find(c=>c.id===cColId):findColumnAtWorldX(wx,cg);
+  const colId=tCol?tCol.id:state.columns[state.columns.length-1].id,nN=addNodeInternal(colId,'New BDN Box',0,wy-BOX_MIN_HEIGHT/2);
+  nN.isManuallyPositioned=true;state.selectedNodeId=nN.id;state.selectedColId=colId;
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true,anchorSet:new Set([nN.id])});saveState();draw();
+  const sP=worldToScreen(getNodeGlobalX(nN,computeColumnGeometries()),nN.y);openInlineEditor('node',nN.id,sP.x,sP.y,nN.text);
+}
+function addBoxInViewportCenter(e){
+  if(e){e.preventDefault();e.stopPropagation();}
+  const cW=screenToWorld(window.innerWidth/2,window.innerHeight/2);spawnCascadeCounter=(spawnCascadeCounter+1)%5;
+  addBoxAtWorldPoint(cW.x,cW.y+spawnCascadeCounter*22);
+}
+
+let editingTarget=null;
+function openInlineEditor(tType,id,sX,sY,initTxt){
+  editingTarget={type:tType,id,initialText:initTxt||''};inlineEditor.value=initTxt||'';inlineEditor.style.display='block';
+  inlineEditor.style.left=Math.min(window.innerWidth-245,Math.max(12,sX))+'px';
+  inlineEditor.style.top=Math.min(window.innerHeight-100,Math.max(64,sY))+'px';inlineEditor.style.width='230px';
+  setTimeout(()=>{inlineEditor.focus();inlineEditor.select();},15);
+}
+function commitInlineEditor(){
+  if(!editingTarget)return;lastEditorCloseTime=Date.now();const val=inlineEditor.value.trim();
+  if(val!==editingTarget.initialText)pushUndoState();
+  if(editingTarget.type==='node'&&state.nodesById[editingTarget.id]&&val){state.nodesById[editingTarget.id].text=val;state.nodesById[editingTarget.id].updatedAt=Date.now();}
+  else if(editingTarget.type==='link'&&state.linksById[editingTarget.id]){state.linksById[editingTarget.id].label=val;state.linksById[editingTarget.id].updatedAt=Date.now();}
+  else if(editingTarget.type==='col'){const col=state.columns.find(c=>c.id===editingTarget.id);if(col&&val)col.title=val;}
+  else if(editingTarget.type==='mapTitle'&&val){state.mapTitle=val;document.getElementById('docTitleBtn').textContent=val;}
+  inlineEditor.style.display='none';editingTarget=null;runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+}
+inlineEditor.addEventListener('blur',commitInlineEditor);
+inlineEditor.addEventListener('keydown',(e)=>{
+  e.stopPropagation();
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commitInlineEditor();}
+  else if(e.key==='Escape'){e.preventDefault();lastEditorCloseTime=Date.now();editingTarget=null;inlineEditor.style.display='none';}
+});
+
+canvas.addEventListener('dblclick',(e)=>{
+  const hit=hitTest(e.clientX,e.clientY);
+  if(hit?.type==='node'||hit?.type==='resize-node-top'||hit?.type==='resize-node-bottom')openInlineEditor('node',hit.node.id,e.clientX-90,e.clientY-25,hit.node.text);
+  else if(hit?.type==='link')openInlineEditor('link',hit.link.id,e.clientX-90,e.clientY-25,hit.link.label);
+  else if(hit?.type==='column-header')openInlineEditor('col',hit.col.id,e.clientX-90,getHeaderTopY()+4,hit.col.title);
+});
+
+function placeFloatingElement(el,aX,aY){
+  el.style.left='0px';el.style.top='0px';el.style.visibility='hidden';el.style.display='flex';
+  const r=el.getBoundingClientRect(),vw=window.visualViewport?window.visualViewport.width:window.innerWidth,vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  el.style.left=((aX+r.width>vw-12)?Math.max(12,vw-r.width-12):Math.max(12,aX))+'px';
+  el.style.top=((aY+r.height>vh-72)?Math.max(12,aY-r.height):Math.max(12,aY))+'px';el.style.visibility='visible';
+}
+
+function showContextMenu(x,y,items){
+  hideAllMenus();contextMenu.innerHTML='';
+  items.forEach(item=>{
+    if(item.sep){const s=document.createElement('div');s.className='ctx-sep';contextMenu.appendChild(s);return;}
+    if(item.header){const h=document.createElement('div');h.className='ctx-label';h.textContent=item.header;contextMenu.appendChild(h);return;}
+    if(item.swatches){
+      const sR=document.createElement('div');sR.className='swatch-row';
+      SWATCH_PALETTE.forEach(hex=>{const d=document.createElement('div');d.className='color-swatch';d.style.background=hex;d.addEventListener('click',()=>{hideAllMenus();item.onSelectColor(hex);});sR.appendChild(d);});
+      if(item.allowReset){const rst=document.createElement('span');rst.style.cssText='font-size:11px;color:var(--text-secondary);cursor:pointer;margin-left:4px;';rst.textContent='↺ Auto';rst.addEventListener('click',()=>{hideAllMenus();item.onSelectColor(null);});sR.appendChild(rst);}
+      contextMenu.appendChild(sR);return;
+    }
+    const row=document.createElement('div');row.className='ctx-item'+(item.danger?' danger':'');
+    row.innerHTML=`<span>${item.label}</span><span class="ctx-kbd">${item.kbd||''}</span>`;
+    row.addEventListener('click',()=>{hideAllMenus();item.action();});contextMenu.appendChild(row);
+  });
+  placeFloatingElement(contextMenu,x,y);
+}
+
+function openContextMenuAtPoint(sX,sY){
+  const w=screenToWorld(sX,sY),hit=hitTest(sX,sY);
+  if(hit?.type==='node'||hit?.type==='resize-node-top'||hit?.type==='resize-node-bottom'){
+    const n=hit.node;state.selectedNodeId=n.id;draw();
+    showContextMenu(sX,sY,[
+      {label:'✎ Edit Box Text',kbd:'F2',action:()=>openInlineEditor('node',n.id,sX,sY,n.text)},
+      {label:'🔗 Start Link From Box',kbd:'L',action:()=>startLinkMode(n.id)},
+      {label:'⬅ Add Connected Box to Left Column',kbd:'Tab',action:()=>addConnectedLeftNode(n)},
+      {sep:true},{header:'Box Colour Override'},
+      {swatches:true,allowReset:true,onSelectColor:(hex)=>{pushUndoState();n.color=hex;n.updatedAt=Date.now();saveState();draw();}},
+      {sep:true},
+      {label:'↺ Return Box to Auto-Layout (Clear Manual)',kbd:'M',action:()=>clearManualOnNode(n.id)},
+      {label:n.isAutoLayoutOptOut?'Unpin Box (Allow Auto-Layout)':'📌 Pin Box (Opt-Out of Auto-Layout)',kbd:'P',action:()=>togglePinNode(n.id,false)},
+      {label:'📌 Pin/Unpin Upstream Left Branch',kbd:'Shift+P',action:()=>togglePinNode(n.id,true)},
+      {sep:true},
+      {label:'Shift Right into Intra-Column Sub-Lane',kbd:'Alt+→',action:()=>shiftSubLane(n,1)},
+      {label:'Shift Left in Intra-Column Sub-Lane',kbd:'Alt+←',action:()=>shiftSubLane(n,-1)},
+      {sep:true},{label:'🗑 Delete Box',kbd:'Del',danger:true,action:()=>deleteSelected()}
+    ]);
+  }else if(hit?.type==='link'){
+    const l=hit.link;state.selectedLinkId=l.id;draw();
+    showContextMenu(sX,sY,[
+      {label:'✎ Edit Link Annotation',kbd:'F2',action:()=>openInlineEditor('link',l.id,sX,sY,l.label)},
+      {label:'⇄ Cycle Arrowhead Direction',kbd:'A',action:()=>cycleLinkArrow(l)},
+      {label:l.forceSplit?'Heal Split Link to Straight Line':'Convert to Split Link Stubs (①—①)',kbd:'S',action:()=>toggleForceSplit(l)},
+      {sep:true},{label:'🗑 Delete Link',kbd:'Del',danger:true,action:()=>deleteSelected()}
+    ]);
+  }else if(hit?.type==='column-header'||hit?.col){
+    const col=hit.col;state.selectedColId=col.id;draw();
+    showContextMenu(sX,sY,[
+      {label:`✎ Rename "${col.title}"`,kbd:'F2',action:()=>openInlineEditor('col',col.id,sX,getHeaderTopY()+4,col.title)},
+      {header:'Column Accent Colour'},
+      {swatches:true,onSelectColor:(hex)=>{if(hex){pushUndoState();col.color=hex;saveState();draw();}}},
+      {sep:true},
+      {label:'◀ Move Column Left',action:()=>moveColumn(col.id,-1)},
+      {label:'▶ Move Column Right',action:()=>moveColumn(col.id,1)},
+      {label:'+ Insert New Column to Left',action:()=>insertColumnRelative(col.id,0)},
+      {label:'+ Insert New Column to Right',action:()=>insertColumnRelative(col.id,1)},
+      {sep:true},{label:'🗑 Delete Column',danger:true,action:()=>deleteColumn(col.id)}
+    ]);
+  }else{
+    const bgCol=findColumnAtWorldX(w.x,computeColumnGeometries())||state.columns[state.columns.length-1];
+    if(bgCol)state.selectedColId=bgCol.id;draw();
+    showContextMenu(sX,sY,[
+      {header:`Column: ${bgCol?bgCol.title:'Workspace'}`},
+      {label:'+ Add Box Here',kbd:'Enter',action:()=>addBoxAtWorldPoint(w.x,w.y,bgCol?.id)},
+      {sep:true},
+      {label:'✎ Rename This Column...',action:()=>openInlineEditor('col',bgCol.id,sX,getHeaderTopY()+4,bgCol.title)},
+      {label:'+ Insert Column to Left',action:()=>insertColumnRelative(bgCol.id,0)},
+      {label:'+ Insert Column to Right',action:()=>insertColumnRelative(bgCol.id,1)},
+      {header:'Column Colour'},
+      {swatches:true,onSelectColor:(hex)=>{if(hex&&bgCol){pushUndoState();bgCol.color=hex;saveState();draw();}}},
+      {sep:true},
+      {label:'✨ Tidy Network (Keep Pins)',action:()=>document.getElementById('btnTidyKeepPins').click()},
+      {label:'⚡ Reset All Locks & Tidy',action:()=>document.getElementById('menuResetAllTidy').click()},
+      {label:'⛶ Fit Diagram to Screen',action:()=>fitScreen()}
+    ]);
+  }
+}
+canvas.addEventListener('contextmenu',(e)=>{e.preventDefault();openContextMenuAtPoint(e.clientX,e.clientY);});
+
+function clearManualOnNode(nId){const n=state.nodesById[nId];if(!n)return;pushUndoState();n.isManuallyPositioned=false;n.isManuallyStretched=false;n.isAutoLayoutOptOut=false;n.updatedAt=Date.now();runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();}
+function startLinkMode(nId){linkingFromNodeId=nId;modeBanner.style.display='block';draw();}
+function togglePinNode(nId,up=false){
+  const t=state.nodesById[nId];if(!t)return;pushUndoState();const nv=!t.isAutoLayoutOptOut;
+  (up?getUpstreamLeftChain(nId):[nId]).forEach(id=>{if(state.nodesById[id]){state.nodesById[id].isAutoLayoutOptOut=nv;state.nodesById[id].updatedAt=Date.now();}});
+  saveState();draw();
+}
+function shiftSubLane(n,d){pushUndoState();n.subLane=Math.max(0,(n.subLane||0)+d);n.isManuallyPositioned=true;n.updatedAt=Date.now();runAutoLayout({respectSoftManual:true,respectOptOuts:true,anchorSet:new Set([n.id])});saveState();draw();}
+function addConnectedLeftNode(sN){
+  const now=Date.now();if(now-lastSpawnTimestamp<350||now-lastEditorCloseTime<350)return;lastSpawnTimestamp=now;
+  if(document.activeElement&&document.activeElement!==document.body){try{document.activeElement.blur();}catch(e){}}
+  pushUndoState();const cI=state.columns.findIndex(c=>c.id===sN.columnId),tC=state.columns[Math.max(0,cI-1)];
+  const sl=(tC.id===sN.columnId)?Math.max(0,(sN.subLane||0)-1):0,nN=addNodeInternal(tC.id,'New BDN Box',sl,sN.y);
+  addLinkInternal(nN.id,sN.id,'',settings.defaultArrow);state.selectedNodeId=nN.id;state.selectedColId=tC.id;
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+  const sP=worldToScreen(getNodeGlobalX(nN,computeColumnGeometries()),nN.y);openInlineEditor('node',nN.id,sP.x,sP.y,nN.text);
+}
+function cycleLinkArrow(l){pushUndoState();const o=['right','left','both','none'];l.arrowMode=o[(o.indexOf(l.arrowMode||'right')+1)%o.length];l.updatedAt=Date.now();saveState();draw();}
+function toggleForceSplit(l){pushUndoState();l.forceSplit=!l.forceSplit;l.updatedAt=Date.now();runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();}
+function insertColumnRelative(cId,off){
+  pushUndoState();const idx=state.columns.findIndex(c=>c.id===cId),ins=idx===-1?state.columns.length:idx+off;
+  const nC={id:'col_'+Math.random().toString(36).slice(2,8),title:'New Column',color:SWATCH_PALETTE[state.columns.length%SWATCH_PALETTE.length]};
+  state.columns.splice(ins,0,nC);state.selectedColId=nC.id;runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+  const cg=computeColumnGeometries()[nC.id];if(cg)openInlineEditor('col',nC.id,cg.x*state.camera.zoom+state.camera.x+20,getHeaderTopY()+4,nC.title);
+}
+function moveColumn(cId,dir){
+  const idx=state.columns.findIndex(c=>c.id===cId),nI=idx+dir;if(idx<0||nI<0||nI>=state.columns.length)return;
+  pushUndoState();const[col]=state.columns.splice(idx,1);state.columns.splice(nI,0,col);state.selectedColId=col.id;
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+}
+function deleteColumn(cId){
+  if(state.columns.length<=1)return;pushUndoState();state.columns=state.columns.filter(c=>c.id!==cId);
+  Object.values(state.nodesById).forEach(n=>{if(n.columnId===cId)deleteNodeById(n.id);});
+  state.selectedColId=state.columns[0].id;runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+}
+function deleteNodeById(nId){
+  state.deletedById=state.deletedById||{};state.deletedById[nId]=Date.now();delete state.nodesById[nId];
+  Object.values(state.linksById).forEach(l=>{if(l.fromId===nId||l.toId===nId){state.deletedById[l.id]=Date.now();delete state.linksById[l.id];}});
+}
+function deleteSelected(){
+  if(state.selectedLinkId&&state.linksById[state.selectedLinkId]){
+    pushUndoState();state.deletedById=state.deletedById||{};state.deletedById[state.selectedLinkId]=Date.now();
+    delete state.linksById[state.selectedLinkId];state.selectedLinkId=null;
+  }else if(state.selectedNodeId&&state.nodesById[state.selectedNodeId]){
+    pushUndoState();deleteNodeById(state.selectedNodeId);state.selectedNodeId=null;
+  }else return;
+  runAutoLayout({respectSoftManual:true,respectOptOuts:true});saveState();draw();
+}
+function fitScreen(){
+  state.camera.zoom=1;const cg=computeColumnGeometries(),tW=cg._totalWorldWidth||1160,all=Object.values(state.nodesById);
+  const minT=all.length?Math.min(...all.map(n=>n.y)):INITIAL_SPAWN_Y,maxB=all.length?Math.max(...all.map(n=>n.y+n.height)):500;
+  const cH=Math.max(200,maxB-minT+90),hBot=getHeaderTopY()+STICKY_HEADER_HEIGHT,avH=Math.max(180,window.innerHeight-hBot-(window.innerWidth<=820?72:20));
+  const fZ=Math.min(1,Math.max(MIN_ZOOM,Math.min(window.innerWidth/tW,avH/cH)));
+  state.camera.zoom=fZ;state.camera.x=(window.innerWidth-tW*fZ)/2;state.camera.y=hBot+20-minT*fZ;
+  computeHorizontalLinksAndStubs(computeColumnGeometries());clampCameraBounds();draw();
+}
+
+document.getElementById('btnMenu').addEventListener('click',(e)=>{e.stopPropagation();const v=fileMenu.style.display==='flex';hideAllMenus();if(!v)placeFloatingElement(fileMenu,12,getHeaderTopY()-4);});
+document.getElementById('btnSettings').addEventListener('click',(e)=>{e.stopPropagation();const v=settingsPanel.style.display==='flex';hideAllMenus();if(!v)placeFloatingElement(settingsPanel,48,getHeaderTopY()-4);});
+document.getElementById('docTitleBtn').addEventListener('click',(e)=>{const r=e.target.getBoundingClientRect();openInlineEditor('mapTitle','mapTitle',r.left,r.bottom+6,state.mapTitle);});
+
+const btnHelp=document.getElementById('btnHelp');
+btnHelp.addEventListener('mouseenter',()=>{clearTimeout(helpHoverTimeout);helpPopover.style.display='block';});
+btnHelp.addEventListener('mouseleave',()=>{helpHoverTimeout=setTimeout(()=>{helpPopover.style.display='none';},160);});
+helpPopover.addEventListener('mouseenter',()=>clearTimeout(helpHoverTimeout));
+helpPopover.addEventListener('mouseleave',()=>{helpPopover.style.display='none';});
+
+document.getElementById('mobAddBox').addEventListener('click',(e)=>addBoxInViewportCenter(e));
+document.getElementById('mobAddLeft').addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();const sN=state.selectedNodeId?state.nodesById[state.selectedNodeId]:null;if(sN)addConnectedLeftNode(sN);else addBoxInViewportCenter(e);});
+document.getElementById('mobLink').addEventListener('click',()=>{if(state.selectedNodeId)startLinkMode(state.selectedNodeId);});
+document.getElementById('mobEdit').addEventListener('click',()=>{
+  const sN=state.selectedNodeId?state.nodesById[state.selectedNodeId]:null,sL=state.selectedLinkId?state.linksById[state.selectedLinkId]:null;
+  if(sN){const sc=worldToScreen(getNodeGlobalX(sN,computeColumnGeometries()),sN.y);openInlineEditor('node',sN.id,sc.x,sc.y,sN.text);}
+  else if(sL)openInlineEditor('link',sL.id,window.innerWidth/2-110,window.innerHeight/2-30,sL.label);
+});
+document.getElementById('mobPin').addEventListener('click',()=>{if(state.selectedNodeId)togglePinNode(state.selectedNodeId,false);});
+document.getElementById('mobDel').addEventListener('click',deleteSelected);
+
+document.getElementById('menuNewBdn').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(true);fitScreen();});
+document.getElementById('menuOpenBdn').addEventListener('click',openBdnFile);
+document.getElementById('menuSaveBdn').addEventListener('click',()=>saveBdnFile(false));
+document.getElementById('menuSaveAsBdn').addEventListener('click',()=>saveBdnFile(true));
+document.getElementById('menuExportPng').addEventListener('click',exportPngDiagram);
+document.getElementById('menuSaveDefaultCols').addEventListener('click',()=>{hideAllMenus();localStorage.setItem(STORAGE_KEY_DEFAULT_COLS,JSON.stringify(state.columns));updateStatusPill('✓ Cols Saved');});
+document.getElementById('menuRestoreFactoryCols').addEventListener('click',()=>{hideAllMenus();localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);updateStatusPill('↺ Factory Cols');});
+document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();performIdempotentTidy(false);saveState();fitScreen();});
+document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(false);fitScreen();});
+document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
+
+document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
+document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
+document.querySelectorAll('#fillSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxFill=b.getAttribute('data-fill');saveSettings();}));
+document.querySelectorAll('#arrowSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+  const nA=b.getAttribute('data-arrow');settings.defaultArrow=nA;pushUndoState();
+  Object.values(state.linksById).forEach(l=>{l.arrowMode=nA;l.updatedAt=Date.now();});
+  saveSettings();saveState();draw();
+}));
+document.getElementById('chkShowToolbarAdd').addEventListener('change',(e)=>{settings.showAddButtonsInToolbar=e.target.checked;saveSettings();});
+
+document.getElementById('btnUndo').addEventListener('click',performUndo);
+document.getElementById('btnRedo').addEventListener('click',performRedo);
+document.getElementById('btnAddBox').addEventListener('click',(e)=>addBoxInViewportCenter(e));
+document.getElementById('btnAddCol').addEventListener('click',()=>insertColumnRelative(state.selectedColId||state.columns[state.columns.length-1].id,1));
+document.getElementById('btnTidyKeepPins').addEventListener('click',()=>{pushUndoState();performIdempotentTidy(true);saveState();draw();});
+document.getElementById('btnFit').addEventListener('click',fitScreen);
+
+window.addEventListener('keydown',(e)=>{
+  if(inlineEditor.style.display==='block'||Date.now()-lastEditorCloseTime<350)return;
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){e.preventDefault();performUndo();return;}
+  if((e.ctrlKey||e.metaKey)&&((e.key==='y'||e.key==='Y')||(e.shiftKey&&(e.key==='z'||e.key==='Z')))){e.preventDefault();performRedo();return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='o'||e.key==='O')){e.preventDefault();openBdnFile();return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){e.preventDefault();saveBdnFile(e.shiftKey);return;}
+  const sN=state.selectedNodeId?state.nodesById[state.selectedNodeId]:null,sL=state.selectedLinkId?state.linksById[state.selectedLinkId]:null;
+  if(e.key==='Escape'){linkingFromNodeId=null;modeBanner.style.display='none';helpPopover.style.display='none';conflictModal.style.display='none';hideAllMenus();draw();return;}
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();return;}
+  if(e.key==='Enter'){if(document.activeElement&&document.activeElement.tagName==='BUTTON')return;e.preventDefault();addBoxInViewportCenter(e);return;}
+  if(e.key==='Tab'&&sN){e.preventDefault();addConnectedLeftNode(sN);return;}
+  if((e.key==='l'||e.key==='L')&&sN){e.preventDefault();startLinkMode(sN.id);return;}
+  if((e.key==='m'||e.key==='M')&&sN){e.preventDefault();clearManualOnNode(sN.id);return;}
+  if((e.key==='p'||e.key==='P')&&sN){e.preventDefault();togglePinNode(sN.id,e.shiftKey);return;}
+  if((e.key==='a'||e.key==='A')&&sL){e.preventDefault();cycleLinkArrow(sL);return;}
+  if((e.key==='s'||e.key==='S')&&sL){e.preventDefault();toggleForceSplit(sL);return;}
+  if(e.key==='F2'){
+    e.preventDefault();
+    if(sN){const sc=worldToScreen(getNodeGlobalX(sN,computeColumnGeometries()),sN.y);openInlineEditor('node',sN.id,sc.x,sc.y,sN.text);}
+    else if(sL)openInlineEditor('link',sL.id,window.innerWidth/2-100,window.innerHeight/2,sL.label);
+    else if(state.selectedColId){const col=state.columns.find(c=>c.id===state.selectedColId);if(col)openInlineEditor('col',col.id,window.innerWidth/2-100,getHeaderTopY()+4,col.title);}
+  }
+});
+
+window.addEventListener('resize',resizeCanvas);
+loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
