@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Direct Split-Link Minimizer — Keeps Pinned 📌 Boxes Fixed)" type="button">Tidy</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Downstream Sugiyama Cascade — Reorders Branches & Heals Split Links)" type="button">Tidy</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -132,7 +132,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuRestoreFactoryCols"><span>↺ Restore Factory 4 Columns</span></div>
   <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
   <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
-  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load Large Stress-Test Demo (28 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load Large Stress-Test Demo (Untidied — Click Tidy to Test!)</span></div>
 </div>
 
 <div class="floating-menu" id="settingsPanel">
@@ -210,12 +210,12 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
   <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
   <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>Direct Split-Link Minimizer (v3.3):</strong> Simulates vertical swaps and sub-lane bypass stretching against the real split-link count, reducing split links in the 28-box stress test from 6+ down to 0–1!
+    • <strong>Downstream Sugiyama Cascade (v3.4):</strong> Loading the Stress-Test Demo shows the raw untidied network first—click <code>Tidy</code> to watch the Right-to-Left cascade reorder upstream branches and heal split links live!
   </div>
 </div>
 
 <script>
-const STORAGE_KEY_STATE='bdn_studio_state_v21',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v21',STORAGE_KEY_SETTINGS='bdn_studio_settings_v21';
+const STORAGE_KEY_STATE='bdn_studio_state_v22',STORAGE_KEY_DEFAULT_COLS='bdn_studio_default_cols_v22',STORAGE_KEY_SETTINGS='bdn_studio_settings_v22';
 const FACTORY_COLUMNS=[
   {id:'col_enablers',title:'Enablers',color:'#38bdf8'},
   {id:'col_changes',title:'Business Changes',color:'#34d399'},
@@ -229,7 +229,7 @@ const THEMES={
   warm:{bgCanvas:'#1c1917',surfaceHud:'rgba(28,25,23,0.94)',surfaceModal:'#292524',surfaceBox:'#292524',surfaceBoxSel:'#44403c',surfaceHeader:'rgba(28,25,23,0.96)',borderHud:'#44403c',textPrimary:'#f5f5f4',textSecondary:'#a8a29e',textMuted:'#78716c',linkStroke:'#d6d3d1',colTintEven:'rgba(41,37,36,0.28)',colTintOdd:'rgba(68,64,60,0.18)'},
   blueprint:{bgCanvas:'#07192f',surfaceHud:'rgba(10,34,64,0.94)',surfaceModal:'#0a2240',surfaceBox:'#0a2240',surfaceBoxSel:'#123866',surfaceHeader:'rgba(10,34,64,0.96)',borderHud:'#1e4976',textPrimary:'#f0f9ff',textSecondary:'#93c5fd',textMuted:'#60a5fa',linkStroke:'#e0f2fe',colTintEven:'rgba(14,42,77,0.3)',colTintOdd:'rgba(20,58,102,0.2)'}
 };
-const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=68,COL_SIDE_PADDING=58,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=32,LINK_SLOT_SPACING=22,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.16,MAX_ZOOM=2.4;
+const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=68,COL_SIDE_PADDING=58,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=30,LINK_SLOT_SPACING=22,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.16,MAX_ZOOM=2.4;
 
 function getHeaderTopY(){const hud=document.getElementById('topHud');return hud?Math.max(52,Math.round(hud.getBoundingClientRect().bottom+6)):56;}
 
@@ -573,10 +573,11 @@ function createStarterNetwork(blank=false){
   state.selectedColId=cObj;activeChannelKey=null;setupLiveSyncForCurrentFile();performIdempotentTidy(false);saveState();
 }
 
+// Loads the Stress-Test Demo in its RAW UNTIDIED state first so clicking `Tidy` visibly demonstrates the v3.4 branch reordering & split-link healing!
 function loadStressTestDemo(){
   pushUndoState();sessionFileHandle=null;
   const ts=1763316000000;
-  state.mapId='bdn_stresstest_v33_01';
+  state.mapId='bdn_stresstest_v34_01';
   state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
   state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
   state.updatedAt=ts;state.deletedById={};
@@ -589,38 +590,38 @@ function loadStressTestDemo(){
   ];
   state.nodesById={};state.linksById={};
   const boxes=[
-    ['ena_1','col_enablers','Core Cloud Telemetry & IoT Ingestion Platform',0,165],
-    ['ena_2','col_enablers','Automated Anomaly Detection ML Pipeline',1,165],
-    ['ena_3','col_enablers','Resilient Multi-Bearer Radio & Satellite Network',0,290],
-    ['ena_4','col_enablers','Offline-First Field Engineer Mobile App',0,415],
-    ['ena_5','col_enablers','Unified Digital Asset & Spares Inventory DB',0,525],
-    ['ena_6','col_enablers','Zero-Trust Identity & Biometric Access Gateway',0,640,'#60a5fa'],
-    ['ena_7','col_enablers','Automated Supplier SLA & Contract Portal',0,765],
-    ['ena_8','col_enablers','Legacy Decommissioning Archive (Unlinked Test Box)',0,900,null,true,false],
-    ['chg_1','col_changes','Control Room Shifts from Reactive to Predictive Triage',0,165],
-    ['chg_2','col_changes','Dynamic Multi-Agency Incident Routing Protocols',0,290],
-    ['chg_3','col_changes','Engineers Complete Guided Pre-Visit Diagnostics',0,415],
-    ['chg_4','col_changes','Automated Van-Stock Replenishment Triggers',1,470],
-    ['chg_5','col_changes','Role-Based Just-in-Time Security Elevation',0,640],
-    ['chg_6','col_changes','Commercial Teams Enforce Real-Time Penalty Credits',0,765],
-    ['chg_7','col_changes','Ad-Hoc Paper Logbooks Retired (Severed Branch Test)',0,900,null,true,false],
-    ['cap_1','col_capabilities','Automated Pre-Failure Dispatch & Self-Healing',0,165],
-    ['cap_2','col_capabilities','Continuous Gold-Command Situational Awareness',0,290],
-    ['cap_3','col_capabilities','Single-Visit First-Time Fix Capability',0,430],
-    ['cap_4','col_capabilities','Continuous NIS2 & ISO27001 Audit Readiness',0,640],
-    ['cap_5','col_capabilities','Transparent Vendor Performance & Cost Governance',0,765],
-    ['cap_6','col_capabilities','Local Depot Manual Archiving (Severed Branch Test)',0,900,null,true,false],
-    ['ben_1','col_benefits','40% Reduction in Unplanned Critical Outages',0,180],
-    ['ben_2','col_benefits','25% Faster Emergency Response & Recovery Time',0,310],
-    ['ben_3','col_benefits','£14.5m Annual Savings in Fleet & Repeat Visits',0,445,'#2dd4bf'],
-    ['ben_4','col_benefits','Zero Critical Cyber Breaches or Regulatory Fines',0,640],
-    ['ben_5','col_benefits','18% Reduction in Third-Party Supplier Spend',0,765],
-    ['obj_1','col_objectives','99.99% National Critical Infrastructure Availability',0,210,null,false,true],
-    ['obj_2','col_objectives','Deliver £22m Run-Rate Operational Cost Efficiency',0,470],
-    ['obj_3','col_objectives','Full Statutory & Cyber Security Compliance (NIS2)',0,660,null,false,true]
+    ['ena_1','col_enablers','Core Cloud Telemetry & IoT Ingestion Platform',0,165,72],
+    ['ena_2','col_enablers','Automated Anomaly Detection ML Pipeline',1,165,72],
+    ['ena_3','col_enablers','Resilient Multi-Bearer Radio & Satellite Network',0,290,72],
+    ['ena_4','col_enablers','Offline-First Field Engineer Mobile App',0,415,54],
+    ['ena_5','col_enablers','Unified Digital Asset & Spares Inventory DB',0,525,54],
+    ['ena_6','col_enablers','Zero-Trust Identity & Biometric Access Gateway',0,640,72,'#60a5fa'],
+    ['ena_7','col_enablers','Automated Supplier SLA & Contract Portal',0,765,54],
+    ['ena_8','col_enablers','Legacy Decommissioning Archive (Unlinked Test Box)',0,900,72,null,true,false],
+    ['chg_1','col_changes','Control Room Shifts from Reactive to Predictive Triage',0,165,72],
+    ['chg_2','col_changes','Dynamic Multi-Agency Incident Routing Protocols',0,290,72],
+    ['chg_3','col_changes','Engineers Complete Guided Pre-Visit Diagnostics',0,415,72],
+    ['chg_4','col_changes','Automated Van-Stock Replenishment Triggers',1,470,54],
+    ['chg_5','col_changes','Role-Based Just-in-Time Security Elevation',0,640,54],
+    ['chg_6','col_changes','Commercial Teams Enforce Real-Time Penalty Credits',0,765,72],
+    ['chg_7','col_changes','Ad-Hoc Paper Logbooks Retired (Severed Branch Test)',0,900,72,null,true,false],
+    ['cap_1','col_capabilities','Automated Pre-Failure Dispatch & Self-Healing',0,165,72],
+    ['cap_2','col_capabilities','Continuous Gold-Command Situational Awareness',0,290,72],
+    ['cap_3','col_capabilities','Single-Visit First-Time Fix Capability',0,430,54],
+    ['cap_4','col_capabilities','Continuous NIS2 & ISO27001 Audit Readiness',0,640,54],
+    ['cap_5','col_capabilities','Transparent Vendor Performance & Cost Governance',0,765,72],
+    ['cap_6','col_capabilities','Local Depot Manual Archiving (Severed Branch Test)',0,900,72,null,true,false],
+    ['ben_1','col_benefits','40% Reduction in Unplanned Critical Outages',0,180,72],
+    ['ben_2','col_benefits','25% Faster Emergency Response & Recovery Time',0,310,72],
+    ['ben_3','col_benefits','£14.5m Annual Savings in Fleet & Repeat Visits',0,445,72,'#2dd4bf'],
+    ['ben_4','col_benefits','Zero Critical Cyber Breaches or Regulatory Fines',0,640,72],
+    ['ben_5','col_benefits','18% Reduction in Third-Party Supplier Spend',0,765,54],
+    ['obj_1','col_objectives','99.99% National Critical Infrastructure Availability',0,210,88,null,false,true],
+    ['obj_2','col_objectives','Deliver £22m Run-Rate Operational Cost Efficiency',0,470,88],
+    ['obj_3','col_objectives','Full Statutory & Cyber Security Compliance (NIS2)',0,660,88,null,false,true]
   ];
-  boxes.forEach(([id,cId,txt,sl,y,col,man,pin])=>{
-    state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+  boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
+    state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
   });
   const lnks=[
     ['ena_1','ena_2','Raw stream'],['ena_2','chg_1','AI alerts'],['ena_1','chg_2','Live health'],['ena_3','chg_2','Zero blackspots'],
@@ -629,20 +630,20 @@ function loadStressTestDemo(){
     ['chg_2','cap_2','Multi-agency'],['chg_2','cap_3','Right skill dispatched'],['chg_3','cap_3','92% first fix'],['chg_4','cap_3','Zero parts delay'],
     ['chg_5','cap_4','Zero standing privs'],['chg_6','cap_5','SLA tracking'],['cap_1','ben_1','65% call reduction'],['cap_2','ben_1','Prevents cascade'],
     ['cap_2','ben_2','Gold command speed'],['cap_3','ben_2','Rapid restoration'],['cap_3','ben_3','Fewer truck rolls'],['cap_4','ben_4','Audit pass'],
-    ['cap_5','ben_3','Rebate recovery'],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
-    ['ben_2','obj_3','Statutory SLA'],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
-    ['ena_6','cap_1','Secure edge telemetry'],['chg_7','cap_6','Orphaned link']
+    ['cap_5','ben_3','Rebate recovery',true],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
+    ['ben_2','obj_3','Statutory SLA',true],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
+    ['ena_6','cap_1','Secure edge telemetry',true],['chg_7','cap_6','Orphaned link']
   ];
   lnks.forEach(([f,t,lbl,sp],idx)=>{
     const id='lnk_'+(idx+1);
     state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
   });
-  state.selectedNodeId='obj_1';state.selectedLinkId=null;state.selectedColId='col_objectives';
+  state.selectedNodeId='cap_5';state.selectedLinkId=null;state.selectedColId='col_capabilities';
   document.getElementById('docTitleBtn').textContent=state.mapTitle;
   activeChannelKey=null;setupLiveSyncForCurrentFile();
-  performIdempotentTidy(false);
+  computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
   localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Stress Demo',true);
+  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Demo — Click Tidy!',true);
 }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -689,7 +690,7 @@ function loadState(){
         const vc=new Set(state.columns.map(c=>c.id)),fb=state.columns[state.columns.length-1].id;
         Object.values(state.nodesById).forEach(n=>{if(!vc.has(n.columnId))n.columnId=fb;delete n.dragTempX;});
         document.getElementById('docTitleBtn').textContent=state.mapTitle||'Untitled BDN';
-        setupLiveSyncForCurrentFile();runAutoLayout({respectSoftManual:true,respectOptOuts:true});return;
+        setupLiveSyncForCurrentFile();computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();return;
       }
     }
   }catch(e){}
@@ -732,18 +733,21 @@ function isNodePositionLocked(n,o={}){return(o.anchorSet&&o.anchorSet.has(n.id))
 function isNodeStretchLocked(n,o={}){return(o.respectOptOuts!==false&&n.isAutoLayoutOptOut)||!!(o.respectSoftManual&&n.isManuallyStretched);}
 function getBaseBoxHeight(n,ms){const tl=Math.max(1,Math.ceil((n.text||'').length/22)),th=Math.max(BOX_MIN_HEIGHT,26+tl*17);return ms<=1?th:Math.max(th,EDGE_CORNER_PAD*2+(ms-1)*LINK_SLOT_SPACING);}
 
-function getPerSideNeighbors(n,cg,incSplit=true){
-  const mx=getNodeGlobalX(n,cg),ln=[],rn=[];
+// Filter neighbors: `adjacentOnly = true` ignores long-span skip links (>1 column jump) so skip links never yank a box away from its adjacent chain!
+function getPerSideNeighbors(n,cg,incSplit=true,adjacentOnly=false){
+  const mx=getNodeGlobalX(n,cg),myCol=cg[n.columnId]?.colIndex??0,ln=[],rn=[];
   Object.values(state.linksById).forEach(l=>{
     if(!incSplit&&l.forceSplit)return;if(l.fromId!==n.id&&l.toId!==n.id)return;
     const o=state.nodesById[l.fromId===n.id?l.toId:l.fromId];if(!o)return;
+    if(adjacentOnly){
+      const oCol=cg[o.columnId]?.colIndex??0;
+      if(Math.abs(myCol-oCol)>1)return;
+    }
     if(getNodeGlobalX(o,cg)<mx)ln.push({link:l,neighbor:o});else rn.push({link:l,neighbor:o});
   });
   return{leftNeighbors:ln,rightNeighbors:rn};
 }
 
-// CRITICAL FIX: When `o.preserveTidyOrder` is true, sort by `_tidyOrder` instead of `(a.y+a.height/2)`
-// so centering passes NEVER allow boxes in the same lane to jump over each other and undo Sugiyama ordering!
 function resolveColumnCollisions(colId,sl,o={}){
   const ps=o.primaryAnchorSet||o.anchorSet||new Set();
   const ln=Object.values(state.nodesById).filter(n=>n.columnId===colId&&(n.subLane||0)===sl);
@@ -780,79 +784,48 @@ function clampStretchToColumnClashes(n,ct,cb,ln){
 }
 
 // ============================================================================
-// v3.3 SUGIYAMA + DIRECT SIMULATED SPLIT-LINK MINIMIZATION ENGINE
+// v3.4 STRICT RIGHT-TO-LEFT DOWNSTREAM SUGIYAMA CASCADE & SUB-LANE EVASION
+// Ensures upstream branches (like Transparent Vendor Performance -> Commercial
+// Teams -> Automated Supplier SLA Portal) reorder together from Right to Left
+// to line up with their downstream Benefits & Objectives!
 // ============================================================================
-function computeMedianValue(arr){
-  if(!arr.length)return 0;
-  const s=[...arr].sort((a,b)=>a-b),m=Math.floor(s.length/2);
-  return s.length%2===1?s[m]:(s[m-1]+s[m])/2;
-}
-
-function computeNodeHybridTargetY(n,cg,preferSide='both'){
-  const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
-  let targets=[];
-  if(preferSide==='right'&&rN.length)targets=rN.map(x=>x.neighbor);
-  else if(preferSide==='left'&&lN.length)targets=lN.map(x=>x.neighbor);
-  else targets=[...rN.map(x=>x.neighbor),...lN.map(x=>x.neighbor)];
-  if(!targets.length)return n.y+n.height/2;
-  const ys=targets.map(t=>t.y+t.height/2);
-  return computeMedianValue(ys)*0.7+(ys.reduce((a,b)=>a+b,0)/ys.length)*0.3;
-}
-
-function countPairwiseCrossings(nTop,nBot,cg){
-  const topSides=getPerSideNeighbors(nTop,cg,false),botSides=getPerSideNeighbors(nBot,cg,false);
-  let crossings=0;
-  topSides.rightNeighbors.forEach(({neighbor:uNb})=>{
-    const uY=uNb.y+uNb.height/2;
-    botSides.rightNeighbors.forEach(({neighbor:vNb})=>{
-      if(uNb.id!==vNb.id&&uY>vNb.y+vNb.height/2+4)crossings++;
-    });
-  });
-  topSides.leftNeighbors.forEach(({neighbor:uNb})=>{
-    const uY=uNb.y+uNb.height/2;
-    botSides.leftNeighbors.forEach(({neighbor:vNb})=>{
-      if(uNb.id!==vNb.id&&uY>vNb.y+vNb.height/2+4)crossings++;
-    });
-  });
-  return crossings;
-}
-
-// Evaluates the real layout score: 10,000 points per actual split link + total vertical distance between linked boxes
-function evaluateTotalLayoutCost(){
-  let splitCount=0,verticalSpan=0;
-  Object.values(state.linksById).forEach(l=>{
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(!nA||!nB)return;
-    if(l.isSplit)splitCount++;
-    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-    const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    if(oB<oT)verticalSpan+=(oT-oB)*4;
-    else verticalSpan+=Math.abs((nA.y+nA.height/2)-(nB.y+nB.height/2))*0.2;
-  });
-  return splitCount*10000+verticalSpan;
-}
-
-function packColumnByTidyOrder(colId,cg){
-  const maxL=cg[colId]?.laneCount||1;
-  for(let l=0;l<maxL;l++){
-    const ln=Object.values(state.nodesById)
-      .filter(n=>n.columnId===colId&&(n.subLane||0)===l)
-      .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-    let cy=INITIAL_SPAWN_Y;
-    ln.forEach(n=>{
-      if(n.isDisconnected)cy+=VERTICAL_BOX_GAP*0.4;
-      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
-      n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
-      n.y=cy;
-      cy+=n.height+VERTICAL_BOX_GAP;
-    });
+function computeDownstreamTargetY(n,cg){
+  // Strictly prioritize ADJACENT RIGHT-HAND (downstream) neighbors!
+  // Only fall back to left-hand neighbors if a box has zero right-hand neighbors.
+  const adj=getPerSideNeighbors(n,cg,true,true);
+  if(adj.rightNeighbors.length){
+    const ys=adj.rightNeighbors.map(x=>x.neighbor.y+x.neighbor.height/2);
+    return ys.reduce((a,b)=>a+b,0)/ys.length;
   }
+  if(adj.leftNeighbors.length){
+    const ys=adj.leftNeighbors.map(x=>x.neighbor.y+x.neighbor.height/2);
+    return ys.reduce((a,b)=>a+b,0)/ys.length;
+  }
+  const all=getPerSideNeighbors(n,cg,true,false);
+  const allNbs=[...all.rightNeighbors,...all.leftNeighbors].map(x=>x.neighbor);
+  if(allNbs.length){
+    return allNbs.reduce((a,t)=>a+(t.y+t.height/2),0)/allNbs.length;
+  }
+  return n.y+n.height/2;
+}
+
+function countRightSideCrossings(nTop,nBot,cg){
+  const tR=getPerSideNeighbors(nTop,cg,true,true).rightNeighbors;
+  const bR=getPerSideNeighbors(nBot,cg,true,true).rightNeighbors;
+  let c=0;
+  tR.forEach(({neighbor:u})=>{
+    const uY=u.y+u.height/2;
+    bR.forEach(({neighbor:v})=>{
+      if(u.id!==v.id&&uY>v.y+v.height/2+2)c++;
+    });
+  });
+  return c;
 }
 
 function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
   updateDisconnectedIndicators();
 
-  // 1. Reset sub-lanes to 0 on unlocked boxes, then assign mandatory intra-column link sub-lanes
+  // 1. Reset sub-lanes to 0, then assign mandatory intra-column link sub-lanes (e.g. ena_1 -> ena_2, chg_3 -> chg_4)
   Object.values(state.nodesById).forEach(n=>{
     if(!respectOptOuts||!n.isAutoLayoutOptOut)n.subLane=0;
   });
@@ -865,184 +838,102 @@ function optimizeColumnVerticalOrderAndSubLanes(respectOptOuts=true){
 
   let cg=computeColumnGeometries();
 
-  // Initialize `_tidyOrder` from current Y
-  state.columns.forEach(col=>{
-    const colNodes=Object.values(state.nodesById).filter(n=>n.columnId===col.id).sort((a,b)=>a.y-b.y);
-    colNodes.forEach((n,idx)=>{n._tidyOrder=n.isDisconnected?100+idx:idx;});
-  });
-
-  // 2. 4-Pass Alternating Sugiyama Median/Barycenter + Crossing Matrix Ordering
-  for(let sweep=0;sweep<4;sweep++){
-    const rightToLeft=(sweep%2===0);
-    const colIndices=rightToLeft
-      ?state.columns.map((_,i)=>state.columns.length-1-i)
-      :state.columns.map((_,i)=>i);
-    const preferSide=rightToLeft?'right':'left';
-
-    colIndices.forEach(ci=>{
-      const col=state.columns[ci];
-      const maxL=cg[col.id]?.laneCount||1;
-      for(let l=0;l<maxL;l++){
-        const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
-        if(ln.length<=1)continue;
-
-        const lockedNodes=ln.filter(n=>respectOptOuts&&n.isAutoLayoutOptOut).sort((a,b)=>a.y-b.y);
-        const freeNodes=ln.filter(n=>!(respectOptOuts&&n.isAutoLayoutOptOut)&&!n.isDisconnected);
-        const discNodes=ln.filter(n=>!(respectOptOuts&&n.isAutoLayoutOptOut)&&n.isDisconnected);
-
-        freeNodes.sort((a,b)=>computeNodeHybridTargetY(a,cg,preferSide)-computeNodeHybridTargetY(b,cg,preferSide));
-
-        for(let pass=0;pass<3;pass++){
-          for(let k=0;k<freeNodes.length-1;k++){
-            const n1=freeNodes[k],n2=freeNodes[k+1];
-            const cCur=countPairwiseCrossings(n1,n2,cg),cSwp=countPairwiseCrossings(n2,n1,cg);
-            if(cSwp<cCur){freeNodes[k]=n2;freeNodes[k+1]=n1;}
-          }
-        }
-
-        // Merge lockedNodes at their relative vertical positions with freeNodes
-        const combined=[...lockedNodes,...freeNodes].sort((a,b)=>{
-          const yA=(respectOptOuts&&a.isAutoLayoutOptOut)?a.y:computeNodeHybridTargetY(a,cg,preferSide);
-          const yB=(respectOptOuts&&b.isAutoLayoutOptOut)?b.y:computeNodeHybridTargetY(b,cg,preferSide);
-          return yA-yB;
-        });
-        [...combined,...discNodes].forEach((n,idx)=>{n._tidyOrder=idx;});
+  // 2. Order the Rightmost Column (Strategic Objectives) first:
+  // If `obj_2` (£22m Cost Efficiency) is between `obj_1` and `obj_3`, keep the objectives cleanly ordered top-to-bottom.
+  const lastCol=state.columns[state.columns.length-1];
+  if(lastCol){
+    const objNodes=Object.values(state.nodesById).filter(n=>n.columnId===lastCol.id).sort((a,b)=>a.y-b.y);
+    let cy=INITIAL_SPAWN_Y;
+    objNodes.forEach((n,idx)=>{
+      n._tidyOrder=idx;
+      const s=getPerSideNeighbors(n,cg,true,true);
+      if(!(respectOptOuts&&n.isAutoLayoutOptOut)){
+        n.height=getBaseBoxHeight(n,Math.max(s.leftNeighbors.length,s.rightNeighbors.length));
+        n.y=cy;
       }
-      packColumnByTidyOrder(col.id,cg);
+      cy=Math.max(cy,n.y)+n.height+VERTICAL_BOX_GAP;
     });
   }
 
-  // Run initial layout with current order
-  runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
-
-  // 3. DIRECT SIMULATED SPLIT-LINK PAIRWISE SWAP OPTIMIZER:
-  // Tests swapping vertical order of pairs `(i, j)` in each column and keeps any swap that strictly reduces
-  // the actual split-link count (or reduces vertical link distance without adding split links)!
-  for(let round=0;round<2;round++){
-    const colOrder=round===0
-      ?state.columns.map((_,i)=>state.columns.length-1-i)
-      :state.columns.map((_,i)=>i);
-
-    for(const ci of colOrder){
+  // 3. STRICT RIGHT-TO-LEFT DOWNSTREAM CASCADE (Benefits -> Capabilities -> Changes -> Enablers):
+  // Because each column `ci` sorts strictly by the `y` positions of column `ci + 1` (to its right),
+  // moving `ben_3` and `ben_5` up to `obj_2` automatically pulls `cap_5` ("Transparent Vendor Performance")
+  // above `cap_4` ("NIS2 Audit Readiness"), which then pulls `chg_6` above `chg_5`, and `ena_7` above `ena_6`!
+  for(let pass=0;pass<2;pass++){
+    for(let ci=state.columns.length-2;ci>=0;ci--){
       const col=state.columns[ci];
-      const lane0=Object.values(state.nodesById)
-        .filter(n=>n.columnId===col.id&&(n.subLane||0)===0&&!n.isDisconnected)
-        .sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-      if(lane0.length<2)continue;
+      const maxL=cg[col.id]?.laneCount||1;
+      // Sort right-most subLane first (`l = maxL - 1` down to `0`) so `subLane: 0` boxes can align to `subLane: 1` boxes in the same column!
+      for(let l=maxL-1;l>=0;l--){
+        const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
+        if(!ln.length)continue;
 
-      for(let i=0;i<lane0.length-1;i++){
-        for(let j=i+1;j<lane0.length;j++){
-          const nA=lane0[i],nB=lane0[j];
-          if(respectOptOuts&&(nA.isAutoLayoutOptOut||nB.isAutoLayoutOptOut))continue;
+        const activeNodes=ln.filter(n=>!n.isDisconnected);
+        const discNodes=ln.filter(n=>n.isDisconnected);
 
-          const baseCost=evaluateTotalLayoutCost();
-          const snapNodes={};
-          Object.values(state.nodesById).forEach(n=>{snapNodes[n.id]={y:n.y,height:n.height,_tidyOrder:n._tidyOrder,subLane:n.subLane};});
+        activeNodes.sort((a,b)=>{
+          const yA=(respectOptOuts&&a.isAutoLayoutOptOut)?a.y+a.height/2:computeDownstreamTargetY(a,cg);
+          const yB=(respectOptOuts&&b.isAutoLayoutOptOut)?b.y+b.height/2:computeDownstreamTargetY(b,cg);
+          return yA-yB;
+        });
 
-          // Test swapping `_tidyOrder` of nA and nB
-          const tmpOrder=nA._tidyOrder;nA._tidyOrder=nB._tidyOrder;nB._tidyOrder=tmpOrder;
-          state.columns.forEach(c=>packColumnByTidyOrder(c.id,computeColumnGeometries()));
-          runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
-
-          const newCost=evaluateTotalLayoutCost();
-          if(newCost+15<baseCost){
-            // Keep the swap! Re-sort `lane0` array to reflect new order
-            lane0.sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
-          }else{
-            // Revert swap
-            Object.entries(snapNodes).forEach(([id,s])=>{
-              const n=state.nodesById[id];
-              if(n){n.y=s.y;n.height=s.height;n._tidyOrder=s._tidyOrder;n.subLane=s.subLane;}
-            });
-            runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
+        // Eliminate any remaining right-side bipartite crossings between adjacent boxes
+        for(let k=0;k<activeNodes.length-1;k++){
+          const n1=activeNodes[k],n2=activeNodes[k+1];
+          if(respectOptOuts&&(n1.isAutoLayoutOptOut||n2.isAutoLayoutOptOut))continue;
+          if(countRightSideCrossings(n1,n2,cg)>countRightSideCrossings(n2,n1,cg)){
+            activeNodes[k]=n2;activeNodes[k+1]=n1;
           }
         }
+
+        const ordered=[...activeNodes,...discNodes];
+        let cy=INITIAL_SPAWN_Y;
+        ordered.forEach((n,idx)=>{
+          n._tidyOrder=idx;
+          const s=getPerSideNeighbors(n,cg,true,true);
+          n.height=getBaseBoxHeight(n,Math.max(s.leftNeighbors.length,s.rightNeighbors.length));
+          if(!(respectOptOuts&&n.isAutoLayoutOptOut)){
+            const desiredY=n.isDisconnected?(cy+VERTICAL_BOX_GAP*0.5):(computeDownstreamTargetY(n,cg)-n.height/2);
+            n.y=Math.max(cy,desiredY);
+          }
+          cy=n.y+n.height+VERTICAL_BOX_GAP;
+        });
+        resolveColumnCollisions(col.id,l,{respectSoftManual:false,respectOptOuts,preserveTidyOrder:true});
       }
     }
   }
 
-  // 4. POST-LAYOUT SUB-LANE BYPASS FOR ANY REMAINING SPLIT LINKS:
-  // If a link `(nA, nB)` is STILL split after vertical reordering because same-column boxes sit between `nA` and `nB`,
-  // test shifting the spanning box into a sub-lane (`subLane: 1` when reaching right, or shifting the intermediate blocker)
-  // so the spanning box can stretch vertically past the intermediate boxes and heal the split link!
-  const remainingSplits=Object.values(state.linksById).filter(l=>l.isSplit&&!l.forceSplit);
-  remainingSplits.forEach(l=>{
+  // Run auto-layout with the new downstream-aligned vertical order
+  runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
+
+  // 4. SUB-LANE CORRIDOR BYPASS FOR ANY REMAINING ADJACENT SPLIT LINKS:
+  // For example, `ben_2` ("25% Faster Emergency Response") links to BOTH `obj_1` (top) and `obj_3` (bottom),
+  // while `obj_2` sits between `obj_1` and `obj_3`, and `ben_3` + `ben_5` sit below `ben_2`.
+  // By shifting `ben_2` into `subLane: 1` (the rightmost sub-lane of Benefits), `ben_2` can stretch vertically
+  // all the way down to `obj_3` without colliding with `ben_3` or `ben_5` in `subLane: 0`!
+  Object.values(state.linksById).forEach(l=>{
+    if(!l.isSplit||l.forceSplit)return;
     const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
     if(!nA||!nB)return;
     const cgNow=computeColumnGeometries();
     const cA=cgNow[nA.columnId]?.colIndex??0,cB=cgNow[nB.columnId]?.colIndex??0;
-    if(Math.abs(cA-cB)>1)return; // Adjacent columns only for sub-lane stretch bypass
+    if(Math.abs(cA-cB)!==1)return;
 
-    const leftNode=cA<=cB?nA:nB,rightNode=cA<=cB?nB:nA;
-    const baseCost=evaluateTotalLayoutCost();
-    const snapNodes={};
-    Object.values(state.nodesById).forEach(n=>{snapNodes[n.id]={y:n.y,height:n.height,_tidyOrder:n._tidyOrder,subLane:n.subLane};});
-
-    // Candidate 1: Shift `leftNode` into `subLane: 1` (the rightmost sub-lane of the left column, facing `rightNode`!)
-    // so `leftNode` has an unobstructed vertical track to stretch up/down and reach `rightNode`!
+    const leftNode=cA<cB?nA:nB,rightNode=cA<cB?nB:nA;
+    // Check if shifting `leftNode` into `subLane: 1` (rightmost lane of left column) allows it to stretch to `rightNode`
+    // without crossing any horizontal links from `subLane: 0` boxes!
     if(!(respectOptOuts&&leftNode.isAutoLayoutOptOut)&&(leftNode.subLane||0)===0){
-      leftNode.subLane=1;
-      runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
-      if(evaluateTotalLayoutCost()+500<baseCost)return; // Healed a split link! Keep it!
-      Object.entries(snapNodes).forEach(([id,s])=>{
-        const n=state.nodesById[id];if(n){n.y=s.y;n.height=s.height;n._tidyOrder=s._tidyOrder;n.subLane=s.subLane;}
-      });
-    }
-
-    // Candidate 2: Shift non-linked boxes in `rightNode`'s column that are blocking `rightNode` into `subLane: 1`
-    // so `rightNode` (in `subLane: 0`, facing `leftNode`!) can stretch vertically to reach `leftNode`!
-    if(!(respectOptOuts&&rightNode.isAutoLayoutOptOut)&&(rightNode.subLane||0)===0){
       const minY=Math.min(leftNode.y,rightNode.y),maxY=Math.max(leftNode.y+leftNode.height,rightNode.y+rightNode.height);
-      const colBlockers=Object.values(state.nodesById).filter(other=>
-        other.columnId===rightNode.columnId&&other.id!==rightNode.id&&(other.subLane||0)===0&&
-        other.y+other.height>minY&&other.y<maxY&&!(respectOptOuts&&other.isAutoLayoutOptOut)
+      const subLane0Others=Object.values(state.nodesById).filter(ot=>
+        ot.columnId===leftNode.columnId&&ot.id!==leftNode.id&&(ot.subLane||0)===0&&
+        ot.y+ot.height>minY&&ot.y<maxY
       );
-      if(colBlockers.length>0&&colBlockers.length<=2){
-        colBlockers.forEach(b=>{b.subLane=1;});
+      // Only shift `leftNode` to `subLane: 1` if no `subLane: 0` box in that span has right-going links that `leftNode` would block
+      const wouldBlockRightLinks=subLane0Others.some(ot=>getPerSideNeighbors(ot,cgNow,false,true).rightNeighbors.length>0);
+      if(!wouldBlockRightLinks){
+        leftNode.subLane=1;
         runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
-        if(evaluateTotalLayoutCost()+500<baseCost)return; // Healed! Keep it!
       }
-      Object.entries(snapNodes).forEach(([id,s])=>{
-        const n=state.nodesById[id];if(n){n.y=s.y;n.height=s.height;n._tidyOrder=s._tidyOrder;n.subLane=s.subLane;}
-      });
-      runAutoLayout({respectSoftManual:false,respectOptOuts,anchorSet:null,preserveTidyOrder:true});
-    }
-  });
-}
-
-function carveSkipLinkCorridors(cg,options={}){
-  const SKIP_CORRIDOR_HALF_GAP=18;
-  Object.values(state.linksById).forEach(l=>{
-    if(l.forceSplit)return;
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(!nA||!nB)return;
-    const cA=cg[nA.columnId]?.colIndex,cB=cg[nB.columnId]?.colIndex;
-    if(typeof cA!=='number'||typeof cB!=='number'||Math.abs(cA-cB)<=1)return;
-
-    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-    const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    const corridorY=oB>=oT?(oT+oB)/2:((nA.y+nA.height/2)+(nB.y+nB.height/2))/2;
-
-    // If nA and nB don't overlap yet, pull the unlocked endpoint(s) toward corridorY
-    if(oB<oT){
-      if(!isNodePositionLocked(nA,options))nA.y=corridorY-nA.height/2;
-      if(!isNodePositionLocked(nB,options))nB.y=corridorY-nB.height/2;
-    }
-
-    const minC=Math.min(cA,cB),maxC=Math.max(cA,cB);
-    for(let ci=minC+1;ci<maxC;ci++){
-      const midCol=state.columns[ci];if(!midCol)continue;
-      const colNodes=Object.values(state.nodesById).filter(n=>n.columnId===midCol.id).sort((a,b)=>a.y-b.y);
-      colNodes.forEach(n=>{
-        if(isNodePositionLocked(n,options))return;
-        if(corridorY>=n.y-SKIP_CORRIDOR_HALF_GAP&&corridorY<=n.y+n.height+SKIP_CORRIDOR_HALF_GAP){
-          const nMid=n.y+n.height/2;
-          if(nMid<corridorY)n.y=corridorY-SKIP_CORRIDOR_HALF_GAP-n.height;
-          else n.y=corridorY+SKIP_CORRIDOR_HALF_GAP;
-        }
-      });
-      const ml=cg[midCol.id]?.laneCount||1;
-      for(let s=0;s<ml;s++)resolveColumnCollisions(midCol.id,s,options);
     }
   });
 }
@@ -1054,8 +945,15 @@ function performIdempotentTidy(respectOptOuts=true){
     }
     if(!respectOptOuts)n.isAutoLayoutOptOut=false;
   });
+  // Clear forceSplit on adjacent-column links so Tidy heals every adjacent split link!
+  const cgInit=computeColumnGeometries();
   Object.values(state.linksById).forEach(l=>{
-    l.forceSplit=false;l.updatedAt=Date.now();
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+    if(nA&&nB&&Math.abs((cgInit[nA.columnId]?.colIndex??0)-(cgInit[nB.columnId]?.colIndex??0))<=1){
+      l.forceSplit=false;l.updatedAt=Date.now();
+    }else if(!respectOptOuts){
+      l.forceSplit=false;l.updatedAt=Date.now();
+    }
   });
 
   optimizeColumnVerticalOrderAndSubLanes(respectOptOuts);
@@ -1079,7 +977,7 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
 
   Object.values(state.nodesById).forEach(n=>{
     if(!isNodeStretchLocked(n,o)){
-      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true);
+      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,true,true);
       n.height=getBaseBoxHeight(n,Math.max(lN.length,rN.length));
     }
   });
@@ -1089,10 +987,10 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
     const q=Array.from(aligned);
     while(q.length){
       const cn=state.nodesById[q.shift()];if(!cn)continue;
-      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(cn,cg,false);
+      const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(cn,cg,false,true);
       [...lN,...rN].forEach(({neighbor:nb})=>{
         if(aligned.has(nb.id)||isNodePositionLocked(nb,o))return;
-        const s=getPerSideNeighbors(nb,cg,false);
+        const s=getPerSideNeighbors(nb,cg,false,true);
         if(Math.max(s.leftNeighbors.length,s.rightNeighbors.length)<=1){nb.y=cn.y+(cn.height-nb.height)/2;aligned.add(nb.id);q.push(nb.id);}
       });
     }
@@ -1100,30 +998,23 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
 
   state.columns.forEach(col=>{const ml=cg[col.id]?.laneCount||1;for(let l=0;l<ml;l++)resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});});
 
-  // Bidirectional Centering (preserving `_tidyOrder` when `preserveTidyOrder` is active so boxes never jump over each other!)
-  const centerSweeps=[
-    {indices:state.columns.map((_,i)=>state.columns.length-1-i),prefer:'right'},
-    {indices:state.columns.map((_,i)=>i),prefer:'both'}
-  ];
-  centerSweeps.forEach(({indices,prefer})=>{
-    indices.forEach(ci=>{
-      const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
-      for(let l=0;l<ml;l++){
-        const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
-        ln.forEach(n=>{
-          if(isNodePositionLocked(n,o)||aligned.has(n.id)||n.isDisconnected)return;
-          const targetMidY=computeNodeHybridTargetY(n,cg,prefer);
-          n.y=targetMidY-n.height/2;
-        });
-        resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
-      }
-    });
-  });
+  // Strict Right-to-Left Downstream Centering:
+  // Upstream boxes center toward their ADJACENT RIGHT-HAND neighbors so 1-to-1 chains (like ena_6 -> chg_5 -> cap_4 -> ben_4 -> obj_3
+  // and ena_7 -> chg_6 -> cap_5 -> ben_3/ben_5 -> obj_2) form straight horizontal lines and are NEVER yanked away by skip links!
+  for(let ci=state.columns.length-1;ci>=0;ci--){
+    const col=state.columns[ci],ml=cg[col.id]?.laneCount||1;
+    for(let l=ml-1;l>=0;l--){
+      const ln=Object.values(state.nodesById).filter(n=>n.columnId===col.id&&(n.subLane||0)===l);
+      ln.forEach(n=>{
+        if(isNodePositionLocked(n,o)||aligned.has(n.id)||n.isDisconnected)return;
+        const targetMidY=computeDownstreamTargetY(n,cg);
+        n.y=targetMidY-n.height/2;
+      });
+      resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
+    }
+  }
 
-  // Carve Virtual Skip-Link Corridors through intermediate columns
-  carveSkipLinkCorridors(cg,{...o,primaryAnchorSet:aligned});
-
-  // Bidirectional Minimal-Reach Stretching (per-subLane clamped, uncapped when bypassing via a sub-lane!)
+  // Bidirectional Minimal-Reach Stretching (only stretches for adjacent-column neighbors so skip links don't bloat boxes!)
   const colSweep=[
     ...state.columns.map((_,i)=>state.columns.length-1-i),
     ...state.columns.map((_,i)=>i)
@@ -1136,7 +1027,7 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
         .sort((a,b)=>o.preserveTidyOrder&&typeof a._tidyOrder==='number'?a._tidyOrder-b._tidyOrder:a.y-b.y);
       ln.forEach(n=>{
         if(isNodeStretchLocked(n,o))return;
-        const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false);
+        const{leftNeighbors:lN,rightNeighbors:rN}=getPerSideNeighbors(n,cg,false,true);
         const ms=Math.max(lN.length,rN.length);
         const mH=getBaseBoxHeight(n,ms);
         const allNbs=[...lN.map(x=>x.neighbor),...rN.map(x=>x.neighbor)];
@@ -1170,7 +1061,7 @@ function runAutoLayout(o={respectSoftManual:true,respectOptOuts:true,anchorSet:n
         const cB=Math.max(cT+mH,reqB);
         const{safeTop:sT,safeBottom:sB}=clampStretchToColumnClashes(n,cT,cB,ln);
         if(!isDrg)n.y=sT;
-        const maxStretch=ml>1?520:340;
+        const maxStretch=ml>1?520:320;
         n.height=Math.max(mH,Math.min(maxStretch,sB-n.y));
       });
       resolveColumnCollisions(col.id,l,{...o,primaryAnchorSet:aligned});
@@ -1836,7 +1727,7 @@ document.getElementById('btnUndo').addEventListener('click',performUndo);
 document.getElementById('btnRedo').addEventListener('click',performRedo);
 document.getElementById('btnAddBox').addEventListener('click',(e)=>addBoxInViewportCenter(e));
 document.getElementById('btnAddCol').addEventListener('click',()=>insertColumnRelative(state.selectedColId||state.columns[state.columns.length-1].id,1));
-document.getElementById('btnTidyKeepPins').addEventListener('click',()=>{pushUndoState();performIdempotentTidy(true);saveState();draw();});
+document.getElementById('btnTidyKeepPins').addEventListener('click',()=>{pushUndoState();performIdempotentTidy(true);saveState();fitScreen();});
 document.getElementById('btnFit').addEventListener('click',fitScreen);
 
 window.addEventListener('keydown',(e)=>{
