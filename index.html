@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.5</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.6</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -232,7 +232,7 @@ const THEMES={
   warm:{bgCanvas:'#1c1917',surfaceHud:'rgba(28,25,23,0.94)',surfaceModal:'#292524',surfaceBox:'#292524',surfaceBoxSel:'#44403c',surfaceHeader:'rgba(28,25,23,0.96)',borderHud:'#44403c',textPrimary:'#f5f5f4',textSecondary:'#a8a29e',textMuted:'#78716c',linkStroke:'#d6d3d1',colTintEven:'rgba(41,37,36,0.28)',colTintOdd:'rgba(68,64,60,0.18)'},
   blueprint:{bgCanvas:'#07192f',surfaceHud:'rgba(10,34,64,0.94)',surfaceModal:'#0a2240',surfaceBox:'#0a2240',surfaceBoxSel:'#123866',surfaceHeader:'rgba(10,34,64,0.96)',borderHud:'#1e4976',textPrimary:'#f0f9ff',textSecondary:'#93c5fd',textMuted:'#60a5fa',linkStroke:'#e0f2fe',colTintEven:'rgba(14,42,77,0.3)',colTintOdd:'rgba(20,58,102,0.2)'}
 };
-const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=68,COL_SIDE_PADDING=58,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=28,LINK_SLOT_SPACING=22,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.16,MAX_ZOOM=2.4;
+const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=104,COL_SIDE_PADDING=64,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=30,LINK_SLOT_SPACING=28,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.14,MAX_ZOOM=2.4;
 const UNDER_BOX_LABEL_CLEARANCE=22;
 
 function getHeaderTopY(){const hud=document.getElementById('topHud');return hud?Math.max(52,Math.round(hud.getBoundingClientRect().bottom+6)):56;}
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.5!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.6!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.5!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.6!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.5.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.6.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.5.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.6.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1503,13 +1503,12 @@ function performIdempotentTidy(){
 
           if(alsoLinksToRightTarget){
             // Route sameColPartner -> rightColPartner ABOVE n!
-            const corridorTop=Math.max(sameColPartner.y+16,rightColPartner.y);
-            if(rightColPartner.y>corridorTop){
-              const rLane=colListsLane0[rColIdx];
-              const{safeTop:sT}=clampStretchToColumnClashes(rightColPartner,corridorTop,rightColPartner.y+rightColPartner.height,rLane);
-              rightColPartner.y=sT;
+            // Corridor top is Math.max(sameColPartner.y, rightColPartner.y); n MUST sit at least 54px below corridorTop!
+            const corridorTop=Math.max(sameColPartner.y,rightColPartner.y);
+            n.y=Math.max(minPocketY,corridorTop+54);
+            if(rightColPartner.y+rightColPartner.height<n.y+48){
+              rightColPartner.height=(n.y+48)-rightColPartner.y;
             }
-            n.y=Math.max(minPocketY,rightColPartner.y+52);
           }else{
             // Place n so it overlaps the top of rightColPartner while staying >= 56px below sameColPartner.y (clearing Narrowed search box!)
             n.y=Math.max(minPocketY,rightColPartner.y+4);
@@ -1567,10 +1566,11 @@ function performIdempotentTidy(){
         if(subParent&&rightTargets.length){
           const firstRT=rightTargets[0],lastRT=rightTargets[rightTargets.length-1];
           const alsoParentToFirst=getPerSideNeighbors(subParent,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===firstRT.id);
-          // Place n 52px below subParent.y so subParent -> firstRT has a 52px unobstructed horizontal corridor above n!
-          n.y=alsoParentToFirst?(subParent.y+52):Math.max(subParent.y+12,firstRT.y);
-          n.height=Math.max(BOX_MIN_HEIGHT,76);
-          if(subParent.y+subParent.height<n.y+40)subParent.height=(n.y+40)-subParent.y;
+          // Place n 58px below Math.max(subParent.y, firstRT.y) so subParent -> firstRT has a clean 58px horizontal corridor above n!
+          const subCorridorTop=Math.max(subParent.y,firstRT.y);
+          n.y=alsoParentToFirst?(subCorridorTop+58):Math.max(subParent.y+16,firstRT.y);
+          n.height=Math.max(BOX_MIN_HEIGHT,82);
+          if(subParent.y+subParent.height<n.y+44)subParent.height=(n.y+44)-subParent.y;
 
           // Ensure firstRT stretches down to overlap n by >= 42px
           if(firstRT.y+firstRT.height<n.y+44){
@@ -1783,14 +1783,14 @@ function computeHorizontalLinksAndStubs(cg){
     for(const cY of cands){
       if(isBlockedAt(cY,UNDER_BOX_LABEL_CLEARANCE))continue;
       const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
-      if(mD>=14){bC=mD;bY=cY;break;}
+      if(mD>=26){bC=mD;bY=cY;break;}
       if(mD>bC){bC=mD;bY=cY;}
     }
     if(bC===-1){
       for(const cY of cands){
-        if(isBlockedAt(cY,6))continue;
+        if(isBlockedAt(cY,8))continue;
         const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
-        if(mD>=12){bC=mD;bY=cY;break;}
+        if(mD>=20){bC=mD;bY=cY;break;}
         if(mD>bC){bC=mD;bY=cY;}
       }
     }
@@ -1827,11 +1827,13 @@ function getBestLabelSpan(sX,eX,y,lN,rN,all,cg){
   all.forEach(ot=>{
     if(ot.id===lN.id||ot.id===rN.id)return;
     const ox=getNodeGlobalX(ot,cg);
-    if(ox+BOX_WIDTH>sX+4&&ox<eX-4&&y>=ot.y-28&&y<=ot.y+ot.height+36){
-      obstacles.push([Math.max(sX,ox-6),Math.min(eX,ox+BOX_WIDTH+6)]);
+    // Treat any intermediate box within 42px above or 48px below the link line as a horizontal label obstacle
+    // so link annotations naturally shift into the open inter-column gap rather than sitting over/under a sub-lane box!
+    if(ox+BOX_WIDTH>sX+4&&ox<eX-4&&y>=ot.y-42&&y<=ot.y+ot.height+48){
+      obstacles.push([Math.max(sX,ox-8),Math.min(eX,ox+BOX_WIDTH+8)]);
     }
   });
-  if(!obstacles.length)return{midX:(sX+eX)/2,availW:Math.max(56,(eX-sX)-18)};
+  if(!obstacles.length)return{midX:(sX+eX)/2,availW:Math.max(76,(eX-sX)-16)};
   obstacles.sort((a,b)=>a[0]-b[0]);
   let bestStart=sX,bestEnd=eX,bestW=0,curX=sX;
   obstacles.forEach(([oL,oR])=>{
@@ -1839,8 +1841,8 @@ function getBestLabelSpan(sX,eX,y,lN,rN,all,cg){
     curX=Math.max(curX,oR);
   });
   if(eX-curX>bestW){bestW=eX-curX;bestStart=curX;bestEnd=eX;}
-  if(bestW>=54)return{midX:(bestStart+bestEnd)/2,availW:Math.max(54,bestW-14)};
-  return{midX:(sX+eX)/2,availW:Math.max(56,(eX-sX)-18)};
+  if(bestW>=64)return{midX:(bestStart+bestEnd)/2,availW:Math.max(72,bestW-12)};
+  return{midX:(sX+eX)/2,availW:Math.max(76,(eX-sX)-16)};
 }
 
 function checkAndPromptLinkConflict(l){
@@ -2485,6 +2487,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
