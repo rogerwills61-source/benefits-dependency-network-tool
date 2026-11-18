@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.6</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -576,167 +576,149 @@ function createStarterNetwork(blank=false){
   state.selectedColId=cObj;activeChannelKey=null;setupLiveSyncForCurrentFile();performIdempotentTidy();saveState();
 }
 
-  function loadAirportDemo() {
-    pushUndo();
-    state.mapId = 'bdn_airport_v2';
-    state.fileSyncToken = generateHexToken(32);
-    state.mapTitle = 'Integrated Airport Turnaround & Airside Resilience BDN';
-    state.columns = [
-      { id: 'col_sys', title: 'Digital & Airside Enablers', color: '#38bdf8' },
-      { id: 'col_proc', title: 'Apron & Terminal Process Changes', color: '#34d399' },
-      { id: 'col_cap', title: 'Operational Readiness Capabilities', color: '#a78bfa' },
-      { id: 'col_ben', title: 'Measurable Hub Benefits', color: '#f472b6' },
-      { id: 'col_obj', title: 'Executive Strategic Objectives', color: '#fbbf24' }
+  function loadAirportDemo(){
+    pushUndoState();sessionFileHandle=null;
+    const ts=Date.now();
+    state.mapId='bdn_airport_v2';
+    state.fileSyncToken=generateCryptographicFileToken();
+    state.mapTitle='Integrated Airport Turnaround & Airside Resilience BDN';
+    state.updatedAt=ts;state.deletedById={};
+    state.columns=[
+      {id:'col_sys',title:'Digital & Airside Enablers',color:'#38bdf8'},
+      {id:'col_proc',title:'Apron & Terminal Process Changes',color:'#34d399'},
+      {id:'col_cap',title:'Operational Readiness Capabilities',color:'#a78bfa'},
+      {id:'col_ben',title:'Measurable Hub Benefits',color:'#f472b6'},
+      {id:'col_obj',title:'Executive Strategic Objectives',color:'#fbbf24'}
     ];
-    state.nodesById = {
-      air_1: { id: 'air_1', columnId: 'col_sys', text: 'A-CDM Unified Flight & Gate Telemetry Bus', subLane: 0, y: 980, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_2: { id: 'air_2', columnId: 'col_sys', text: 'Computer Vision Apron Turnaround Camera Mesh', subLane: 1, y: 520, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_3: { id: 'air_3', columnId: 'col_sys', text: 'Private 5G Airside & Baggage Hall Network', subLane: 0, y: 410, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_4: { id: 'air_4', columnId: 'col_sys', text: 'Autonomous GSE Dispatch & Telematics App', subLane: 0, y: 1190, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_5: { id: 'air_5', columnId: 'col_sys', text: 'RFID & Optical Bag-Tag Tracking Ledger', subLane: 1, y: 1120, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_6: { id: 'air_6', columnId: 'col_sys', text: 'Biometric e-Gate & Airside Pass Identity Vault', subLane: 0, y: 1350, height: 77, color: '#60a5fa', updatedAt: Date.now(), isDisconnected: false },
-      air_7: { id: 'air_7', columnId: 'col_sys', text: 'Ground Handler Smart SLA & Penalty Engine', subLane: 0, y: 640, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      air_8: { id: 'air_8', columnId: 'col_sys', text: 'Retired Teletype SITA Fallback (Unlinked Test)', subLane: 0, y: 300, height: 77, color: null, updatedAt: Date.now(), isDisconnected: true },
-
-      ops_1: { id: 'ops_1', columnId: 'col_proc', text: 'APOC Controllers Manage by Exception & ML Alerts', subLane: 0, y: 1150, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_2: { id: 'ops_2', columnId: 'col_proc', text: 'Dynamic Stand & Gate Re-Allocation Workflow', subLane: 0, y: 540, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_3: { id: 'ops_3', columnId: 'col_proc', text: 'Ramp Teams Execute Synchronised Precision Turnarounds', subLane: 0, y: 780, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_4: { id: 'ops_4', columnId: 'col_proc', text: 'Automated Tail-to-Tail Transfer Bag Interception', subLane: 1, y: 680, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_5: { id: 'ops_5', columnId: 'col_proc', text: 'Zero-Escort Airside Contractor Zone Verification', subLane: 0, y: 420, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_6: { id: 'ops_6', columnId: 'col_proc', text: 'Real-Time Ground Handler Turnaround Bonus/Malus', subLane: 0, y: 1290, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ops_7: { id: 'ops_7', columnId: 'col_proc', text: 'Manual Chalkboard Gate Allocation (Severed Test)', subLane: 0, y: 280, height: 77, color: null, updatedAt: Date.now(), isDisconnected: true },
-
-      cap_a: { id: 'cap_a', columnId: 'col_cap', text: 'Predictive 45-Min Widebody Turnaround Assurance', subLane: 0, y: 1060, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      cap_b: { id: 'cap_b', columnId: 'col_cap', text: 'Single-View Airside & Terminal Flow Situational Command', subLane: 0, y: 490, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      cap_c: { id: 'cap_c', columnId: 'col_cap', text: 'Sub-20-Minute Critical Bag Connection Recovery', subLane: 0, y: 890, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      cap_d: { id: 'cap_d', columnId: 'col_cap', text: 'Continuous CAA & DfT Aviation Security Compliance', subLane: 0, y: 1240, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-      cap_e: { id: 'cap_e', columnId: 'col_cap', text: 'Accountable Third-Party Ground Handling Ecosystem', subLane: 0, y: 670, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      cap_f: { id: 'cap_f', columnId: 'col_cap', text: 'Paper Flight Strip Archive (Severed Test)', subLane: 0, y: 1420, height: 77, color: null, updatedAt: Date.now(), isDisconnected: true },
-
-      ben_a: { id: 'ben_a', columnId: 'col_ben', text: '32% Reduction in Knock-On Rotational Gate Delays', subLane: 0, y: 1120, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ben_b: { id: 'ben_b', columnId: 'col_ben', text: '18-Minute Faster De-Icing & Adverse Weather Recovery', subLane: 0, y: 580, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ben_c: { id: 'ben_c', columnId: 'col_ben', text: '£19.2m Saved in Mishandled Bag & EU261 Compensation', subLane: 0, y: 760, height: 77, color: '#2dd4bf', updatedAt: Date.now(), isDisconnected: false },
-      ben_d: { id: 'ben_d', columnId: 'col_ben', text: 'Zero Airside Security Incursions or CAA Enforcement', subLane: 0, y: 1310, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      ben_e: { id: 'ben_e', columnId: 'col_ben', text: '14% Reduction in Ground Handling Contract Overruns', subLane: 0, y: 430, height: 60, color: null, updatedAt: Date.now(), isDisconnected: false },
-
-      obj_a: { id: 'obj_a', columnId: 'col_obj', text: 'Top-Quartile 88% On-Time Departure Punctuality', subLane: 0, y: 940, height: 160, color: null, updatedAt: Date.now(), isDisconnected: false },
-      obj_b: { id: 'obj_b', columnId: 'col_obj', text: 'Deliver £28m Annual Airside Operating Margin Uplift', subLane: 0, y: 510, height: 77, color: null, updatedAt: Date.now(), isDisconnected: false },
-      obj_c: { id: 'obj_c', columnId: 'col_obj', text: '100% Statutory Aviation Security & Safety Licence', subLane: 1, y: 720, height: 180, color: null, updatedAt: Date.now(), isDisconnected: false }
-    };
-    state.linksById = {
-      al_1:  { id: 'al_1',  fromId: 'air_1', toId: 'air_2', label: 'Stand events', arrowMode: 'right', updatedAt: Date.now() },
-      al_2:  { id: 'al_2',  fromId: 'air_2', toId: 'ops_1', label: 'Chock-on ML', arrowMode: 'right', updatedAt: Date.now() },
-      al_3:  { id: 'al_3',  fromId: 'air_1', toId: 'ops_2', label: 'Live EIBT', arrowMode: 'right', updatedAt: Date.now() },
-      al_4:  { id: 'al_4',  fromId: 'air_3', toId: 'ops_2', label: 'Apron 5G', arrowMode: 'right', updatedAt: Date.now() },
-      al_5:  { id: 'al_5',  fromId: 'air_3', toId: 'ops_3', label: 'Ramp sync', arrowMode: 'right', updatedAt: Date.now() },
-      al_6:  { id: 'al_6',  fromId: 'air_4', toId: 'ops_3', label: 'Tug dispatch', arrowMode: 'right', updatedAt: Date.now() },
-      al_7:  { id: 'al_7',  fromId: 'air_5', toId: 'ops_4', label: 'Hot-bag scan', arrowMode: 'right', updatedAt: Date.now() },
-      al_8:  { id: 'al_8',  fromId: 'ops_3', toId: 'ops_4', label: 'Hold load status', arrowMode: 'right', updatedAt: Date.now() },
-      al_9:  { id: 'al_9',  fromId: 'air_6', toId: 'ops_5', label: 'Biometric token', arrowMode: 'right', updatedAt: Date.now() },
-      al_10: { id: 'al_10', fromId: 'air_7', toId: 'ops_6', label: 'SLA telemetry', arrowMode: 'right', updatedAt: Date.now() },
-      al_11: { id: 'al_11', fromId: 'ops_1', toId: 'cap_a', label: 'Early intervention', arrowMode: 'right', updatedAt: Date.now() },
-      al_12: { id: 'al_12', fromId: 'ops_1', toId: 'cap_b', label: 'APOC common view', arrowMode: 'right', updatedAt: Date.now() },
-      al_13: { id: 'al_13', fromId: 'ops_2', toId: 'cap_b', label: 'Gate conflict free', arrowMode: 'right', updatedAt: Date.now() },
-      al_14: { id: 'al_14', fromId: 'ops_2', toId: 'cap_c', label: 'Short-conn stand', arrowMode: 'right', updatedAt: Date.now() },
-      al_15: { id: 'al_15', fromId: 'ops_3', toId: 'cap_c', label: '99.4% bag load', arrowMode: 'right', updatedAt: Date.now() },
-      al_16: { id: 'al_16', fromId: 'ops_4', toId: 'cap_c', label: 'Tail-to-tail transfer', arrowMode: 'right', updatedAt: Date.now() },
-      al_17: { id: 'al_17', fromId: 'ops_5', toId: 'cap_d', label: 'Zero tailgating', arrowMode: 'right', updatedAt: Date.now() },
-      al_18: { id: 'al_18', fromId: 'ops_6', toId: 'cap_e', label: 'Handler KPIs', arrowMode: 'right', updatedAt: Date.now() },
-      al_19: { id: 'al_19', fromId: 'cap_a', toId: 'ben_a', label: 'On-time pushback', arrowMode: 'right', updatedAt: Date.now() },
-      al_20: { id: 'al_20', fromId: 'cap_b', toId: 'ben_a', label: 'absorbs inbound delay', arrowMode: 'right', updatedAt: Date.now() },
-      al_21: { id: 'al_21', fromId: 'cap_b', toId: 'ben_b', label: 'Coordinated de-ice', arrowMode: 'right', updatedAt: Date.now() },
-      al_22: { id: 'al_22', fromId: 'cap_c', toId: 'ben_b', label: 'Rapid wave recovery', arrowMode: 'right', updatedAt: Date.now() },
-      al_23: { id: 'al_23', fromId: 'cap_c', toId: 'ben_c', label: '60% fewer left bags', arrowMode: 'right', updatedAt: Date.now() },
-      al_24: { id: 'al_24', fromId: 'cap_d', toId: 'ben_d', label: 'CAA audit pass', arrowMode: 'right', updatedAt: Date.now() },
-      al_25: { id: 'al_25', fromId: 'cap_e', toId: 'ben_c', label: 'Penalty clawback', arrowMode: 'right', updatedAt: Date.now() },
-      al_26: { id: 'al_26', fromId: 'cap_e', toId: 'ben_e', label: 'Handler consolidation', arrowMode: 'right', updatedAt: Date.now() },
-      al_27: { id: 'al_27', fromId: 'ben_a', toId: 'obj_a', label: 'Primary OTP driver', arrowMode: 'right', updatedAt: Date.now() },
-      al_28: { id: 'al_28', fromId: 'ben_b', toId: 'obj_a', label: 'Winter resilience', arrowMode: 'right', updatedAt: Date.now() },
-      al_29: { id: 'al_29', fromId: 'ben_b', toId: 'obj_c', label: 'Slot retention', arrowMode: 'right', updatedAt: Date.now() },
-      al_30: { id: 'al_30', fromId: 'ben_c', toId: 'obj_b', label: '70% of margin', arrowMode: 'right', updatedAt: Date.now() },
-      al_31: { id: 'al_31', fromId: 'ben_e', toId: 'obj_b', label: '30% of margin', arrowMode: 'right', updatedAt: Date.now() },
-      al_32: { id: 'al_32', fromId: 'ben_d', toId: 'obj_c', label: 'Zero CAA notices', arrowMode: 'right', updatedAt: Date.now() },
-      al_33: { id: 'al_33', fromId: 'air_6', toId: 'cap_a', label: 'Crew airside fast-track', arrowMode: 'right', updatedAt: Date.now() },
-      al_34: { id: 'al_34', fromId: 'ops_7', toId: 'cap_f', label: 'Orphaned paper link', arrowMode: 'right', updatedAt: Date.now() }
-    };
-    document.getElementById('mapTitle').textContent = state.mapTitle;
-    computeHorizontalLinksAndStubs();
-    fitScreen();
-    updateStatusPill('⚡ Untidied Demo — Click Tidy v4.9!', true);
-    saveAndBroadcast('airport_raw');
+    state.nodesById={};state.linksById={};
+    const boxes=[
+      ['air_1','col_sys','A-CDM Unified Flight & Gate Telemetry Bus',0,980,77],
+      ['air_2','col_sys','Computer Vision Apron Turnaround Camera Mesh',1,520,60],
+      ['air_3','col_sys','Private 5G Airside & Baggage Hall Network',0,410,77],
+      ['air_4','col_sys','Autonomous GSE Dispatch & Telematics App',0,1190,60],
+      ['air_5','col_sys','RFID & Optical Bag-Tag Tracking Ledger',1,1120,60],
+      ['air_6','col_sys','Biometric e-Gate & Airside Pass Identity Vault',0,1350,77,'#60a5fa'],
+      ['air_7','col_sys','Ground Handler Smart SLA & Penalty Engine',0,640,60],
+      ['air_8','col_sys','Retired Teletype SITA Fallback (Unlinked Test)',0,300,77,null,true,false],
+      ['ops_1','col_proc','APOC Controllers Manage by Exception & ML Alerts',0,1150,77],
+      ['ops_2','col_proc','Dynamic Stand & Gate Re-Allocation Workflow',0,540,77],
+      ['ops_3','col_proc','Ramp Teams Execute Synchronised Precision Turnarounds',0,780,77],
+      ['ops_4','col_proc','Automated Tail-to-Tail Transfer Bag Interception',1,680,77],
+      ['ops_5','col_proc','Zero-Escort Airside Contractor Zone Verification',0,420,60],
+      ['ops_6','col_proc','Real-Time Ground Handler Turnaround Bonus/Malus',0,1290,77],
+      ['ops_7','col_proc','Manual Chalkboard Gate Allocation (Severed Test)',0,280,77,null,true,false],
+      ['cap_a','col_cap','Predictive 45-Min Widebody Turnaround Assurance',0,1060,77],
+      ['cap_b','col_cap','Single-View Airside & Terminal Flow Situational Command',0,490,77],
+      ['cap_c','col_cap','Sub-20-Minute Critical Bag Connection Recovery',0,890,77],
+      ['cap_d','col_cap','Continuous CAA & DfT Aviation Security Compliance',0,1240,60],
+      ['cap_e','col_cap','Accountable Third-Party Ground Handling Ecosystem',0,670,77],
+      ['cap_f','col_cap','Paper Flight Strip Archive (Severed Test)',0,1420,77,null,true,false],
+      ['ben_a','col_ben','32% Reduction in Knock-On Rotational Gate Delays',0,1120,77],
+      ['ben_b','col_ben','18-Minute Faster De-Icing & Adverse Weather Recovery',0,580,77],
+      ['ben_c','col_ben','£19.2m Saved in Mishandled Bag & EU261 Compensation',0,760,77,'#2dd4bf'],
+      ['ben_d','col_ben','Zero Airside Security Incursions or CAA Enforcement',0,1310,77],
+      ['ben_e','col_ben','14% Reduction in Ground Handling Contract Overruns',0,430,60],
+      ['obj_a','col_obj','Top-Quartile 88% On-Time Departure Punctuality',0,940,95,null,false,true],
+      ['obj_b','col_obj','Deliver £28m Annual Airside Operating Margin Uplift',0,510,77],
+      ['obj_c','col_obj','100% Statutory Aviation Security & Safety Licence',1,720,95,null,false,true]
+    ];
+    boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
+      state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+    });
+    const lnks=[
+      ['air_1','air_2','Stand events'],['air_2','ops_1','Chock-on ML'],['air_1','ops_2','Live EIBT'],['air_3','ops_2','Apron 5G'],
+      ['air_3','ops_3','Ramp sync'],['air_4','ops_3','Tug dispatch'],['air_5','ops_4','Hot-bag scan'],['ops_3','ops_4','Hold load status'],
+      ['air_6','ops_5','Biometric token'],['air_7','ops_6','SLA telemetry'],['ops_1','cap_a','Early intervention'],['ops_1','cap_b','APOC common view'],
+      ['ops_2','cap_b','Gate conflict free'],['ops_2','cap_c','Short-conn stand'],['ops_3','cap_c','99.4% bag load'],['ops_4','cap_c','Tail-to-tail transfer'],
+      ['ops_5','cap_d','Zero tailgating'],['ops_6','cap_e','Handler KPIs'],['cap_a','ben_a','On-time pushback'],['cap_b','ben_a','Absorbs inbound delay'],
+      ['cap_b','ben_b','Coordinated de-ice'],['cap_c','ben_b','Rapid wave recovery'],['cap_c','ben_c','60% fewer left bags'],['cap_d','ben_d','CAA audit pass'],
+      ['cap_e','ben_c','Penalty clawback',true],['cap_e','ben_e','Handler consolidation'],['ben_a','obj_a','Primary OTP driver'],['ben_b','obj_a','Winter resilience'],
+      ['ben_b','obj_c','Slot retention',true],['ben_c','obj_b','70% of margin'],['ben_e','obj_b','30% of margin'],['ben_d','obj_c','Zero CAA notices'],
+      ['air_6','cap_a','Crew airside fast-track',true],['ops_7','cap_f','Orphaned paper link']
+    ];
+    lnks.forEach(([f,t,lbl,sp],idx)=>{
+      const id='al_'+(idx+1);
+      state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+    });
+    state.selectedNodeId='cap_e';state.selectedLinkId=null;state.selectedColId='col_cap';
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    activeChannelKey=null;setupLiveSyncForCurrentFile();
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
+    localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.6.6!',true);
   }
 
   function loadStressTestDemo(){
-  pushUndoState();sessionFileHandle=null;
-  const ts=1763316000000;
-  state.mapId='bdn_stresstest_v40_01';
-  state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
-  state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
-  state.updatedAt=ts;state.deletedById={};
-  state.columns=[
-    {id:'col_enablers',title:'Technology & Infrastructure Enablers',color:'#38bdf8'},
-    {id:'col_changes',title:'Frontline Business Changes',color:'#34d399'},
-    {id:'col_capabilities',title:'Operational Capabilities',color:'#a78bfa'},
-    {id:'col_benefits',title:'Measurable Programme Benefits',color:'#f472b6'},
-    {id:'col_objectives',title:'Strategic Mandate & Objectives',color:'#fbbf24'}
-  ];
-  state.nodesById={};state.linksById={};
-  const boxes=[
-    ['ena_1','col_enablers','Core Cloud Telemetry & IoT Ingestion Platform',0,165,72],
-    ['ena_2','col_enablers','Automated Anomaly Detection ML Pipeline',1,165,72],
-    ['ena_3','col_enablers','Resilient Multi-Bearer Radio & Satellite Network',0,290,72],
-    ['ena_4','col_enablers','Offline-First Field Engineer Mobile App',0,415,54],
-    ['ena_5','col_enablers','Unified Digital Asset & Spares Inventory DB',0,525,54],
-    ['ena_6','col_enablers','Zero-Trust Identity & Biometric Access Gateway',0,640,72,'#60a5fa'],
-    ['ena_7','col_enablers','Automated Supplier SLA & Contract Portal',0,765,54],
-    ['ena_8','col_enablers','Legacy Decommissioning Archive (Unlinked Test Box)',0,900,72,null,true,false],
-    ['chg_1','col_changes','Control Room Shifts from Reactive to Predictive Triage',0,165,72],
-    ['chg_2','col_changes','Dynamic Multi-Agency Incident Routing Protocols',0,290,72],
-    ['chg_3','col_changes','Engineers Complete Guided Pre-Visit Diagnostics',0,415,72],
-    ['chg_4','col_changes','Automated Van-Stock Replenishment Triggers',1,470,54],
-    ['chg_5','col_changes','Role-Based Just-in-Time Security Elevation',0,640,54],
-    ['chg_6','col_changes','Commercial Teams Enforce Real-Time Penalty Credits',0,765,72],
-    ['chg_7','col_changes','Ad-Hoc Paper Logbooks Retired (Severed Branch Test)',0,900,72,null,true,false],
-    ['cap_1','col_capabilities','Automated Pre-Failure Dispatch & Self-Healing',0,165,72],
-    ['cap_2','col_capabilities','Continuous Gold-Command Situational Awareness',0,290,72],
-    ['cap_3','col_capabilities','Single-Visit First-Time Fix Capability',0,430,54],
-    ['cap_4','col_capabilities','Continuous NIS2 & ISO27001 Audit Readiness',0,640,54],
-    ['cap_5','col_capabilities','Transparent Vendor Performance & Cost Governance',0,765,72],
-    ['cap_6','col_capabilities','Local Depot Manual Archiving (Severed Branch Test)',0,900,72,null,true,false],
-    ['ben_1','col_benefits','40% Reduction in Unplanned Critical Outages',0,180,72],
-    ['ben_2','col_benefits','25% Faster Emergency Response & Recovery Time',0,310,72],
-    ['ben_3','col_benefits','£14.5m Annual Savings in Fleet & Repeat Visits',0,445,72,'#2dd4bf'],
-    ['ben_4','col_benefits','Zero Critical Cyber Breaches or Regulatory Fines',0,640,72],
-    ['ben_5','col_benefits','18% Reduction in Third-Party Supplier Spend',0,765,54],
-    ['obj_1','col_objectives','99.99% National Critical Infrastructure Availability',0,210,88,null,false,true],
-    ['obj_2','col_objectives','Deliver £22m Run-Rate Operational Cost Efficiency',0,470,88],
-    ['obj_3','col_objectives','Full Statutory & Cyber Security Compliance (NIS2)',0,660,88,null,false,true]
-  ];
-  boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
-    state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
-  });
-  const lnks=[
-    ['ena_1','ena_2','Raw stream'],['ena_2','chg_1','AI alerts'],['ena_1','chg_2','Live health'],['ena_3','chg_2','Zero blackspots'],
-    ['ena_3','chg_3','Field sync'],['ena_4','chg_3','Guided workflow'],['ena_5','chg_4','Real-time stock'],['chg_3','chg_4','Parts used'],
-    ['ena_6','chg_5','SSO & MFA'],['ena_7','chg_6','Auto-audit'],['chg_1','cap_1','Proactive'],['chg_1','cap_2','Shared view'],
-    ['chg_2','cap_2','Multi-agency'],['chg_2','cap_3','Right skill dispatched'],['chg_3','cap_3','92% first fix'],['chg_4','cap_3','Zero parts delay'],
-    ['chg_5','cap_4','Zero standing privs'],['chg_6','cap_5','SLA tracking'],['cap_1','ben_1','65% call reduction'],['cap_2','ben_1','Prevents cascade'],
-    ['cap_2','ben_2','Gold command speed'],['cap_3','ben_2','Rapid restoration'],['cap_3','ben_3','Fewer truck rolls'],['cap_4','ben_4','Audit pass'],
-    ['cap_5','ben_3','Rebate recovery',true],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
-    ['ben_2','obj_3','Statutory SLA',true],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
-    ['ena_6','cap_1','Secure edge telemetry',true],['chg_7','cap_6','Orphaned link']
-  ];
-  lnks.forEach(([f,t,lbl,sp],idx)=>{
-    const id='lnk_'+(idx+1);
-    state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
-  });
-  state.selectedNodeId='cap_5';state.selectedLinkId=null;state.selectedColId='col_capabilities';
-  document.getElementById('docTitleBtn').textContent=state.mapTitle;
-  activeChannelKey=null;setupLiveSyncForCurrentFile();
-  computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
-  localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-  sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Demo — Click Tidy v4.9!',true);
-}
+    pushUndoState();sessionFileHandle=null;
+    const ts=Date.now();
+    state.mapId='bdn_stresstest_v40_01';
+    state.fileSyncToken='9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
+    state.mapTitle='National Operations & Resilience Transformation BDN (Stress Test)';
+    state.updatedAt=ts;state.deletedById={};
+    state.columns=[
+      {id:'col_enablers',title:'Technology & Infrastructure Enablers',color:'#38bdf8'},
+      {id:'col_changes',title:'Frontline Business Changes',color:'#34d399'},
+      {id:'col_capabilities',title:'Operational Capabilities',color:'#a78bfa'},
+      {id:'col_benefits',title:'Measurable Programme Benefits',color:'#f472b6'},
+      {id:'col_objectives',title:'Strategic Mandate & Objectives',color:'#fbbf24'}
+    ];
+    state.nodesById={};state.linksById={};
+    const boxes=[
+      ['ena_1','col_enablers','Core Cloud Telemetry & IoT Ingestion Platform',0,890,72],
+      ['ena_2','col_enablers','Automated Anomaly Detection ML Pipeline',1,480,72],
+      ['ena_3','col_enablers','Resilient Multi-Bearer Radio & Satellite Network',0,360,72],
+      ['ena_4','col_enablers','Offline-First Field Engineer Mobile App',0,1120,54],
+      ['ena_5','col_enablers','Unified Digital Asset & Spares Inventory DB',0,1010,54],
+      ['ena_6','col_enablers','Zero-Trust Identity & Biometric Access Gateway',0,1260,72,'#60a5fa'],
+      ['ena_7','col_enablers','Automated Supplier SLA & Contract Portal',0,620,54],
+      ['ena_8','col_enablers','Legacy Decommissioning Archive (Unlinked Test Box)',0,220,72,null,true,false],
+      ['chg_1','col_changes','Control Room Shifts from Reactive to Predictive Triage',0,1040,72],
+      ['chg_2','col_changes','Dynamic Multi-Agency Incident Routing Protocols',0,510,72],
+      ['chg_3','col_changes','Engineers Complete Guided Pre-Visit Diagnostics',0,740,72],
+      ['chg_4','col_changes','Automated Van-Stock Replenishment Triggers',1,630,54],
+      ['chg_5','col_changes','Role-Based Just-in-Time Security Elevation',0,390,54],
+      ['chg_6','col_changes','Commercial Teams Enforce Real-Time Penalty Credits',0,1190,72],
+      ['chg_7','col_changes','Ad-Hoc Paper Logbooks Retired (Severed Branch Test)',0,240,72,null,true,false],
+      ['cap_1','col_capabilities','Automated Pre-Failure Dispatch & Self-Healing',0,970,72],
+      ['cap_2','col_capabilities','Continuous Gold-Command Situational Awareness',0,460,72],
+      ['cap_3','col_capabilities','Single-Visit First-Time Fix Capability',0,820,54],
+      ['cap_4','col_capabilities','Continuous NIS2 & ISO27001 Audit Readiness',0,1150,54],
+      ['cap_5','col_capabilities','Transparent Vendor Performance & Cost Governance',0,640,72],
+      ['cap_6','col_capabilities','Local Depot Manual Archiving (Severed Branch Test)',0,1310,72,null,true,false],
+      ['ben_1','col_benefits','40% Reduction in Unplanned Critical Outages',0,1030,72],
+      ['ben_2','col_benefits','25% Faster Emergency Response & Recovery Time',0,540,72],
+      ['ben_3','col_benefits','£14.5m Annual Savings in Fleet & Repeat Visits',0,710,72,'#2dd4bf'],
+      ['ben_4','col_benefits','Zero Critical Cyber Breaches or Regulatory Fines',0,1220,72],
+      ['ben_5','col_benefits','18% Reduction in Third-Party Supplier Spend',0,390,54],
+      ['obj_1','col_objectives','99.99% National Critical Infrastructure Availability',0,860,88,null,false,true],
+      ['obj_2','col_objectives','Deliver £22m Run-Rate Operational Cost Efficiency',0,470,88],
+      ['obj_3','col_objectives','Full Statutory & Cyber Security Compliance (NIS2)',0,680,88,null,false,true]
+    ];
+    boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
+      state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+    });
+    const lnks=[
+      ['ena_1','ena_2','Raw stream'],['ena_2','chg_1','AI alerts'],['ena_1','chg_2','Live health'],['ena_3','chg_2','Zero blackspots'],
+      ['ena_3','chg_3','Field sync'],['ena_4','chg_3','Guided workflow'],['ena_5','chg_4','Real-time stock'],['chg_3','chg_4','Parts used'],
+      ['ena_6','chg_5','SSO & MFA'],['ena_7','chg_6','Auto-audit'],['chg_1','cap_1','Proactive'],['chg_1','cap_2','Shared view'],
+      ['chg_2','cap_2','Multi-agency'],['chg_2','cap_3','Right skill dispatched'],['chg_3','cap_3','92% first fix'],['chg_4','cap_3','Zero parts delay'],
+      ['chg_5','cap_4','Zero standing privs'],['chg_6','cap_5','SLA tracking'],['cap_1','ben_1','65% call reduction'],['cap_2','ben_1','Prevents cascade'],
+      ['cap_2','ben_2','Gold command speed'],['cap_3','ben_2','Rapid restoration'],['cap_3','ben_3','Fewer truck rolls'],['cap_4','ben_4','Audit pass'],
+      ['cap_5','ben_3','Rebate recovery',true],['cap_5','ben_5','Vendor consolidation'],['ben_1','obj_1','Primary uptime driver'],['ben_2','obj_1','MTTR target'],
+      ['ben_2','obj_3','Statutory SLA',true],['ben_3','obj_2','65% of savings'],['ben_5','obj_2','35% of savings'],['ben_4','obj_3','Mandatory compliance'],
+      ['ena_6','cap_1','Secure edge telemetry',true],['chg_7','cap_6','Orphaned link']
+    ];
+    lnks.forEach(([f,t,lbl,sp],idx)=>{
+      const id='lnk_'+(idx+1);
+      state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+    });
+    state.selectedNodeId='cap_5';state.selectedLinkId=null;state.selectedColId='col_capabilities';
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    activeChannelKey=null;setupLiveSyncForCurrentFile();
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
+    localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.6.6!',true);
+  }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
   const id='node_'+Math.random().toString(36).slice(2,9);
@@ -2128,8 +2110,8 @@ document.getElementById('menuSaveDefaultCols').addEventListener('click',()=>{hid
 document.getElementById('menuRestoreFactoryCols').addEventListener('click',()=>{hideAllMenus();localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);updateStatusPill('↺ Factory Cols');});
 document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();performIdempotentTidy();saveState();fitScreen();});
 document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(false);fitScreen();});
-document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();
-  document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});loadStressTestDemo();});
+document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
+document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});
 
 document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
 document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
@@ -2179,6 +2161,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
