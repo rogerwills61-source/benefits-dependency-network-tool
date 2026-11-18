@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.9</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.0</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.9!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.0!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.9!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.0!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.9.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.0.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.9.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.0.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1180,6 +1180,22 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
     });
   }
 
+  // If the user pinned and manually moved/resized specific boxes, lock them back to their pinned coordinates and cascade locally around them!
+  if(pinnedBoxes.size>0){
+    const snapBefore={};
+    allNodes.forEach(n=>{snapBefore[n.id]={y:n.y,height:n.height};});
+    const pinnedIds=[];
+    pinnedBoxes.forEach((pos,id)=>{
+      const n=state.nodesById[id];
+      if(n){
+        n.y=pos.y;n.height=pos.height;n.subLane=pos.subLane;
+        n.isManuallyPositioned=true;
+        pinnedIds.push(id);
+      }
+    });
+    applyLocalMoveAndStretchCascade(pinnedIds,snapBefore);
+  }
+
   computeHorizontalLinksAndStubs(cg);
   updateDisconnectedIndicators();
 }
@@ -1191,10 +1207,19 @@ function applyLocalMoveAndStretchCascade(anchorIds,snapBefore){
 // 2. v4.9 Dual-Partner Span for `ena_2` (`chg_1.bottom - 34` down to `ena_1.y + 36` so "AI alerts" is 100% solid)
 // 3. v4.9 Explicit 56px Skip-Link Corridor between `chg_5` and `chg_1` so `ena_6 -> cap_1` ("Secure edge telemetry") is 100% solid!
 // ============================================================================
-function performIdempotentTidy(){
+function performIdempotentTidy(ignorePins=false){
   updateDisconnectedIndicators();
 
   const allNodes=Object.values(state.nodesById);
+  // Capture any user-pinned & manually positioned boxes so Tidy preserves their exact placement!
+  const pinnedBoxes=new Map();
+  if(!ignorePins){
+    allNodes.forEach(n=>{
+      if(n.isAutoLayoutOptOut&&(n.isManuallyPositioned||n.isManuallyStretched)){
+        pinnedBoxes.set(n.id,{y:n.y,height:n.height,subLane:n.subLane||0});
+      }
+    });
+  }
   allNodes.forEach((n,idx)=>{
     n.isManuallyPositioned=false;
     n.isManuallyStretched=false;
@@ -1716,7 +1741,7 @@ function performIdempotentTidy(){
         resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameP.id])});
       }
     }else if(sub2){
-      // Lock 3-lane staircase (def_w2 -> def_w3 -> def_w4 -> def_c2 / def_c3)
+      // Lock 3-lane staircase (subLane 0 -> subLane 1 -> subLane 2) WITH strict collision resolution on the target column!
       const corrTop=Math.max(sameP.y,rightP.y);
       n.y=corrTop+54;
       if(sameP.y+sameP.height<n.y+42)sameP.height=(n.y+42)-sameP.y;
@@ -1725,9 +1750,54 @@ function performIdempotentTidy(){
       sub2.y=n.y+54;
       if(n.y+n.height<sub2.y+42)n.height=(sub2.y+42)-n.y;
       if(rightP.y+rightP.height<sub2.y+44)rightP.height=(sub2.y+44)-rightP.y;
+
+      // CRITICAL: Push any boxes below rightP (such as lastRT) down by VERTICAL_BOX_GAP so rightP and lastRT NEVER overlap!
+      resolveColumnCollisions(rightP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightP.id])});
+
       if(lastRT.id!==rightP.id){
+        // Now stretch sub2 down to overlap the newly pushed lastRT by >= 44px!
         if(sub2.y+sub2.height<lastRT.y+44)sub2.height=(lastRT.y+44)-sub2.y;
-        if(lastRT.y+lastRT.height<sub2.y+sub2.height)lastRT.height=(sub2.y+sub2.height)-lastRT.y;
+        if(lastRT.y+lastRT.height<sub2.y+sub2.height){
+          lastRT.height=(sub2.y+sub2.height)-lastRT.y;
+          resolveColumnCollisions(lastRT.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lastRT.id])});
+        }
+        // Also ensure any lower lane-0 boxes in sameP's column and downstream columns ripple cleanly so no links split!
+        const lane0InCol=colListsLane0[ci];
+        const pIdx=lane0InCol.findIndex(x=>x.id===sameP.id);
+        if(pIdx>=0&&pIdx+1<lane0InCol.length){
+          const nextL0=lane0InCol[pIdx+1];
+          if(nextL0.y<lastRT.y+12){
+            nextL0.y=lastRT.y+12;
+            resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([nextL0.id])});
+          }
+          if(lastRT.y+lastRT.height<nextL0.y+44){
+            lastRT.height=(nextL0.y+44)-lastRT.y;
+            resolveColumnCollisions(lastRT.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lastRT.id])});
+          }
+          // Ripple any downward shift to adjacent columns (both left hub and right value drivers)
+          for(let rPass=0;rPass<2;rPass++){
+            Object.values(state.linksById).forEach(l=>{
+              const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
+              if(!a||!b||a.isDisconnected||b.isDisconnected||(a.subLane||0)>0||(b.subLane||0)>0)return;
+              const cA=cg[a.columnId]?.colIndex??0,cB=cg[b.columnId]?.colIndex??0;
+              if(Math.abs(cA-cB)!==1)return;
+              const oT=Math.max(a.y+EDGE_CORNER_PAD,b.y+EDGE_CORNER_PAD),oB=Math.min(a.y+a.height-EDGE_CORNER_PAD,b.y+b.height-EDGE_CORNER_PAD);
+              if(oB-oT<22){
+                const upper=a.y<=b.y?a:b,lower=upper===a?b:a;
+                const uSides=getPerSideNeighbors(upper,cg,true,true);
+                const allUNbs=[...uSides.leftNeighbors.map(x=>x.neighbor),...uSides.rightNeighbors.map(x=>x.neighbor)];
+                const hasHigherNb=allUNbs.some(nb=>nb.id!==lower.id&&nb.y+nb.height-EDGE_CORNER_PAD<lower.y+EDGE_CORNER_PAD);
+                if(!hasHigherNb&&!upper.isAutoLayoutOptOut){
+                  upper.y=lower.y;
+                  resolveColumnCollisions(upper.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+                }else{
+                  upper.height=Math.max(upper.height,(lower.y+42)-upper.y);
+                  resolveColumnCollisions(upper.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+                }
+              }
+            });
+          }
+        }
       }
     }
   });
@@ -1755,6 +1825,22 @@ function performIdempotentTidy(){
   if(allNodes.length){
     const sy=INITIAL_SPAWN_Y-Math.min(...allNodes.map(n=>n.y));
     if(Math.abs(sy)>0.5)allNodes.forEach(n=>{n.y+=sy;});
+  }
+
+  // If the user pinned and manually moved/resized specific boxes, lock them back to their pinned coordinates and cascade locally around them!
+  if(pinnedBoxes.size>0){
+    const snapBefore={};
+    allNodes.forEach(n=>{snapBefore[n.id]={y:n.y,height:n.height};});
+    const pinnedIds=[];
+    pinnedBoxes.forEach((pos,id)=>{
+      const n=state.nodesById[id];
+      if(n){
+        n.y=pos.y;n.height=pos.height;n.subLane=pos.subLane;
+        n.isManuallyPositioned=true;
+        pinnedIds.push(id);
+      }
+    });
+    applyLocalMoveAndStretchCascade(pinnedIds,snapBefore);
   }
 
   computeHorizontalLinksAndStubs(cg);
@@ -2467,7 +2553,7 @@ document.getElementById('menuSaveAsBdn').addEventListener('click',()=>saveBdnFil
 document.getElementById('menuExportPng').addEventListener('click',exportPngDiagram);
 document.getElementById('menuSaveDefaultCols').addEventListener('click',()=>{hideAllMenus();localStorage.setItem(STORAGE_KEY_DEFAULT_COLS,JSON.stringify(state.columns));updateStatusPill('✓ Cols Saved');});
 document.getElementById('menuRestoreFactoryCols').addEventListener('click',()=>{hideAllMenus();localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);updateStatusPill('↺ Factory Cols');});
-document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();performIdempotentTidy();saveState();fitScreen();});
+document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();Object.values(state.nodesById).forEach(n=>{n.isAutoLayoutOptOut=false;n.isManuallyPositioned=false;n.isManuallyStretched=false;});performIdempotentTidy(true);saveState();fitScreen();});
 document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(false);fitScreen();});
 document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
 document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});
@@ -2522,6 +2608,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
