@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.3.1</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.4</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -134,7 +134,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
     <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load National Operations Stress Test (28 Boxes)</span></div>
     <div class="ctx-item" id="menuLoadAirportStressTest"><span>✈️ Load Airport Turnaround Stress Test (30 Boxes)</span></div>
-  <div class="ctx-item" id="menuLoadMaritimeStressTest"><span>⚓ Load Maritime SAR 6-Column Diamond Stress Test (26 Boxes)</span></div>
+    <div class="ctx-item" id="menuLoadMaritimeStressTest"><span>⚓ Load Maritime SAR 6-Column Diamond Stress Test (26 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadDefenceStressTest"><span>🛡️ Load Defence Logistics 7-Col Torture Test (32 Boxes, 3 Sub-Lanes)</span></div>
 </div>
 
 <div class="floating-menu" id="settingsPanel">
@@ -577,6 +578,142 @@ function createStarterNetwork(blank=false){
   state.selectedColId=cObj;activeChannelKey=null;setupLiveSyncForCurrentFile();performIdempotentTidy();saveState();
 }
 
+  function loadDefenceTortureDemo(){
+    pushUndoState();sessionFileHandle=null;
+    const ts=Date.now();
+    state.mapId='bdn_defence_torture_v1';
+    state.fileSyncToken=generateCryptographicFileToken();
+    state.mapTitle='Defence Joint Logistics & Sovereign Supply Chain BDN (7-Col Torture Test)';
+    state.updatedAt=ts;state.deletedById={};
+    state.columns=[
+      {id:'col_d1',title:'1. Sovereign & NATO Telemetry',color:'#38bdf8'},
+      {id:'col_d2',title:'2. Federated Data & AI Spine',color:'#60a5fa'},
+      {id:'col_d3',title:'3. Depot & Convoy Workflows',color:'#34d399'},
+      {id:'col_d4',title:'4. Theatre Readiness Capabilities',color:'#a78bfa'},
+      {id:'col_d5',title:'5. Operational Value Drivers',color:'#2dd4bf'},
+      {id:'col_d6',title:'6. Audited Financial Benefits',color:'#f472b6'},
+      {id:'col_d7',title:'7. Strategic Defence Mandate',color:'#fbbf24'}
+    ];
+    state.nodesById={};state.linksById={};
+    const boxes=[
+      // Col 0: 4 Telemetry sources (including 1 short label and 1 very long 14-word label)
+      ['def_s1','col_d1','NATO STANAG Crypto RFID',0,920,58],
+      ['def_s2','col_d1','Classified Sovereign Munitions Storage Environmental & Shock Telemetry Sensor Array Across Forward Depots',0,310,96,'#38bdf8'],
+      ['def_s3','col_d1','Strategic Sealift & Airbridge ADS-B / Military Mode-5 IFF Transponder Feed',0,1180,76],
+      ['def_s4','col_d1','Allied Defence Industrial Base Tier-3 Supplier ERP API Gateway',0,580,72],
+
+      // Col 1: 3 Federated Data Spine boxes (Funnel constriction: 4 -> 3 -> 6)
+      ['def_p1','col_d2','Cross-Domain Air-Gapped High-Assurance Data Diode & Guard',0,1040,72,'#60a5fa'],
+      ['def_p2','col_d2','Unified Joint Theatre Logistics Digital Twin (1-to-4 Starburst Hub)',0,420,82],
+      ['def_p3','col_d2','Automated Sovereign Obsolescence & NATO Codification Engine',0,760,72],
+
+      // Col 2: 6 Workflow boxes INCLUDING a 3-Box Intra-Column Chain (def_w2 -> def_w3 -> def_w4 across subLanes 0 -> 1 -> 2!)
+      ['def_w1','col_d3','Zero-Touch Crypto Key & Manifest Verification at Embarkation',0,890,72],
+      ['def_w2','col_d3','AI Demand Forecasting Triggers Pre-Positioned Forward Stock',0,290,72],
+      ['def_w3','col_d3','Automated Nato Air-Drop & Convoy Load-Plan Optimisation',1,1120,68],
+      ['def_w4','col_d3','Dynamic Threat-Aware Convoy Re-Routing in Contested Zones',2,640,68,'#34d399'],
+      ['def_w5','col_d3','Condition-Based Munitions Shelf-Life Extension & Repackaging',0,490,72],
+      ['def_w6','col_d3','Proactive Dual-Source Contracting for Critical Long-Lead Spares',0,1260,72],
+
+      // Col 3: 5 Theatre Capabilities (including 4-to-1 funnel convergence on def_c2)
+      ['def_c1','col_d4','Assured Contested-Environment Command & Control Resilience',0,1020,72],
+      ['def_c2','col_d4','Precision 72-Hour Surge Deployment Velocity (4-to-1 Funnel Hub)',0,380,82,'#a78bfa'],
+      ['def_c3','col_d4','Autonomous Contested Last-Mile Resupply Execution',0,790,72],
+      ['def_c4','col_d4','Zero-Write-Off Munitions & High-Value Rotable Stockpile Health',0,560,72],
+      ['def_c5','col_d4','Sovereign Freedom of Action & Sanction-Proof Supply Chain',0,1190,72],
+
+      // Col 4: 4 Operational Value Drivers
+      ['def_v1','col_d5','100% NATO Interoperability & Zero Embarkation Hold-Ups',0,880,72],
+      ['def_v2','col_d5','45% Faster Theatre Sustainment & Forward Arming Turnaround',0,310,72],
+      ['def_v3','col_d5','62% Reduction in Expired Ordnance Disposal & Demilitarisation',0,620,72],
+      ['def_v4','col_d5','78% Reduction in Critical Fleet AOG / Mission-Incapable Days',0,1140,72],
+
+      // Col 5: 4 Audited Financial Benefits
+      ['def_b1','col_d6','Avoided £34m in Emergency Charter & Spot-Market Freight Premiums',0,940,76],
+      ['def_b2','col_d6','£68m Annual Savings in Munitions Replacement & Stockpile Write-Offs',0,410,76,'#2dd4bf'],
+      ['def_b3','col_d6','£42m Working Capital Released from Excess Depot Buffer Inventory',0,1190,76],
+      ['def_b4','col_d6','Zero Liquidated Damages or Sovereign Treaty Readiness Penalties',0,670,72],
+
+      // Col 6: 2 Convergent Strategic Defence Mandates
+      ['def_o1','col_d7','Maintain Continuous Tier-1 NATO High-Readiness Warfighting Deterrence',0,860,140,null,false,true],
+      ['def_o2','col_d7','Deliver £144m Audited Defence Equipment & Support (DE&S) Efficiency',0,340,140,null,false,true],
+
+      // Disconnected Torture Cases: 1 Isolated Singleton + 3-Box Severed Multi-Column Chain!
+      ['def_u1','col_d1','Decommissioned Cold-War Telex Terminal (Isolated Singleton Test)',0,1390,68,null,true,false],
+      ['def_u2','col_d3','Paper Triplicate Requisition Forms (3-Node Severed Chain 1/3)',0,1390,68,null,true,false],
+      ['def_u3','col_d4','Manual Microfiche NATO Stock Lookup (3-Node Severed Chain 2/3)',0,1390,68,null,true,false],
+      ['def_u4','col_d5','Unindexed Hangar Ledger Books (3-Node Severed Chain 3/3)',0,1390,68,null,true,false]
+    ];
+    boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
+      state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+    });
+    const lnks=[
+      // Col 0 -> Col 1 (with mixed arrowheads: right, both, none)
+      ['def_s1','def_p1','STANAG 4586 two-way handshake','both'],
+      ['def_s2','def_p1','High-side diode feed','right'],
+      ['def_s2','def_p2','Real-time magazine temp & shock','right'],
+      ['def_s3','def_p2','Live air/sea strategic lift track','right'],
+      ['def_s4','def_p2','Tier-3 factory lead-time stream','both'],
+      ['def_s4','def_p3','BOM obsolescence alerts','right'],
+
+      // Col 1 -> Col 2 (1-to-4 Starburst from def_p2 + 3-box intra-column chain def_w2 -> def_w3 -> def_w4!)
+      ['def_p1','def_w1','Cross-domain crypto clearance','right'],
+      ['def_p2','def_w1','Automated customs & manifest sync','right'],
+      ['def_p2','def_w2','Predictive theatre consumption rate','right'],
+      ['def_w2','def_w3','Auto-allocate pallet weights','right'],
+      ['def_w3','def_w4','3-Lane Chain: Convoy threat vector','both'],
+      ['def_p2','def_w5','Remaining munitions life index','right'],
+      ['def_p2','def_w6','Fleet failure-mode forecast','right'],
+      ['def_p3','def_w6','Alternate NATO part match','none'],
+
+      // Col 2 -> Col 3 (including 4-to-1 convergence onto def_c2 + 3-lane exit from def_w4 -> def_c3)
+      ['def_w1','def_c1','Zero-trust coalition C2 link','right'],
+      ['def_w1','def_c2','Pre-cleared border transit','right'],
+      ['def_w2','def_c2','Pre-staged forward depot stock','right'],
+      ['def_w3','def_c2','Rapid air-drop & sealift loading','right'],
+      ['def_w4','def_c3','Dynamic ambush & weather avoidance','right'],
+      ['def_w5','def_c2','Certified ready-to-issue ordnance','right'],
+      ['def_w5','def_c4','Extended service-life certification','right'],
+      ['def_w6','def_c5','Dual-sourced sovereign manufacturing','right'],
+
+      // Col 3 -> Col 4
+      ['def_c1','def_v1','Coalition C2 accreditation','right'],
+      ['def_c2','def_v1','Joint force readiness sync','right'],
+      ['def_c2','def_v2','72-hour surge SLA met','right'],
+      ['def_c3','def_v2','Uninterrupted frontline resupply','right'],
+      ['def_c4','def_v3','Condition-based stock rotation','right'],
+      ['def_c5','def_v4','Zero single-point supplier failure','right'],
+
+      // Col 4 -> Col 5
+      ['def_v1','def_b4','100% NATO treaty audit pass','right'],
+      ['def_v2','def_b4','Zero operational penalty notices','right'],
+      ['def_v2','def_b1','Eliminates ad-hoc airfreight','right'],
+      ['def_v3','def_b2','Halves ordnance disposal bill','right'],
+      ['def_v4','def_b3','Lean predictive spares holding','right'],
+
+      // Col 5 -> Col 6 (Converging into 2 Sovereign Mandates)
+      ['def_b4','def_o1','Sovereign alliance credibility','right'],
+      ['def_b1','def_o1','Sustained high-tempo sortie rate','right'],
+      ['def_b1','def_o2','24% of DE&S cashable savings','right'],
+      ['def_b2','def_o2','47% of DE&S cashable savings','right'],
+      ['def_b3','def_o2','29% of DE&S cashable savings','right'],
+
+      // 3-Node Disconnected Severed Chain at bottom
+      ['def_u2','def_u3','Severed chain step 1','right'],
+      ['def_u3','def_u4','Severed chain step 2','right']
+    ];
+    lnks.forEach(([f,t,lbl,arr],idx)=>{
+      const id='dl_'+(idx+1);
+      state.linksById[id]={id,fromId:f,toId:t,label:lbl,arrowMode:arr||settings.defaultArrow||'right',updatedAt:ts,isSplit:false,forceSplit:false,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+    });
+    state.selectedNodeId='def_w4';state.selectedLinkId=null;state.selectedColId='col_d3';
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    activeChannelKey=null;setupLiveSyncForCurrentFile();
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
+    localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.4!',true);
+  }
+
   function loadMaritimeDemo(){
     pushUndoState();sessionFileHandle=null;
     const ts=Date.now();
@@ -667,7 +804,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.3.1!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.4!',true);
   }
 
   function loadAirportDemo(){
@@ -739,7 +876,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.3.1.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.4.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -811,7 +948,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.3.1.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.4.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1069,13 +1206,15 @@ function performIdempotentTidy(){
     l.forceSplit=false;l.updatedAt=Date.now();
   });
 
-  // 1. Assign subLane: 1 to the downstream partner of any intra-column link
-  Object.values(state.linksById).forEach(l=>{
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(nA&&nB&&nA.columnId===nB.columnId&&(nA.subLane||0)===(nB.subLane||0)){
-      nB.subLane=1;
-    }
-  });
+  // 1. Assign sequential subLanes (0 -> 1 -> 2 ...) to any intra-column link chain of arbitrary length!
+  for(let pass=0;pass<4;pass++){
+    Object.values(state.linksById).forEach(l=>{
+      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+      if(nA&&nB&&nA.columnId===nB.columnId&&(nB.subLane||0)<=(nA.subLane||0)){
+        nB.subLane=(nA.subLane||0)+1;
+      }
+    });
+  }
 
   // 2. If a degree-1 box only feeds a subLane:1 box in the next column, place it in subLane:1 too (pocket feeder)
   let cg=computeColumnGeometries();
@@ -1420,6 +1559,37 @@ function performIdempotentTidy(){
           });
 
           resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
+          resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
+        }
+      }else if((n.subLane||0)>=2){
+        // Chained sub-lane node (subLane 2+ fed by subLane 1 in the same column and feeding rightColPartner in the next column):
+        const subParent=nbs.find(nb=>nb.columnId===n.columnId&&(nb.subLane||0)===(n.subLane-1));
+        if(subParent&&rightColPartner){
+          // Place n so it overlaps the bottom of subParent and the top of rightColPartner, while keeping subParent -> rightColPartner clear above n!
+          const alsoParentToRight=getPerSideNeighbors(subParent,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===rightColPartner.id);
+          n.y=alsoParentToRight?(subParent.y+48):Math.max(subParent.y+12,rightColPartner.y);
+          n.height=Math.max(BOX_MIN_HEIGHT,72);
+          if(subParent.y+subParent.height<n.y+38)subParent.height=(n.y+38)-subParent.y;
+          if(rightColPartner.y>n.y+12){
+            const rColIdx=cg[rightColPartner.columnId]?.colIndex??(ci+1);
+            const rLane=colListsLane0[rColIdx];
+            const{safeTop:sT}=clampStretchToColumnClashes(rightColPartner,n.y,rightColPartner.y+rightColPartner.height,rLane);
+            const oldB=rightColPartner.y+rightColPartner.height;
+            rightColPartner.y=sT;rightColPartner.height=Math.max(rightColPartner.height,oldB-sT);
+          }
+          if(rightColPartner.y+rightColPartner.height<n.y+42)rightColPartner.height=(n.y+42)-rightColPartner.y;
+          // Push the next lane-0 box in col below n.bottom + 14 so it doesn't collide visually with the sub-lane chain
+          const l0Parent=getPerSideNeighbors(subParent,cg,true,true).leftNeighbors.map(x=>x.neighbor).find(nb=>nb.columnId===col.id&&(nb.subLane||0)===0);
+          if(l0Parent){
+            const pIdx=lane0InCol.findIndex(x=>x.id===l0Parent.id);
+            if(pIdx>=0&&pIdx+1<lane0InCol.length){
+              const nextL0=lane0InCol[pIdx+1];
+              if(nextL0.y<n.y+n.height+16){
+                nextL0.y=n.y+n.height+16;
+                resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([nextL0.id])});
+              }
+            }
+          }
           resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
         }
       }
@@ -2247,6 +2417,7 @@ document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMen
 document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
 document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});
 document.getElementById('menuLoadMaritimeStressTest').addEventListener('click',()=>{hideAllMenus();loadMaritimeDemo();});
+document.getElementById('menuLoadDefenceStressTest').addEventListener('click',()=>{hideAllMenus();loadDefenceTortureDemo();});
 
 document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
 document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
@@ -2296,6 +2467,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
