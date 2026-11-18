@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.6</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.7</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -232,7 +232,7 @@ const THEMES={
   warm:{bgCanvas:'#1c1917',surfaceHud:'rgba(28,25,23,0.94)',surfaceModal:'#292524',surfaceBox:'#292524',surfaceBoxSel:'#44403c',surfaceHeader:'rgba(28,25,23,0.96)',borderHud:'#44403c',textPrimary:'#f5f5f4',textSecondary:'#a8a29e',textMuted:'#78716c',linkStroke:'#d6d3d1',colTintEven:'rgba(41,37,36,0.28)',colTintOdd:'rgba(68,64,60,0.18)'},
   blueprint:{bgCanvas:'#07192f',surfaceHud:'rgba(10,34,64,0.94)',surfaceModal:'#0a2240',surfaceBox:'#0a2240',surfaceBoxSel:'#123866',surfaceHeader:'rgba(10,34,64,0.96)',borderHud:'#1e4976',textPrimary:'#f0f9ff',textSecondary:'#93c5fd',textMuted:'#60a5fa',linkStroke:'#e0f2fe',colTintEven:'rgba(14,42,77,0.3)',colTintOdd:'rgba(20,58,102,0.2)'}
 };
-const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=104,COL_SIDE_PADDING=64,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=30,LINK_SLOT_SPACING=28,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.14,MAX_ZOOM=2.4;
+const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=132,COL_SIDE_PADDING=64,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=34,LINK_SLOT_SPACING=42,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.14,MAX_ZOOM=2.4;
 const UNDER_BOX_LABEL_CLEARANCE=22;
 
 function getHeaderTopY(){const hud=document.getElementById('topHud');return hud?Math.max(52,Math.round(hud.getBoundingClientRect().bottom+6)):56;}
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.7!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.7!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.6.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.7.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.6.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.7.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1035,7 +1035,7 @@ function updateDisconnectedIndicators(){
   });
 }
 
-function getBaseBoxHeight(n,ms){const tl=Math.max(1,Math.ceil((n.text||'').length/22)),th=Math.max(BOX_MIN_HEIGHT,26+tl*17);return ms<=1?th:Math.max(th,EDGE_CORNER_PAD*2+(ms-1)*LINK_SLOT_SPACING);}
+function getBaseBoxHeight(n,ms){const tl=Math.max(1,Math.ceil((n.text||'').length/22)),th=Math.max(BOX_MIN_HEIGHT,28+tl*17);return ms<=1?th:Math.max(th,36+(ms-1)*LINK_SLOT_SPACING);}
 
 function getPerSideNeighbors(n,cg,incSplit=true,adjacentOnly=false){
   const mx=getNodeGlobalX(n,cg),myCol=cg[n.columnId]?.colIndex??0,ln=[],rn=[];
@@ -1654,6 +1654,103 @@ function performIdempotentTidy(){
     });
   }
 
+  // 11B. Final Generalized Multi-SubLane Staircase & Under-Partner Lock (Runs AFTER all lane-0 collisions!)
+  state.columns.forEach((col,ci)=>{
+    if(ci>=state.columns.length-1)return;
+    const sub1Nodes=allNodes.filter(n=>n.columnId===col.id&&!n.isDisconnected&&(n.subLane||0)===1);
+    sub1Nodes.forEach(s1=>{
+      const s1Sides=getPerSideNeighbors(s1,cg,true,true);
+      const s1Nbs=[...s1Sides.leftNeighbors.map(x=>x.neighbor),...s1Sides.rightNeighbors.map(x=>x.neighbor)];
+      const p0=s1Nbs.find(nb=>nb.columnId===col.id&&(nb.subLane||0)===0);
+      const r0List=s1Nbs.filter(nb=>nb.columnId!==col.id&&(cg[nb.columnId]?.colIndex??0)>ci).sort((a,b)=>a.y-b.y);
+      const leftSubFeeder=s1Nbs.find(nb=>nb.columnId!==col.id&&(cg[nb.columnId]?.colIndex??0)<ci&&(nb.subLane||0)>0);
+      if(!p0||!r0List.length||leftSubFeeder)return;
+
+      const r0=r0List[0];
+      const p0LinksToR0=getPerSideNeighbors(p0,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===r0.id);
+      const sub2=s1Nbs.find(nb=>nb.columnId===col.id&&(nb.subLane||0)===2);
+
+      if(p0LinksToR0){
+        const corrTop=Math.max(p0.y,r0.y);
+        if(s1.y<corrTop+58)s1.y=corrTop+58;
+        if(p0.y+p0.height<s1.y+48)p0.height=(s1.y+48)-p0.y;
+        if(r0.y+r0.height<s1.y+s1.height)r0.height=(s1.y+s1.height)-r0.y;
+      }
+
+      const crossColFeeders=s1Sides.leftNeighbors.map(x=>x.neighbor).filter(nb=>nb.id!==p0.id&&nb.columnId!==col.id);
+      crossColFeeders.forEach(lf=>{
+        const neededP0Bot=Math.max(lf.y+48,s1.y+48);
+        if(p0.y+p0.height>neededP0Bot+10)p0.height=neededP0Bot-p0.y;
+        const p0Bot=p0.y+p0.height;
+        const reqBot=p0Bot+54;
+        if(s1.y+s1.height<reqBot)s1.height=reqBot-s1.y;
+        if(lf.y+lf.height<reqBot){
+          lf.height=reqBot-lf.y;
+          resolveColumnCollisions(lf.columnId,lf.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lf.id])});
+        }
+        if(r0.y+r0.height<reqBot){
+          r0.height=reqBot-r0.y;
+          resolveColumnCollisions(r0.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([r0.id])});
+        }
+      });
+
+      if(sub2){
+        const sub2Sides=getPerSideNeighbors(sub2,cg,true,true);
+        const sub2Right=sub2Sides.rightNeighbors.map(x=>x.neighbor).filter(nb=>(cg[nb.columnId]?.colIndex??0)>ci).sort((a,b)=>a.y-b.y);
+        const s2FirstR=sub2Right[0]||r0;
+        const s2LastR=sub2Right[sub2Right.length-1]||r0;
+        const reqS2Y=Math.max(s1.y+60,s2FirstR.y+60);
+        if(sub2.y<reqS2Y)sub2.y=reqS2Y;
+        sub2.height=Math.max(sub2.height,86);
+        if(s1.y+s1.height<sub2.y+48)s1.height=(sub2.y+48)-s1.y;
+        if(s2FirstR.y+s2FirstR.height<sub2.y+52){
+          s2FirstR.height=(sub2.y+52)-s2FirstR.y;
+          resolveColumnCollisions(s2FirstR.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([s2FirstR.id])});
+        }
+        if(s2LastR.id!==s2FirstR.id){
+          if(sub2.y+sub2.height<s2LastR.y+52)sub2.height=(s2LastR.y+52)-sub2.y;
+          if(s2LastR.y+s2LastR.height<sub2.y+sub2.height){
+            s2LastR.height=(sub2.y+sub2.height)-s2LastR.y;
+            resolveColumnCollisions(s2LastR.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([s2LastR.id])});
+          }
+        }
+        const lane0InCol=colListsLane0[ci];
+        const pIdx=lane0InCol.findIndex(x=>x.id===p0.id);
+        if(pIdx>=0&&pIdx+1<lane0InCol.length){
+          const nextL0=lane0InCol[pIdx+1];
+          const minNextY=Math.max(p0.y+p0.height+VERTICAL_BOX_GAP,s2LastR.y+54);
+          if(nextL0.y<minNextY){
+            nextL0.y=minNextY;
+            resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([nextL0.id])});
+          }
+          if(s2LastR.y+s2LastR.height<nextL0.y+50){
+            s2LastR.height=(nextL0.y+50)-s2LastR.y;
+            resolveColumnCollisions(s2LastR.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([s2LastR.id])});
+          }
+          lane0InCol.slice(pIdx+1).forEach(lowerNode=>{
+            if(lowerNode.isDisconnected)return;
+            getPerSideNeighbors(lowerNode,cg,true,true).leftNeighbors.forEach(({neighbor:hub})=>{
+              if(hub.y+hub.height<lowerNode.y+52){
+                hub.height=(lowerNode.y+52)-hub.y;
+                resolveColumnCollisions(hub.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([hub.id])});
+              }
+            });
+            getPerSideNeighbors(lowerNode,cg,true,true).rightNeighbors.forEach(({neighbor:rTarget})=>{
+              if(rTarget.y<lowerNode.y-10&&rTarget.y+rTarget.height<lowerNode.y+52){
+                rTarget.height=(lowerNode.y+52)-rTarget.y;
+                resolveColumnCollisions(rTarget.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rTarget.id])});
+              }else if(rTarget.y>lowerNode.y+lowerNode.height-38){
+                lowerNode.height=(rTarget.y+52)-lowerNode.y;
+                resolveColumnCollisions(lowerNode.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lowerNode.id])});
+              }
+            });
+          });
+        }
+      }
+      resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([p0.id])});
+    });
+  });
+
   // 12. Generalized Multi-Column Skip-Link Corridor Opener (Handles both Top Skip-Links and Bottom Skip-Links!)
   Object.values(state.linksById).forEach(l=>{
     const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
@@ -1723,6 +1820,54 @@ function performIdempotentTidy(){
     });
   }
 
+  // 14B. Dynamic Box Stretch Pass for Generous Link-Slot Spacing:
+  // Inspects every box and every connected pair; if multiple links share a box edge or an overlap window,
+  // stretches the boxes so that each link has >= 38px of unobstructed vertical breathing room!
+  allNodes.filter(n=>!n.isDisconnected).forEach(n=>{
+    const s=getPerSideNeighbors(n,cg,true,false);
+    const maxLinksOnSide=Math.max(s.leftNeighbors.length,s.rightNeighbors.length);
+    if(maxLinksOnSide>=2){
+      const minRequiredH=EDGE_CORNER_PAD*2+(maxLinksOnSide-1)*38+16;
+      if(n.height<minRequiredH){
+        const laneList=allNodes.filter(x=>x.columnId===n.columnId&&!x.isDisconnected&&(x.subLane||0)===(n.subLane||0)).sort((a,b)=>a.y-b.y);
+        const{safeBottom:sB}=clampStretchToColumnClashes(n,n.y,n.y+minRequiredH,laneList);
+        if(sB-n.y>n.height)n.height=sB-n.y;
+      }
+    }
+  });
+
+  // Also ensure every connected pair (nA, nB) has at least 36px of shared vertical overlap (or 52px if either box has >= 3 links on that side!)
+  Object.values(state.linksById).forEach(l=>{
+    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+    if(!nA||!nB||nA.isDisconnected||nB.isDisconnected)return;
+    const cA=cg[nA.columnId]?.colIndex??0,cB=cg[nB.columnId]?.colIndex??0;
+    if(Math.abs(cA-cB)>1||(nA.subLane||0)>0||(nB.subLane||0)>0)return;
+
+    const sA=getPerSideNeighbors(nA,cg,true,false),sB=getPerSideNeighbors(nB,cg,true,false);
+    const degSide=Math.max(cA<cB?sA.rightNeighbors.length:sA.leftNeighbors.length,cA<cB?sB.leftNeighbors.length:sB.rightNeighbors.length);
+    const reqOverlap=degSide>=3?52:(degSide===2?40:28);
+
+    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+    const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+    if(oB-oT<reqOverlap){
+      const upper=nA.y<=nB.y?nA:nB,lower=upper===nA?nB:nA;
+      const uLane=colListsLane0[cg[upper.columnId]?.colIndex??0];
+      const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,lower.y+EDGE_CORNER_PAD*2+reqOverlap,uLane);
+      if(uSB-upper.y>upper.height)upper.height=uSB-upper.y;
+
+      const oT2=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+      const oB2=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+      if(oB2-oT2<reqOverlap){
+        const lLane=colListsLane0[cg[lower.columnId]?.colIndex??0];
+        const{safeTop:lST}=clampStretchToColumnClashes(lower,upper.y+upper.height-EDGE_CORNER_PAD*2-reqOverlap,lower.y+lower.height,lLane);
+        if(lST<lower.y){
+          const oldB=lower.y+lower.height;
+          lower.y=lST;lower.height=oldB-lST;
+        }
+      }
+    }
+  });
+
   // 15. Place disconnected test boxes neatly at the bottom of their columns
   const activeBot=Math.max(...allNodes.filter(n=>!n.isDisconnected).map(n=>n.y+n.height));
   allNodes.filter(n=>n.isDisconnected).forEach(n=>{
@@ -1757,18 +1902,15 @@ function computeHorizontalLinksAndStubs(cg){
     }
   });
 
-  solid.sort((a,b)=>a.avgCenterY-b.avgCenterY);
+  // Sort links by narrowest unobstructed window first so tightly constrained corridor links claim their exact slot before tall hub links!
+  solid.sort((a,b)=>{
+    const spanA=a.overlapBottom-a.overlapTop,spanB=b.overlapBottom-b.overlapTop;
+    return Math.abs(spanA-spanB)>24?spanA-spanB:a.avgCenterY-b.avgCenterY;
+  });
 
   solid.forEach(({link:l,nA,nB,overlapTop:oT,overlapBottom:oB,avgCenterY})=>{
     const xA=getNodeGlobalX(nA,cg),xB=getNodeGlobalX(nB,cg),lN=xA<=xB?nA:nB,rN=xA<=xB?nB:nA;
     const lK=lN.id+'_right',rK=rN.id+'_left',ex=[...getU(lK),...getU(rK)];
-    const prefY=Math.max(oT,Math.min(oB,avgCenterY));
-    const cands=[prefY,(oT+oB)/2];
-    const span=oB-oT;
-    for(let s=4;s<=span+2;s+=4){
-      if(prefY-s>=oT)cands.push(prefY-s);
-      if(prefY+s<=oB)cands.push(prefY+s);
-    }
     const sL=getNodeGlobalX(lN,cg)+BOX_WIDTH,sR=getNodeGlobalX(rN,cg);
 
     const isBlockedAt=(cY,underClearance)=>{
@@ -1779,22 +1921,33 @@ function computeHorizontalLinksAndStubs(cg){
       });
     };
 
-    let bY=prefY,bC=-1;
-    for(const cY of cands){
-      if(isBlockedAt(cY,UNDER_BOX_LABEL_CLEARANCE))continue;
-      const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
-      if(mD>=26){bC=mD;bY=cY;break;}
-      if(mD>bC){bC=mD;bY=cY;}
+    const validYs=[];
+    for(let y=Math.round(oT);y<=Math.round(oB);y+=2){
+      if(!isBlockedAt(y,UNDER_BOX_LABEL_CLEARANCE))validYs.push(y);
     }
-    if(bC===-1){
-      for(const cY of cands){
-        if(isBlockedAt(cY,8))continue;
-        const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
-        if(mD>=20){bC=mD;bY=cY;break;}
-        if(mD>bC){bC=mD;bY=cY;}
+    if(!validYs.length){
+      for(let y=Math.round(oT);y<=Math.round(oB);y+=2){
+        if(!isBlockedAt(y,6))validYs.push(y);
       }
     }
-    if(bC===-1){
+
+    if(!validYs.length){
+      l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});
+      return;
+    }
+
+    const prefY=Math.max(validYs[0],Math.min(validYs[validYs.length-1],avgCenterY));
+    const sortedValid=[...validYs].sort((a,b)=>Math.abs(a-prefY)-Math.abs(b-prefY));
+
+    let bY=sortedValid[0],bC=-1;
+    // Tier 1: Look for >= 32px separation from any existing link on the same box sides
+    for(const cY of sortedValid){
+      const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
+      if(mD>=32){bC=mD;bY=cY;break;}
+      if(mD>bC){bC=mD;bY=cY;}
+    }
+    // Tier 2: Accept >= 15px if the corridor is constrained (picking the candidate that maximizes distance bC from existing links!)
+    if(bC<14&&ex.length>0){
       l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});
     }else{
       l.anchorY=Math.round(bY);getU(lK).push(l.anchorY);getU(rK).push(l.anchorY);
@@ -1803,13 +1956,13 @@ function computeHorizontalLinksAndStubs(cg){
 
   function allocStub(n,side,targetCenterY){
     const u=getU(n.id+'_'+side),tB=n.y+EDGE_CORNER_PAD,bB=n.y+n.height-EDGE_CORNER_PAD,m=(tB+bB)/2,cands=[];
-    if(targetCenterY<m){for(let y=tB;y<=bB;y+=6)cands.push(y);}
-    else{for(let y=bB;y>=tB;y-=6)cands.push(y);}
+    if(targetCenterY<m){for(let y=tB;y<=bB;y+=4)cands.push(y);}
+    else{for(let y=bB;y>=tB;y-=4)cands.push(y);}
     cands.push(m);
     let bY=cands[0],mD=-1;
     for(const c of cands){
       const d=u.length===0?999:Math.min(...u.map(x=>Math.abs(x-c)));
-      if(d>=14){bY=c;break;}
+      if(d>=28){bY=c;break;}
       if(d>mD){mD=d;bY=c;}
     }
     const fY=Math.round(bY);u.push(fY);return fY;
@@ -1821,7 +1974,6 @@ function computeHorizontalLinksAndStubs(cg){
     l.rightStubY=allocStub(rN,'left',lN.y+lN.height/2);
   });
 }
-
 function getBestLabelSpan(sX,eX,y,lN,rN,all,cg){
   const obstacles=[];
   all.forEach(ot=>{
@@ -1921,8 +2073,13 @@ function draw(){
       if(l.label){
         const{midX:mX,availW:avW}=getBestLabelSpan(sX,eX,y,lN,rN,all,cg);
         ctx.font='600 10.5px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        const lns=wrapTextLines(l.label,avW),lh=12.5,bLY=y-8,tLY=bLY-(lns.length-1)*lh;
-        ctx.lineWidth=6.5;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=sel?'#38bdf8':th.textPrimary;
+        const lns=wrapTextLines(l.label,avW),lh=12.5,bLY=y-9,tLY=bLY-(lns.length-1)*lh;
+        const maxLW=Math.max(...lns.map(ln=>ctx.measureText(ln).width));
+        const padX=5,padY=2.5,boxH=lns.length*lh+padY*2,boxY=tLY-lh/2-padY;
+        ctx.fillStyle=th.bgCanvas;ctx.globalAlpha=0.88;
+        drawRoundedRect(mX-maxLW/2-padX,boxY,maxLW+padX*2,boxH,4);ctx.fill();
+        ctx.globalAlpha=1;
+        ctx.lineWidth=4;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=sel?'#38bdf8':th.textPrimary;
         lns.forEach((ln,i)=>{const ly=tLY+i*lh;ctx.strokeText(ln,mX,ly);ctx.fillText(ln,mX,ly);});
       }
     }else{
@@ -2487,6 +2644,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
