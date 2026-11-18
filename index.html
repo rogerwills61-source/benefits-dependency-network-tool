@@ -150,7 +150,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.15</span>
+    <span class="menu-version-badge">v6.16</span>
   </div>
 </div>
 
@@ -1971,6 +1971,12 @@ function computeHorizontalLinksAndStubs(cg){
         if(!isBlockedAt(y,6))validYs.push(y);
       }
     }
+    if(!validYs.length){
+      // Relaxed final pass for dense multi-lane diamond layouts: allow tight 3px corridor clearance rather than splitting!
+      for(let y=Math.round(oT);y<=Math.round(oB);y+=2){
+        if(!isBlockedAt(y,3))validYs.push(y);
+      }
+    }
 
     if(!validYs.length){
       l.isSplit=true;l.splitBadgeId=String(sc++);split.push({link:l,nA,nB});
@@ -2765,6 +2771,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
