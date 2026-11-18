@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.12</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.13</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.12!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.13!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.12!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.13!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.12!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.13!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.12!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.13!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1599,33 +1599,86 @@ function performIdempotentTidy(ignorePins=false){
   }
 
   // 12. Generalized Multi-Column Skip-Link Corridor Opener (Runs AFTER Step 11 so nothing closes the skip corridor!)
+  // Threads user-added or preset skip-links through the nearest intermediate column gap with strict collision resolution!
   Object.values(state.linksById).forEach(l=>{
     const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
     if(!a||!b||a.isDisconnected||b.isDisconnected)return;
     const cA=cg[a.columnId]?.colIndex??0,cB=cg[b.columnId]?.colIndex??0;
     if(Math.abs(cA-cB)>1){
+      const leftIdx=Math.min(cA,cB),rightIdx=Math.max(cA,cB);
       const leftEnd=cA<cB?a:b,rightEnd=cA<cB?b:a;
-      const midLane0=colListsLane0[Math.min(cA,cB)+1].filter(n=>!n.isDisconnected);
-      if(midLane0.length>=2){
-        if(topSkipChainIds.has(leftEnd.id)){
-          const box0=midLane0[0],box1=midLane0[1];
-          const corridorY=box0.y+box0.height+28;
-          if(box1.y<corridorY+22){
-            box1.y=corridorY+22;
-            resolveColumnCollisions(box1.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([box1.id])});
-          }
-          if(leftEnd.y+leftEnd.height<corridorY+16)leftEnd.height=(corridorY+16)-leftEnd.y;
-          if(rightEnd.y>corridorY-16){
-            const oldB=rightEnd.y+rightEnd.height;
-            rightEnd.y=corridorY-16;
-            rightEnd.height=Math.max(rightEnd.height,oldB-rightEnd.y);
-          }
-        }else{
-          const lastMid=midLane0[midLane0.length-1];
-          const corridorY=lastMid.y+lastMid.height+22;
-          if(leftEnd.y+leftEnd.height<corridorY+16)leftEnd.height=(corridorY+16)-leftEnd.y;
-          if(rightEnd.y+rightEnd.height<corridorY+16)rightEnd.height=(corridorY+16)-rightEnd.y;
+      const midLane0=colListsLane0[leftIdx+1].filter(n=>!n.isDisconnected);
+      if(midLane0.length>=2&&topSkipChainIds.has(leftEnd.id)){
+        const box0=midLane0[0],box1=midLane0[1];
+        const corridorY=box0.y+box0.height+28;
+        if(box1.y<corridorY+22){
+          box1.y=corridorY+22;
+          resolveColumnCollisions(box1.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([box1.id])});
         }
+        if(leftEnd.y+leftEnd.height<corridorY+16){
+          leftEnd.height=(corridorY+16)-leftEnd.y;
+          resolveColumnCollisions(leftEnd.columnId,leftEnd.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([leftEnd.id])});
+        }
+        if(rightEnd.y>corridorY-16){
+          const oldB=rightEnd.y+rightEnd.height;
+          rightEnd.y=corridorY-16;
+          rightEnd.height=Math.max(rightEnd.height,oldB-rightEnd.y);
+          resolveColumnCollisions(rightEnd.columnId,rightEnd.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightEnd.id])});
+        }
+      }else if(midLane0.length>=1){
+        // General user or preset skip-link (e.g. chg_3 -> ben_3 or bottom skip link):
+        // Find the closest inter-box gap (or bottom corridor) in intermediate column(s) to the midpoint of leftEnd & rightEnd!
+        const targetMidY=((leftEnd.y+leftEnd.height/2)+(rightEnd.y+rightEnd.height/2))/2;
+        const candidateGaps=[];
+        for(let i=0;i<midLane0.length-1;i++){
+          const upperBox=midLane0[i],lowerBox=midLane0[i+1];
+          const gapCenter=(upperBox.y+upperBox.height+lowerBox.y)/2;
+          candidateGaps.push({type:'between',upperBox,lowerBox,corridorY:upperBox.y+upperBox.height+24,dist:Math.abs(gapCenter-targetMidY)});
+        }
+        const lastMid=midLane0[midLane0.length-1];
+        const botCorridorY=lastMid.y+lastMid.height+22;
+        candidateGaps.push({type:'bottom',upperBox:lastMid,lowerBox:null,corridorY:botCorridorY,dist:Math.abs(botCorridorY-targetMidY)});
+        candidateGaps.sort((x,y)=>x.dist-y.dist);
+
+        const bestGap=candidateGaps[0];
+        const corrY=bestGap.corridorY;
+
+        // Ensure the chosen gap in the intermediate column is at least 46px tall so the skip-link & its label have a clean corridor
+        if(bestGap.type==='between'&&bestGap.lowerBox){
+          if(bestGap.lowerBox.y<corrY+22){
+            bestGap.lowerBox.y=corrY+22;
+            resolveColumnCollisions(bestGap.lowerBox.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([bestGap.lowerBox.id])});
+          }
+        }
+
+        // Safely reach corrY from leftEnd and rightEnd (clamped or collision-resolved so boxes NEVER overlap in their columns!)
+        const extendNodeToCorridor=(nd)=>{
+          const colIdx=cg[nd.columnId]?.colIndex??0;
+          const colList=colListsLane0[colIdx];
+          if(nd.y+nd.height<corrY+16){
+            const reqBot=corrY+16;
+            const{safeBottom}=clampStretchToColumnClashes(nd,nd.y,reqBot,colList);
+            if(safeBottom>=corrY+14){
+              nd.height=safeBottom-nd.y;
+            }else{
+              nd.height=reqBot-nd.y;
+              resolveColumnCollisions(nd.columnId,nd.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([nd.id])});
+            }
+          }else if(nd.y>corrY-16){
+            const reqTop=corrY-16;
+            const{safeTop}=clampStretchToColumnClashes(nd,reqTop,nd.y+nd.height,colList);
+            if(safeTop<=corrY-14){
+              const oldB=nd.y+nd.height;
+              nd.y=safeTop;nd.height=oldB-safeTop;
+            }else{
+              const oldB=nd.y+nd.height;
+              nd.y=reqTop;nd.height=Math.max(nd.height,oldB-reqTop);
+              resolveColumnCollisions(nd.columnId,nd.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([nd.id])});
+            }
+          }
+        };
+        extendNodeToCorridor(leftEnd);
+        extendNodeToCorridor(rightEnd);
       }
     }
   });
@@ -1636,7 +1689,7 @@ function performIdempotentTidy(ignorePins=false){
     const s=getPerSideNeighbors(n,cg,true,true);
     const allNbs=[...s.leftNeighbors.map(x=>x.neighbor),...s.rightNeighbors.map(x=>x.neighbor)];
     const sameP=allNbs.find(nb=>nb.columnId===n.columnId&&(nb.subLane||0)===0);
-    const rightP=allNbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)>ci);
+    const rightP=allNbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)===ci+1)||allNbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)>ci);
     const leftSubFeeder=allNbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)<ci&&(nb.subLane||0)>0);
     const sub2=allNbs.find(nb=>nb.columnId===n.columnId&&(nb.subLane||0)===2);
 
@@ -1654,7 +1707,10 @@ function performIdempotentTidy(ignorePins=false){
         resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameP.id])});
       }
       if(n.y+n.height<sameP.y+38)n.height=(sameP.y+38)-n.y;
-      if(rightP.y+rightP.height<sameP.y+44)rightP.height=(sameP.y+44)-rightP.y;
+      if(rightP.y+rightP.height<sameP.y+44){
+        rightP.height=(sameP.y+44)-rightP.y;
+        resolveColumnCollisions(rightP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightP.id])});
+      }
     }else if(pIdx===1&&rightP.y<=sameP.y+10&&!alsoDirect){
       // Lock upward dual-partner (ena_2 / air_2)
       const reqT=Math.min(n.y,rightP.y+rightP.height-EDGE_CORNER_PAD*2-14);
@@ -1725,6 +1781,29 @@ function performIdempotentTidy(ignorePins=false){
       }
     }
   });
+
+  // 13b. Final Post-Corridor Adjacent Link Healing & Global Collision Guarantee
+  for(let fPass=0;fPass<2;fPass++){
+    Object.values(state.linksById).forEach(l=>{
+      const a=state.nodesById[l.fromId],b=state.nodesById[l.toId];
+      if(!a||!b||a.isDisconnected||b.isDisconnected||(a.subLane||0)>0||(b.subLane||0)>0)return;
+      const cA=cg[a.columnId]?.colIndex??0,cB=cg[b.columnId]?.colIndex??0;
+      if(Math.abs(cA-cB)!==1)return;
+      const oT=Math.max(a.y+EDGE_CORNER_PAD,b.y+EDGE_CORNER_PAD),oB=Math.min(a.y+a.height-EDGE_CORNER_PAD,b.y+b.height-EDGE_CORNER_PAD);
+      if(oB-oT<20){
+        const upper=a.y<=b.y?a:b,lower=upper===a?b:a;
+        const uColList=colListsLane0[cg[upper.columnId]?.colIndex??0];
+        const reqBot=lower.y+EDGE_CORNER_PAD*2+22;
+        const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,reqBot,uColList);
+        if(uSB-upper.y>upper.height)upper.height=uSB-upper.y;
+        if(Math.min(a.y+a.height-EDGE_CORNER_PAD,b.y+b.height-EDGE_CORNER_PAD)-Math.max(a.y+EDGE_CORNER_PAD,b.y+EDGE_CORNER_PAD)<18){
+          upper.height=Math.max(upper.height,reqBot-upper.y);
+          resolveColumnCollisions(upper.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+        }
+      }
+    });
+    state.columns.forEach(col=>resolveColumnCollisions(col.id,0,{preserveTidyOrder:true}));
+  }
 
   // 14. Span any subLane:1 Objective in the rightmost column across its connected benefits
   if(lastCol){
@@ -2546,6 +2625,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
