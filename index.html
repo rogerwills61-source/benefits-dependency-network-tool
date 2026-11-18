@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.1</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.2</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -667,7 +667,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.1!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.2!',true);
   }
 
   function loadAirportDemo(){
@@ -739,7 +739,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.1.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.2.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -811,7 +811,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.1.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.2.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1257,103 +1257,7 @@ function performIdempotentTidy(){
     });
   }
 
-  // 9. Generalized Sub-Lane Partner & Pocket Solver (Works across ALL columns 0 .. N-2)
-  state.columns.forEach((col,ci)=>{
-    if(ci>=state.columns.length-1)return;
-    const subNodes=allNodes.filter(n=>n.columnId===col.id&&!n.isDisconnected&&(n.subLane||0)>0);
-    const lane0InCol=colListsLane0[ci];
-
-    subNodes.forEach((n,idx)=>{
-      n._tidyOrder=idx;
-      const s=getPerSideNeighbors(n,cg,true,true);
-      const nbs=[...s.leftNeighbors.map(x=>x.neighbor),...s.rightNeighbors.map(x=>x.neighbor)];
-      const sameColPartner=nbs.find(nb=>nb.columnId===n.columnId&&(nb.subLane||0)===0);
-      const rightColPartner=nbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)>ci);
-      const leftSubFeeder=nbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)<ci&&(nb.subLane||0)>0);
-
-      if(sameColPartner&&rightColPartner){
-        const pIdx=lane0InCol.findIndex(x=>x.id===sameColPartner.id);
-        const partnerRightNbs=getPerSideNeighbors(sameColPartner,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
-
-        if(leftSubFeeder){
-          // Case A: Mid-column pocket WITH a subLane:1 feeder from the left column (e.g. ena_5 -> chg_4)
-          // CRITICAL: sameColPartner (chg_3) sits in Col c, subLane 0 — right between leftSubFeeder (Col c-1, subLane 1) and n (Col c, subLane 1)!
-          // Therefore sameColPartner.y MUST start BELOW leftSubFeeder.y + 42 so leftSubFeeder -> n has a 100% unobstructed horizontal corridor above sameColPartner!
-          const prevBox=pIdx>0?lane0InCol[pIdx-1]:null;
-          const pocketY=Math.max(
-            prevBox?(prevBox.y+prevBox.height+14):INITIAL_SPAWN_Y,
-            rightColPartner.y+EDGE_CORNER_PAD+24
-          );
-          n.y=pocketY;
-          n.height=Math.max(BOX_MIN_HEIGHT,88);
-          leftSubFeeder.y=pocketY;
-          leftSubFeeder.height=60;
-
-          // Place sameColPartner strictly BELOW leftSubFeeder so it NEVER blocks leftSubFeeder -> n!
-          const minPartnerY=leftSubFeeder.y+leftSubFeeder.height+12;
-          if(sameColPartner.y<minPartnerY)sameColPartner.y=minPartnerY;
-          if(n.y+n.height<sameColPartner.y+38)n.height=(sameColPartner.y+38)-n.y;
-
-          // Stretch rightColPartner (cap_3) down to overlap sameColPartner by >= 42px
-          if(rightColPartner.y+rightColPartner.height<sameColPartner.y+44){
-            rightColPartner.height=(sameColPartner.y+44)-rightColPartner.y;
-          }
-
-          // Straddle-stretch the lane-0 box in leftSubFeeder's column (ena_3) across leftSubFeeder!
-          const feederColIdx=cg[leftSubFeeder.columnId]?.colIndex??0;
-          const feederLane0=colListsLane0[feederColIdx];
-          feederLane0.forEach(l0Box=>{
-            const rNbs=getPerSideNeighbors(l0Box,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
-            if(rNbs.includes(sameColPartner)&&rNbs.length>=2){
-              if(l0Box.y+l0Box.height<sameColPartner.y+38){
-                l0Box.height=(sameColPartner.y+38)-l0Box.y;
-              }
-              // Also ensure prevBox (chg_2) overlaps both l0Box (ena_3) and rightColPartner (cap_3)
-              if(prevBox){
-                const reqPrevBot=Math.max(rightColPartner.y+EDGE_CORNER_PAD*2+20,l0Box.y+38);
-                if(prevBox.y+prevBox.height<reqPrevBot)prevBox.height=reqPrevBot-prevBox.y;
-              }
-            }
-          });
-
-          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
-          resolveColumnCollisions(leftSubFeeder.columnId,0,{preserveTidyOrder:true});
-          resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
-        }else if(pIdx<=1&&partnerRightNbs.length<=1){
-          // Case B: Top-of-column dual-partner subLane:1 (e.g. ena_2 between ena_1 and chg_1)
-          const reqTop=Math.min(sameColPartner.y-12,rightColPartner.y+rightColPartner.height-EDGE_CORNER_PAD*2-14);
-          const reqBot=Math.max(reqTop+64,sameColPartner.y+EDGE_CORNER_PAD*2+14);
-          n.y=reqTop;
-          n.height=reqBot-reqTop;
-          sameColPartner.height=Math.max(sameColPartner.height,(n.y+n.height+52)-sameColPartner.y);
-          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
-        }else{
-          // Case C: Mid-column subLane:1 where sameColPartner is ABOVE n and ALSO links directly to the right column (e.g. wf_2 -> wf_3 and cap_m3 -> cap_m4)
-          // Keep a 54px unobstructed corridor ABOVE n so sameColPartner's direct link to the right column passes cleanly over n!
-          const corridorTop=Math.max(sameColPartner.y+EDGE_CORNER_PAD,rightColPartner.y+EDGE_CORNER_PAD);
-          n.y=Math.max(sameColPartner.y+54,corridorTop+46);
-          n.height=Math.max(BOX_MIN_HEIGHT,85);
-          if(sameColPartner.y+sameColPartner.height<n.y+38){
-            sameColPartner.height=(n.y+38)-sameColPartner.y;
-          }
-          if(rightColPartner.y+rightColPartner.height<n.y+n.height){
-            rightColPartner.height=(n.y+n.height)-rightColPartner.y;
-          }
-          // Ensure any other left-column feeders into n (like wf_4 -> cap_m4) overlap n cleanly
-          const otherLeftNbs=s.leftNeighbors.map(x=>x.neighbor).filter(nb=>nb.id!==sameColPartner.id);
-          otherLeftNbs.forEach(oL=>{
-            if(oL.y<n.y-20)oL.y=n.y-16;
-            if(oL.y+oL.height<n.y+42)oL.height=(n.y+42)-oL.y;
-            resolveColumnCollisions(oL.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([oL.id])});
-          });
-          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
-          resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
-        }
-      }
-    });
-  });
-
-  // 10. Solve Columns to the RIGHT of the spine (Benefits and Objectives)
+  // 9. Solve Columns to the RIGHT of the spine FIRST so all lane-0 targets have real Y positions
   for(let ci=spineIdx+1;ci<state.columns.length;ci++){
     const lane0=colListsLane0[ci];
     let cursorY=INITIAL_SPAWN_Y;
@@ -1372,17 +1276,10 @@ function performIdempotentTidy(){
         cursorY=n.y+n.height+VERTICAL_BOX_GAP;
         return;
       }
-      const adjL=getPerSideNeighbors(n,cg,true,false).leftNeighbors.map(x=>x.neighbor).filter(nb=>!nb.isDisconnected).sort((a,b)=>a.y-b.y);
+      const adjL=getPerSideNeighbors(n,cg,true,false).leftNeighbors.map(x=>x.neighbor).filter(nb=>!nb.isDisconnected&&(nb.subLane||0)===0).sort((a,b)=>a.y-b.y);
       if(adjL.length){
         const firstNb=adjL[0],lastNb=adjL[adjL.length-1];
-        // Check if firstNb has a subLane:1 child in its column that blocks the lower part of firstNb -> n
-        const subBlockers=allNodes.filter(sb=>sb.columnId===firstNb.columnId&&(sb.subLane||0)>0&&sb.y>firstNb.y&&sb.y<firstNb.y+firstNb.height);
-        let maxAllowedTop=firstNb.y+firstNb.height-EDGE_CORNER_PAD*2-14;
-        if(subBlockers.length){
-          // Start n at least 48px ABOVE the subLane:1 blocker so firstNb -> n routes cleanly above the subLane:1 box!
-          maxAllowedTop=Math.min(maxAllowedTop,subBlockers[0].y-48);
-        }
-        const desTop=Math.max(cursorY,Math.min(firstNb.y+12,maxAllowedTop));
+        const desTop=Math.max(cursorY,Math.min(firstNb.y+12,firstNb.y+firstNb.height-EDGE_CORNER_PAD*2-14));
         const minReachBot=lastNb.y+Math.min(lastNb.height,96);
         const desBot=Math.max(desTop+n.height,minReachBot);
         n.y=desTop;
@@ -1394,6 +1291,143 @@ function performIdempotentTidy(){
     });
   }
 
+  // 10. Generalized Sub-Lane Partner & Pocket Solver (Left-to-Right across ALL columns 0 .. N-2)
+  state.columns.forEach((col,ci)=>{
+    if(ci>=state.columns.length-1)return;
+    const subNodes=allNodes.filter(n=>n.columnId===col.id&&!n.isDisconnected&&(n.subLane||0)>0);
+    const lane0InCol=colListsLane0[ci];
+
+    subNodes.forEach((n,idx)=>{
+      n._tidyOrder=idx;
+      const s=getPerSideNeighbors(n,cg,true,true);
+      const nbs=[...s.leftNeighbors.map(x=>x.neighbor),...s.rightNeighbors.map(x=>x.neighbor)];
+      const sameColPartner=nbs.find(nb=>nb.columnId===n.columnId&&(nb.subLane||0)===0);
+      const rightColPartner=nbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)>ci);
+      const leftSubFeeder=nbs.find(nb=>nb.columnId!==n.columnId&&(cg[nb.columnId]?.colIndex??0)<ci&&(nb.subLane||0)>0);
+
+      if(sameColPartner&&rightColPartner){
+        const pIdx=lane0InCol.findIndex(x=>x.id===sameColPartner.id);
+        const rColIdx=cg[rightColPartner.columnId]?.colIndex??(ci+1);
+        const rIdx=colListsLane0[rColIdx].findIndex(x=>x.id===rightColPartner.id);
+
+        if(leftSubFeeder){
+          // Case A: Mid-column pocket WITH a subLane:1 feeder from the left column (e.g. ena_5 -> chg_4)
+          const prevBox=pIdx>0?lane0InCol[pIdx-1]:null;
+          const pocketY=Math.max(
+            prevBox?(prevBox.y+prevBox.height+14):INITIAL_SPAWN_Y,
+            rightColPartner.y+EDGE_CORNER_PAD+24
+          );
+          n.y=pocketY;
+          n.height=Math.max(BOX_MIN_HEIGHT,88);
+          leftSubFeeder.y=pocketY;
+          leftSubFeeder.height=60;
+
+          const minPartnerY=leftSubFeeder.y+leftSubFeeder.height+12;
+          if(sameColPartner.y<minPartnerY)sameColPartner.y=minPartnerY;
+          if(n.y+n.height<sameColPartner.y+38)n.height=(sameColPartner.y+38)-n.y;
+
+          if(rightColPartner.y+rightColPartner.height<sameColPartner.y+44){
+            rightColPartner.height=(sameColPartner.y+44)-rightColPartner.y;
+          }
+
+          const feederColIdx=cg[leftSubFeeder.columnId]?.colIndex??0;
+          const feederLane0=colListsLane0[feederColIdx];
+          feederLane0.forEach(l0Box=>{
+            const rNbs=getPerSideNeighbors(l0Box,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
+            if(rNbs.includes(sameColPartner)&&rNbs.length>=2){
+              if(l0Box.y+l0Box.height<sameColPartner.y+38){
+                l0Box.height=(sameColPartner.y+38)-l0Box.y;
+              }
+              if(prevBox){
+                const reqPrevBot=Math.max(rightColPartner.y+EDGE_CORNER_PAD*2+20,l0Box.y+38);
+                if(prevBox.y+prevBox.height<reqPrevBot)prevBox.height=reqPrevBot-prevBox.y;
+              }
+            }
+          });
+
+          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
+          resolveColumnCollisions(leftSubFeeder.columnId,0,{preserveTidyOrder:true});
+          resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
+        }else if(pIdx<=1&&rIdx<=1&&rightColPartner.y<=sameColPartner.y+10){
+          // Case B: Upward Top-of-Column dual-partner subLane:1 ( ONLY when rightColPartner sits at or above sameColPartner, e.g. ena_2 -> chg_1 )
+          const reqTop=Math.min(sameColPartner.y-12,rightColPartner.y+rightColPartner.height-EDGE_CORNER_PAD*2-14);
+          const reqBot=Math.max(reqTop+64,sameColPartner.y+EDGE_CORNER_PAD*2+14);
+          n.y=reqTop;
+          n.height=reqBot-reqTop;
+          sameColPartner.height=Math.max(sameColPartner.height,(n.y+n.height+52)-sameColPartner.y);
+          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
+        }else{
+          // Case C: Downward Sub-Lane Pocket (when rightColPartner is below sameColPartner's top, e.g. wf_2 -> wf_3 -> cap_m3 and cap_m3 -> cap_m4 -> ben_m3)
+          // 1. Ensure sameColPartner's direct links to upper right boxes have a 52px unobstructed corridor ABOVE n!
+          // 2. If sameColPartner also links directly to rightColPartner (like cap_m3 -> ben_m3), start rightColPartner 52px ABOVE n so that direct link routes cleanly above n!
+          const alsoLinksToRightTarget=getPerSideNeighbors(sameColPartner,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===rightColPartner.id);
+          const minPocketY=sameColPartner.y+56;
+
+          if(alsoLinksToRightTarget){
+            // Route sameColPartner -> rightColPartner ABOVE n!
+            const corridorTop=Math.max(sameColPartner.y+16,rightColPartner.y);
+            if(rightColPartner.y>corridorTop){
+              const rLane=colListsLane0[rColIdx];
+              const{safeTop:sT}=clampStretchToColumnClashes(rightColPartner,corridorTop,rightColPartner.y+rightColPartner.height,rLane);
+              rightColPartner.y=sT;
+            }
+            n.y=Math.max(minPocketY,rightColPartner.y+52);
+          }else{
+            // Place n so it overlaps the top of rightColPartner while staying >= 56px below sameColPartner.y (clearing Narrowed search box!)
+            n.y=Math.max(minPocketY,rightColPartner.y+4);
+          }
+          n.height=Math.max(BOX_MIN_HEIGHT,76);
+
+          // Stretch sameColPartner down so it overlaps n by >= 38px (and any lower lane-0 box below n if needed)
+          if(sameColPartner.y+sameColPartner.height<n.y+42){
+            sameColPartner.height=(n.y+42)-sameColPartner.y;
+          }
+          // Stretch rightColPartner down so it overlaps n by >= 42px
+          if(rightColPartner.y+rightColPartner.height<n.y+44){
+            rightColPartner.height=(n.y+44)-rightColPartner.y;
+          }
+
+          // If a lower lane-0 box in the same column (like wf_4 below wf_2) links to rightColPartner (cap_m3) AND to a subLane:1 box in rightColPartner's column (cap_m4):
+          // Push that lower lane-0 box (wf_4) below n.bottom + 14 so it has a clean horizontal shot underneath n!
+          if(pIdx+1<lane0InCol.length){
+            const nextL0=lane0InCol[pIdx+1];
+            const minNextY=n.y+n.height+14;
+            if(nextL0.y<minNextY){
+              nextL0.y=minNextY;
+            }
+            // If nextL0 links to rightColPartner, stretch rightColPartner down to overlap nextL0 by >= 48px!
+            const nextLinksToRight=getPerSideNeighbors(nextL0,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===rightColPartner.id);
+            if(nextLinksToRight&&rightColPartner.y+rightColPartner.height<nextL0.y+52){
+              rightColPartner.height=(nextL0.y+52)-rightColPartner.y;
+            }
+          }
+
+          // If any left-column lane-0 box (like wf_4) links into n (cap_m4), ensure they overlap by >= 36px!
+          const leftFeeders=s.leftNeighbors.map(x=>x.neighbor).filter(nb=>nb.id!==sameColPartner.id);
+          leftFeeders.forEach(lf=>{
+            const oT=Math.max(lf.y+EDGE_CORNER_PAD,n.y+EDGE_CORNER_PAD);
+            const oB=Math.min(lf.y+lf.height-EDGE_CORNER_PAD,n.y+n.height-EDGE_CORNER_PAD);
+            if(oB-oT<18){
+              if(lf.y<=n.y){
+                lf.height=Math.max(lf.height,(n.y+40)-lf.y);
+                resolveColumnCollisions(lf.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lf.id])});
+              }else{
+                n.height=Math.max(n.height,(lf.y+40)-n.y);
+              }
+            }
+          });
+
+          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
+          resolveColumnCollisions(rightColPartner.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightColPartner.id])});
+        }
+      }
+    });
+  });
+
+  // Re-verify downstream columns right of spine after sub-lane pocket adjustments
+  for(let ci=spineIdx+1;ci<state.columns.length;ci++){
+    resolveColumnCollisions(state.columns[ci].id,0,{preserveTidyOrder:true});
+  }
   // 11. Generalized Pairwise Overlap Verification Pass (Ensures every adjacent link has >= 22px overlap)
   for(let pass=0;pass<3;pass++){
     Object.values(state.linksById).forEach(l=>{
@@ -1472,7 +1506,7 @@ function performIdempotentTidy(){
     const rightP=s.rightNeighbors.map(x=>x.neighbor).find(nb=>nb.columnId!==n.columnId);
     if(sameP&&rightP){
       const pIdx=colListsLane0[cg[n.columnId]?.colIndex??0].findIndex(x=>x.id===sameP.id);
-      if(pIdx===1){
+      if(pIdx===1&&rightP.y<=sameP.y+10){
         const reqT=Math.min(n.y,rightP.y+rightP.height-EDGE_CORNER_PAD*2-14);
         const reqB=Math.max(n.y+n.height,sameP.y+EDGE_CORNER_PAD*2+14);
         n.y=reqT;
@@ -2260,6 +2294,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
