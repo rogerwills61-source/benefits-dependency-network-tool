@@ -150,7 +150,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.18</span>
+    <span class="menu-version-badge">v6.19</span>
   </div>
 </div>
 
@@ -1769,24 +1769,39 @@ function performIdempotentTidy(ignorePins=false){
     const alsoDirect=getPerSideNeighbors(sameP,cg,true,true).rightNeighbors.some(x=>x.neighbor.id===rightP.id);
 
     if(leftSubFeeder){
-      // Case A: Lock pocket feeder (ena_5 -> chg_4) above sameP (chg_3) AND re-stretch straddle feeder (ena_3) in left column!
+      // Case A: Strict top-to-bottom sequence so prevBox NEVER overlaps sameP or blocks leftSubFeeder -> n!
       const prevBox=pIdx>0?colListsLane0[ci][pIdx-1]:null;
+      const feederColIdx=cg[leftSubFeeder.columnId]?.colIndex??0;
+      const feederLane0=colListsLane0[feederColIdx]||[];
+
+      // 1. First finalize prevBox height before computing pocketY so prevBox never expands into the pocket corridor!
+      feederLane0.forEach(l0Box=>{
+        const rNbs=getPerSideNeighbors(l0Box,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
+        if(rNbs.includes(sameP)&&prevBox){
+          const reqPrevBot=Math.max(rightP.y+EDGE_CORNER_PAD*2+20,l0Box.y+42);
+          if(prevBox.y+prevBox.height<reqPrevBot)prevBox.height=reqPrevBot-prevBox.y;
+        }
+      });
+
+      // 2. Place pocket (leftSubFeeder & n) strictly >= 14px below prevBox's FINAL bottom!
       const pocketY=Math.max(prevBox?(prevBox.y+prevBox.height+14):INITIAL_SPAWN_Y,rightP.y+EDGE_CORNER_PAD+24);
-      n.y=pocketY;leftSubFeeder.y=pocketY;
+      n.y=pocketY;
+      leftSubFeeder.y=pocketY;
+      leftSubFeeder.height=60;
+
+      // 3. Place sameP strictly below leftSubFeeder (with clearance for "Field sync" / "Ramp sync") and resolve collisions!
       const minSamePY=leftSubFeeder.y+leftSubFeeder.height+16+Math.round(CORRIDOR_EXTRA_PAD*0.45);
-      if(sameP.y<minSamePY){
-        sameP.y=minSamePY;
-        resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameP.id])});
-      }
+      sameP.y=Math.max(sameP.y,minSamePY);
+      resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set(prevBox?[prevBox.id,sameP.id]:[sameP.id])});
+
+      // 4. Stretch n and rightP to overlap sameP cleanly
       if(n.y+n.height<sameP.y+42)n.height=(sameP.y+42)-n.y;
       if(rightP.y+rightP.height<sameP.y+46){
         rightP.height=(sameP.y+46)-rightP.y;
         resolveColumnCollisions(rightP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightP.id])});
       }
-      // Critical straddle-pocket heal: ensure any lane-0 box in leftSubFeeder's column that links to sameP (e.g. ena_3 -> chg_3 "Field sync" / "Ramp sync")
-      // stretches down below leftSubFeeder to overlap sameP by at least 42px!
-      const feederColIdx=cg[leftSubFeeder.columnId]?.colIndex??0;
-      const feederLane0=colListsLane0[feederColIdx]||[];
+
+      // 5. Stretch straddle-feeder l0Box (ena_3) in Column 1 down past leftSubFeeder to overlap sameP by >= 44px!
       feederLane0.forEach(l0Box=>{
         const rNbs=getPerSideNeighbors(l0Box,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
         if(rNbs.includes(sameP)){
@@ -1798,10 +1813,6 @@ function performIdempotentTidy(ignorePins=false){
           if(sameP.y+sameP.height<reqBot){
             sameP.height=reqBot-sameP.y;
             resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameP.id])});
-          }
-          if(prevBox){
-            const reqPrevBot=Math.max(rightP.y+EDGE_CORNER_PAD*2+20,l0Box.y+40);
-            if(prevBox.y+prevBox.height<reqPrevBot)prevBox.height=reqPrevBot-prevBox.y;
           }
         }
       });
@@ -2862,6 +2873,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
