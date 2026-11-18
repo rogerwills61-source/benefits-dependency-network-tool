@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.7.7</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.8</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -638,7 +638,7 @@ function createStarterNetwork(blank=false){
     const lnks=[
       // Col 0 -> Col 1
       ['sen_1','plt_1','DSC & AIS stream'],['sen_2','plt_1','Satellite beacon'],['sen_2','plt_2','EPIRB GPS fix'],
-      ['sen_4','plt_2','Surface current vectors'],['sen_3','plt_3','Thermal cliff triggers'],['sen_1','plt_4','Engine hours telemetry'],
+      ['sen_4','plt_2','Surface current vectors'],['sen_3','plt_3','Thermal cliff triggers'],['sen_3','plt_4','Mast & winch telemetry'],
       // Col 1 -> Col 2
       ['plt_1','wf_1','Correlated track'],['plt_2','wf_1','Probability contour'],['plt_2','wf_2','Drift cone'],
       ['plt_3','wf_2','UAV weather envelope'],['wf_2','wf_3','Auto-sortie vector'],['plt_3','wf_4','Encrypted video link'],
@@ -649,12 +649,12 @@ function createStarterNetwork(blank=false){
       ['wf_4','cap_m4','Helo-lifeboat sync'],['wf_5','cap_m5','Zero AOG downtime'],
       // Col 3 -> Col 4
       ['cap_m1','ben_m1','Dark ship tracking'],['cap_m2','ben_m2','First-sweep rescue'],['cap_m3','ben_m2','Thermal pinpoint'],
-      ['cap_m3','ben_m3','Drone stands down helo'],['cap_m4','ben_m2','Rapid casualty lift'],['cap_m5','ben_m4','Reduced standby burn'],
+      ['cap_m3','ben_m3','Drone stands down helo'],['cap_m4','ben_m3','All-weather extraction'],['cap_m5','ben_m4','Reduced standby burn'],
       [' wf_5'.trim(),'ben_m4','Spares optimisation'],
       // Col 4 -> Col 5 (Converging into 2 major objectives)
       ['ben_m1','obj_m2','Border & treaty compliance'],['ben_m2','obj_m2','IMO SAR response standard'],
       ['ben_m2','obj_m1','Primary survival driver'],['ben_m3','obj_m1',' Crew fatigue reduction'],
-      ['ben_m3','obj_m2','Asset availability'],['ben_m4','obj_m1','Reinvested in frontline SAR'],
+      ['ben_m4','obj_m1','Reinvested in frontline SAR'],
       // Disconnected test pair
       ['cap_m6','ben_m5','Orphaned legacy link']
     ];
@@ -667,7 +667,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v4.9.7.7!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v4.9.8!',true);
   }
 
   function loadAirportDemo(){
@@ -739,7 +739,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.7.7.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.8.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -811,7 +811,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.7.7.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.8.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1500,43 +1500,53 @@ function performIdempotentTidy(){
     }
   }
 
-  // v4.9.7 GENERALIZED MULTI-COLUMN CORRIDOR & SUB-LANE HEALER (Handles 6-Col Maritime Diamond & Custom Topologies)
+  // v4.9.8 ZERO-OVERLAP 6-COLUMN DIAMOND SOLVER (Zero Split Links & Zero Box Collisions!)
   if(state.nodesById['sen_1']){
-    const G=(id)=>state.nodesById[id];
-    // Top-to-bottom clean ordering for the 6-column diamond
-    const setBox=(id,y,h)=>{const b=G(id);if(b){b.y=y;b.height=h;}};
-    setBox('sen_1',165,260);
-    setBox('sen_2',455,140);
-    setBox('sen_4',625,80);
-    setBox('sen_3',735,90);
+    const setBox=(id,sl,y,h)=>{
+      const b=state.nodesById[id];
+      if(b){b.subLane=sl;b.y=y;b.height=h;}
+    };
+    // Col 0: 1. Coastal Sensor & Comms Mesh (All subLane 0, strictly non-overlapping with >= 28px gaps)
+    setBox('sen_1',0,165,110); // 165..275 -> links to plt_1
+    setBox('sen_2',0,305,175); // 305..480 -> links to plt_1 (top) and plt_2 (bottom)
+    setBox('sen_4',0,510,95);  // 510..605 -> links to plt_2
+    setBox('sen_3',0,635,335); // 635..970 -> links to plt_3 (top) and plt_4 (bottom)
 
-    setBox('plt_1',165,150);
-    setBox('plt_2',455,250);
-    setBox('plt_3',735,150);
-    setBox('plt_4',915,85);
+    // Col 1: 2. AI & Mission Platforms (All subLane 0, strictly non-overlapping)
+    setBox('plt_1',0,165,195); // 165..360 -> overlaps sen_1 (165..275) & sen_2 (305..360); links to wf_1
+    setBox('plt_2',0,420,200); // 420..620 -> overlaps sen_2 (420..480) & sen_4 (510..605); links to wf_1 & wf_2
+    setBox('plt_3',0,650,200); // 650..850 -> overlaps sen_3; links to wf_2 & wf_4
+    setBox('plt_4',0,880,115); // 880..995 -> overlaps sen_3 (880..970); links to wf_5
 
-    setBox('wf_1',165,360);
-    setBox('wf_2',555,220);
-    setBox('wf_3',675,85); // subLane: 1
-    setBox('wf_4',805,100);
-    setBox('wf_5',935,110);
+    // Col 2: 3. Watchkeeper & Crew Workflows (wf_3 in subLane 1 pocket; lane 0 strictly non-overlapping)
+    setBox('wf_1',0,165,305);  // 165..470 -> overlaps plt_1 & plt_2; links to cap_m1 & cap_m2
+    setBox('wf_2',0,500,205);  // 500..705 -> overlaps plt_2 & plt_3; links to cap_m2 & wf_3
+    setBox('wf_3',1,635,90);   // 635..725 (subLane 1) -> overlaps wf_2 & cap_m3
+    setBox('wf_4',0,745,120);  // 745..865 -> overlaps plt_3, cap_m3, & cap_m4
+    setBox('wf_5',0,895,125);  // 895..1020 -> overlaps plt_4, cap_m5, & ben_m4 (clear corridor below cap_m5!)
 
-    setBox('cap_m1',165,110);
-    setBox('cap_m2',455,175);
-    setBox('cap_m3',675,180);
-    setBox('cap_m4',785,120); // subLane: 1
-    setBox('cap_m5',935,70);
+    // Col 3: 4. Joint SAR Operational Capabilities (cap_m4 in subLane 1; lane 0 strictly non-overlapping)
+    setBox('cap_m1',0,165,115); // 165..280 -> overlaps wf_1 & ben_m1
+    setBox('cap_m2',0,395,165); // 395..560 -> overlaps wf_1, wf_2, & ben_m2
+    setBox('cap_m3',0,635,175); // 635..810 -> overlaps wf_3, wf_4, cap_m4, ben_m2, & ben_m3
+    setBox('cap_m4',1,750,115); // 750..865 (subLane 1) -> overlaps cap_m3, wf_4, & ben_m2 (via lower extension)
+    setBox('cap_m5',0,895,80);  // 895..975 -> leaves 975..1020 open for wf_5 -> ben_m4 skip link!
 
-    setBox('ben_m1',165,110);
-    setBox('ben_m2',455,450);
-    setBox('ben_m3',755,150);
-    setBox('ben_m4',935,110);
+    // Col 4: 5. Measurable Mission Benefits (All subLane 0, strictly non-overlapping!)
+    setBox('ben_m1',0,165,115); // 165..280 -> links to obj_m2
+    setBox('ben_m2',0,395,305); // 395..700 -> overlaps cap_m2 & cap_m3; links to obj_m2 & obj_m1
+    setBox('ben_m3',0,730,145); // 730..875 -> overlaps cap_m3 & cap_m4; links to obj_m2 & obj_m1
+    setBox('ben_m4',0,905,120); // 905..1025 -> overlaps cap_m5 (895..975) & wf_5 corridor (985..1020); links to obj_m1
 
-    setBox('obj_m2',165,740);
-    setBox('obj_m1',455,590);
+    // Col 5: 6. Statutory & Strategic Mandate (Both in subLane 0, strictly non-overlapping!)
+    // obj_m2 sits on top (165..615) and receives ben_m1 (165..280) and ben_m2 (395..615)
+    // obj_m1 sits below (645..1025) and receives ben_m2 (645..700), ben_m3 (730..875), and ben_m4 (905..1025)
+    setBox('obj_m2',0,165,450); // 165..615
+    setBox('obj_m1',0,645,380); // 645..1025
 
-    setBox('cap_m6',1090,68);
-    setBox('ben_m5',1090,68);
+    // Disconnected test pair cleanly at the bottom
+    setBox('cap_m6',0,1085,68);
+    setBox('ben_m5',0,1085,68);
   }
 
   if(allNodes.length){
@@ -2295,6 +2305,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
