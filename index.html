@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.10</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.11</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.10!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.11!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.10!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.11!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.10!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.11!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.10!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.11!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1091,11 +1091,35 @@ function clampStretchToColumnClashes(n,ct,cb,ln){
 // v4.9 UNIFIED LOCALIZED DRAG & RESIZE DELTA-CASCADE (`applyLocalMoveAndStretchCascade`)
 // ============================================================================
 function applyLocalMoveAndStretchCascade(movedIds,snapBefore){
-  const allNodes=Object.values(state.nodesById);
+  if(snapBefore){
+    Object.keys(snapBefore).forEach(id=>{
+      if(!movedIds.includes(id)){
+        const nd=state.nodesById[id];
+        if(nd){nd.y=snapBefore[id].y;nd.height=snapBefore[id].height;}
+      }
+    });
+  }
+  const cg=computeColumnGeometries();
+  const movedSet=new Set(movedIds);
+
+  // 1. Resolve collisions in the dragged nodes' columns WITH movedSet as primaryAnchorSet
+  // so the dragged box smoothly pushes upper/lower boxes in its column out of the way without locking!
+  const affectedCols=new Map();
   movedIds.forEach(id=>{
-    const n=state.nodesById[id];
-    if(n)n.isManuallyPositioned=true;
+    const nd=state.nodesById[id];
+    if(nd){
+      nd.isManuallyPositioned=true;
+      affectedCols.set(nd.columnId+'_'+(nd.subLane||0),{colId:nd.columnId,subLane:nd.subLane||0});
+    }
   });
+  affectedCols.forEach(({colId,subLane})=>{
+    resolveColumnCollisions(colId,subLane,{primaryAnchorSet:movedSet});
+  });
+
+  // 2. Recompute all horizontal links and split stubs in real time!
+  // (As soon as vertical overlap between nA and nB is lost, computeHorizontalLinksAndStubs converts the link to split stubs 1-1!)
+  computeHorizontalLinksAndStubs(cg);
+  updateDisconnectedIndicators();
 }
 
 // ============================================================================
@@ -1760,9 +1784,9 @@ function computeHorizontalLinksAndStubs(cg){
       l.isSplit=false;l.splitBadgeId=null;
       const effTop=Math.min(oT,oB),effBot=Math.max(oT,oB);
       let avgCenterY=((nA.y+nA.height/2)+(nB.y+nB.height/2))/2;
-      if(typeof draggedNodeId!=='undefined'&&draggedNodeId){
-        if(nA.id===draggedNodeId)avgCenterY=nA.y+nA.height/2;
-        else if(nB.id===draggedNodeId)avgCenterY=nB.y+nB.height/2;
+      if(typeof draggingGroup!=='undefined'&&draggingGroup&&draggingGroup.groupIds){
+        if(draggingGroup.groupIds.includes(nA.id)&&!draggingGroup.groupIds.includes(nB.id))avgCenterY=nA.y+nA.height/2;
+        else if(draggingGroup.groupIds.includes(nB.id)&&!draggingGroup.groupIds.includes(nA.id))avgCenterY=nB.y+nB.height/2;
       }
       solid.push({link:l,nA,nB,overlapTop:effTop,overlapBottom:effBot,avgCenterY});
     }
@@ -2073,19 +2097,29 @@ function teleportToNode(tN,lId){
   setTimeout(()=>{highlightedStubLinkId=null;draw();},1800);draw();
 }
 
+let dragRafId=null;
 function applyActiveDragPosition(sX,sY){
   if(!draggingGroup)return;
-  const w=screenToWorld(sX,sY),dx=w.x-draggingGroup.startMouseX,dy=w.y-draggingGroup.startMouseY;
-  if(Math.hypot(dx,dy)>3){clearTimeout(longPressTimer);if(!draggingGroup.undoPushed){pushUndoState();draggingGroup.undoPushed=true;}draggingGroup.moved=true;}
-  Object.entries(draggingGroup.allBaselineById).forEach(([id,b])=>{const n=state.nodesById[id];if(n&&!draggingGroup.groupIds.includes(id)){n.y=b.y;n.height=b.height;}});
-  const now=Date.now();
-  draggingGroup.groupIds.forEach(id=>{
-    const n=state.nodesById[id],init=draggingGroup.allBaselineById[id];
-    if(n&&init){n.y=init.y+dy;n.updatedAt=now;if(id===draggingGroup.anchorNodeId&&Math.abs(dx)>16)n.dragTempX=init.x+dx;else delete n.dragTempX;}
+  if(dragRafId)cancelAnimationFrame(dragRafId);
+  dragRafId=requestAnimationFrame(()=>{
+    dragRafId=null;
+    if(!draggingGroup)return;
+    const w=screenToWorld(sX,sY),dx=w.x-draggingGroup.startMouseX,dy=w.y-draggingGroup.startMouseY;
+    if(Math.hypot(dx,dy)>3){clearTimeout(longPressTimer);if(!draggingGroup.undoPushed){pushUndoState();draggingGroup.undoPushed=true;}draggingGroup.moved=true;}
+    Object.entries(draggingGroup.allBaselineById).forEach(([id,b])=>{const n=state.nodesById[id];if(n&&!draggingGroup.groupIds.includes(id)){n.y=b.y;n.height=b.height;}});
+    const now=Date.now();
+    draggingGroup.groupIds.forEach(id=>{
+      const n=state.nodesById[id],init=draggingGroup.allBaselineById[id];
+      if(n&&init){
+        n.y=Math.max(INITIAL_SPAWN_Y-60,Math.round(init.y+dy));
+        n.updatedAt=now;
+        if(id===draggingGroup.anchorNodeId&&Math.abs(dx)>48)n.dragTempX=init.x+dx;
+        else delete n.dragTempX;
+      }
+    });
+    applyLocalMoveAndStretchCascade(draggingGroup.groupIds,draggingGroup.allBaselineById);
+    draw();
   });
-  applyLocalMoveAndStretchCascade(draggingGroup.groupIds,draggingGroup.allBaselineById);
-  if(draggingGroup.moved&&now-lastDragStreamTime>=50){lastDragStreamTime=now;state.updatedAt=now;Object.values(state.nodesById).forEach(n=>{n.updatedAt=now;});broadcastCRDTUpdate();}
-  draw();
 }
 
 function startEdgeAutoScrollLoop(){
@@ -2510,6 +2544,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
