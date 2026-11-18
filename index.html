@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.7</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.8</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -712,7 +712,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.7!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v5.8!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +805,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.7!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.8!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +877,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.7.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.8.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +949,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.7.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.8.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1836,37 +1836,59 @@ function performIdempotentTidy(){
     }
   });
 
-  // Also ensure every connected pair (nA, nB) has at least 36px of shared vertical overlap (or 52px if either box has >= 3 links on that side!)
-  Object.values(state.linksById).forEach(l=>{
-    const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
-    if(!nA||!nB||nA.isDisconnected||nB.isDisconnected)return;
-    const cA=cg[nA.columnId]?.colIndex??0,cB=cg[nB.columnId]?.colIndex??0;
-    if(Math.abs(cA-cB)>1||(nA.subLane||0)>0||(nB.subLane||0)>0)return;
+  // Multi-Column Ripple Alignment & Overlap Guarantee (Runs 3 passes so shifts in middle columns propagate all the way to Col 0 and Col N-1!):
+  for(let ripple=0;ripple<3;ripple++){
+    Object.values(state.linksById).forEach(l=>{
+      const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+      if(!nA||!nB||nA.isDisconnected||nB.isDisconnected)return;
+      const cA=cg[nA.columnId]?.colIndex??0,cB=cg[nB.columnId]?.colIndex??0;
+      if(Math.abs(cA-cB)>1||(nA.subLane||0)>0||(nB.subLane||0)>0)return;
 
-    const sA=getPerSideNeighbors(nA,cg,true,false),sB=getPerSideNeighbors(nB,cg,true,false);
-    const degSide=Math.max(cA<cB?sA.rightNeighbors.length:sA.leftNeighbors.length,cA<cB?sB.leftNeighbors.length:sB.rightNeighbors.length);
-    const reqOverlap=degSide>=3?52:(degSide===2?40:28);
+      const sA=getPerSideNeighbors(nA,cg,true,false),sB=getPerSideNeighbors(nB,cg,true,false);
+      const degSide=Math.max(cA<cB?sA.rightNeighbors.length:sA.leftNeighbors.length,cA<cB?sB.leftNeighbors.length:sB.rightNeighbors.length);
+      const reqOverlap=degSide>=3?52:(degSide===2?40:28);
 
-    const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-    const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-    if(oB-oT<reqOverlap){
-      const upper=nA.y<=nB.y?nA:nB,lower=upper===nA?nB:nA;
-      const uLane=colListsLane0[cg[upper.columnId]?.colIndex??0];
-      const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,lower.y+EDGE_CORNER_PAD*2+reqOverlap,uLane);
-      if(uSB-upper.y>upper.height)upper.height=uSB-upper.y;
+      const oT=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+      const oB=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+      if(oB-oT<reqOverlap){
+        const upper=nA.y<=nB.y?nA:nB,lower=upper===nA?nB:nA;
+        const uLane=colListsLane0[cg[upper.columnId]?.colIndex??0];
+        const reqBot=lower.y+EDGE_CORNER_PAD*2+reqOverlap;
+        const{safeBottom:uSB}=clampStretchToColumnClashes(upper,upper.y,reqBot,uLane);
+        if(uSB-upper.y>upper.height)upper.height=uSB-upper.y;
 
-      const oT2=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
-      const oB2=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
-      if(oB2-oT2<reqOverlap){
-        const lLane=colListsLane0[cg[lower.columnId]?.colIndex??0];
-        const{safeTop:lST}=clampStretchToColumnClashes(lower,upper.y+upper.height-EDGE_CORNER_PAD*2-reqOverlap,lower.y+lower.height,lLane);
-        if(lST<lower.y){
-          const oldB=lower.y+lower.height;
-          lower.y=lST;lower.height=oldB-lST;
+        const oT2=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+        const oB2=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+        if(oB2-oT2<reqOverlap){
+          const lLane=colListsLane0[cg[lower.columnId]?.colIndex??0];
+          const reqTop=upper.y+upper.height-EDGE_CORNER_PAD*2-reqOverlap;
+          const{safeTop:lST}=clampStretchToColumnClashes(lower,reqTop,lower.y+lower.height,lLane);
+          if(lST<lower.y){
+            const oldB=lower.y+lower.height;
+            lower.y=lST;lower.height=oldB-lST;
+          }
+        }
+
+        // If STILL separated because a neighbor in upper's column blocked the stretch (e.g. Col 0 or Col 4/5 after a mid-column sub-lane shift):
+        const oT3=Math.max(nA.y+EDGE_CORNER_PAD,nB.y+EDGE_CORNER_PAD);
+        const oB3=Math.min(nA.y+nA.height-EDGE_CORNER_PAD,nB.y+nB.height-EDGE_CORNER_PAD);
+        if(oB3-oT3<24){
+          const uSides=getPerSideNeighbors(upper,cg,true,true);
+          const allUNbs=[...uSides.leftNeighbors.map(x=>x.neighbor),...uSides.rightNeighbors.map(x=>x.neighbor)];
+          const hasHigherNb=allUNbs.some(nb=>nb.id!==lower.id&&nb.y+nb.height-EDGE_CORNER_PAD<lower.y+EDGE_CORNER_PAD);
+          if(!hasHigherNb&&!upper.isAutoLayoutOptOut){
+            // Slide upper down to align directly with lower, and push any lower boxes in upper's column down in lockstep!
+            upper.y=lower.y;
+            resolveColumnCollisions(upper.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+          }else{
+            // Stretch upper down to reach lower, and push any lower boxes in upper's column down in lockstep!
+            upper.height=Math.max(upper.height,reqBot-upper.y);
+            resolveColumnCollisions(upper.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+          }
         }
       }
-    }
-  });
+    });
+  }
 
   // 15. Place disconnected test boxes neatly at the bottom of their columns
   const activeBot=Math.max(...allNodes.filter(n=>!n.isDisconnected).map(n=>n.y+n.height));
@@ -2644,6 +2666,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
