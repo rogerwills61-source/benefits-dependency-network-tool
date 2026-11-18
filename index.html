@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.2</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.3.1</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -667,7 +667,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.2!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.3.1!',true);
   }
 
   function loadAirportDemo(){
@@ -739,7 +739,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.2.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.3.1.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -811,7 +811,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.2.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.3.1.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1402,18 +1402,20 @@ function performIdempotentTidy(){
             }
           }
 
-          // If any left-column lane-0 box (like wf_4) links into n (cap_m4), ensure they overlap by >= 36px!
+          // Generalized Under-Partner Corridor Rule:
           const leftFeeders=s.leftNeighbors.map(x=>x.neighbor).filter(nb=>nb.id!==sameColPartner.id);
           leftFeeders.forEach(lf=>{
-            const oT=Math.max(lf.y+EDGE_CORNER_PAD,n.y+EDGE_CORNER_PAD);
-            const oB=Math.min(lf.y+lf.height-EDGE_CORNER_PAD,n.y+n.height-EDGE_CORNER_PAD);
-            if(oB-oT<18){
-              if(lf.y<=n.y){
-                lf.height=Math.max(lf.height,(n.y+40)-lf.y);
-                resolveColumnCollisions(lf.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lf.id])});
-              }else{
-                n.height=Math.max(n.height,(lf.y+40)-n.y);
-              }
+            const partnerBot=sameColPartner.y+sameColPartner.height;
+            const reqCorridorBot=partnerBot+44;
+            if(n.y+n.height<reqCorridorBot){
+              n.height=reqCorridorBot-n.y;
+            }
+            if(lf.y+lf.height<reqCorridorBot){
+              lf.height=reqCorridorBot-lf.y;
+              resolveColumnCollisions(lf.columnId,lf.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lf.id])});
+            }
+            if(rightColPartner.y+rightColPartner.height<reqCorridorBot){
+              rightColPartner.height=reqCorridorBot-rightColPartner.y;
             }
           });
 
@@ -2294,6 +2296,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
