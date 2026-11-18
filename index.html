@@ -54,11 +54,14 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .swatch-row{display:flex;align-items:center;gap:6px;padding:5px 10px;flex-wrap:wrap}
 .color-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,0.2);transition:transform .12s ease}
 .color-swatch:hover{transform:scale(1.2);border-color:#fff}
-#settingsPanel{width:310px;padding:14px;gap:10px}
+#settingsPanel{width:336px;padding:14px;gap:10px}
 #settingsPanel h4{font-size:13px;color:var(--accent);margin-bottom:2px}
 .setting-group{display:flex;flex-direction:column;gap:5px}
 .setting-group label, .setting-group .setting-label{font-size:11.5px;color:var(--text-secondary);font-weight:500}
-.seg-control{display:flex;gap:4px;background:rgba(148,163,184,0.08);padding:3px;border-radius:7px;border:1px solid var(--border-hud)}
+.seg-control{display:flex;flex-wrap:wrap;gap:4px;background:rgba(148,163,184,0.08);padding:3px;border-radius:7px;border:1px solid var(--border-hud)}
+#fillSelector .seg-btn{flex:1 1 calc(33.33% - 4px)}
+.menu-version-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 10px 2px;font-size:10.5px;color:var(--text-muted);font-family:monospace;letter-spacing:.02em;user-select:none}
+.menu-version-badge{background:rgba(56,189,248,0.14);color:var(--accent);border:1px solid rgba(56,189,248,0.3);padding:1.5px 6px;border-radius:4px;font-weight:700;font-size:10px}
 .seg-btn{flex:1;text-align:center;padding:5px 6px;font-size:11px;font-weight:500;color:var(--text-secondary);border-radius:5px;cursor:pointer}
 .seg-btn.active{background:var(--accent);color:#090d16;font-weight:700}
 .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer}
@@ -99,7 +102,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v6.13</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Zero-Split-Link Staircase + Straddle-Pocket + Skip-Corridor Solver)" type="button">✨ Tidy</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -132,10 +135,15 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuRestoreFactoryCols"><span>↺ Restore Factory 4 Columns</span></div>
   <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
   <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
-    <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load National Operations Stress Test (28 Boxes)</span></div>
-    <div class="ctx-item" id="menuLoadAirportStressTest"><span>✈️ Load Airport Turnaround Stress Test (30 Boxes)</span></div>
-    <div class="ctx-item" id="menuLoadMaritimeStressTest"><span>⚓ Load Maritime SAR 6-Column Diamond Stress Test (26 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load National Operations Stress Test (28 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadAirportStressTest"><span>✈️ Load Airport Turnaround Stress Test (30 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadMaritimeStressTest"><span>⚓ Load Maritime SAR 6-Column Diamond Stress Test (26 Boxes)</span></div>
   <div class="ctx-item" id="menuLoadDefenceStressTest"><span>🛡️ Load Defence Logistics 7-Col Torture Test (32 Boxes, 3 Sub-Lanes)</span></div>
+  <div class="ctx-sep"></div>
+  <div class="menu-version-footer">
+    <span>BDN Studio Engine</span>
+    <span class="menu-version-badge">v6.14</span>
+  </div>
 </div>
 
 <div class="floating-menu" id="settingsPanel">
@@ -150,19 +158,30 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     </div>
   </div>
   <div class="setting-group">
+    <span class="setting-label">BDN Map Spacing (Boxes &amp; Links)</span>
+    <div class="seg-control" id="spacingSelector">
+      <div class="seg-btn active" data-spacing="compact">Compact</div>
+      <div class="seg-btn" data-spacing="comfortable">Comfortable</div>
+      <div class="seg-btn" data-spacing="spacious">Spacious</div>
+    </div>
+  </div>
+  <div class="setting-group">
+    <span class="setting-label">Box Fill &amp; Contrast Style</span>
+    <div class="seg-control" id="fillSelector">
+      <div class="seg-btn active" data-fill="card">Card</div>
+      <div class="seg-btn" data-fill="contrast">Contrast</div>
+      <div class="seg-btn" data-fill="tinted">Tinted</div>
+      <div class="seg-btn" data-fill="vivid">Vivid</div>
+      <div class="seg-btn" data-fill="solid">Solid</div>
+      <div class="seg-btn" data-fill="outline">Outline</div>
+    </div>
+  </div>
+  <div class="setting-group">
     <span class="setting-label">Box Corner Style</span>
     <div class="seg-control" id="shapeSelector">
       <div class="seg-btn active" data-shape="rounded">Rounded</div>
       <div class="seg-btn" data-shape="sharp">Sharp</div>
       <div class="seg-btn" data-shape="pill">Soft Pill</div>
-    </div>
-  </div>
-  <div class="setting-group">
-    <span class="setting-label">Box Fill Style</span>
-    <div class="seg-control" id="fillSelector">
-      <div class="seg-btn active" data-fill="card">Solid Card</div>
-      <div class="seg-btn" data-fill="tinted">Tinted</div>
-      <div class="seg-btn" data-fill="outline">Outline</div>
     </div>
   </div>
   <div class="setting-group">
@@ -232,12 +251,28 @@ const THEMES={
   warm:{bgCanvas:'#1c1917',surfaceHud:'rgba(28,25,23,0.94)',surfaceModal:'#292524',surfaceBox:'#292524',surfaceBoxSel:'#44403c',surfaceHeader:'rgba(28,25,23,0.96)',borderHud:'#44403c',textPrimary:'#f5f5f4',textSecondary:'#a8a29e',textMuted:'#78716c',linkStroke:'#d6d3d1',colTintEven:'rgba(41,37,36,0.28)',colTintOdd:'rgba(68,64,60,0.18)'},
   blueprint:{bgCanvas:'#07192f',surfaceHud:'rgba(10,34,64,0.94)',surfaceModal:'#0a2240',surfaceBox:'#0a2240',surfaceBoxSel:'#123866',surfaceHeader:'rgba(10,34,64,0.96)',borderHud:'#1e4976',textPrimary:'#f0f9ff',textSecondary:'#93c5fd',textMuted:'#60a5fa',linkStroke:'#e0f2fe',colTintEven:'rgba(14,42,77,0.3)',colTintOdd:'rgba(20,58,102,0.2)'}
 };
-const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,SUBLANE_GAP=132,COL_SIDE_PADDING=64,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,VERTICAL_BOX_GAP=28,LINK_SLOT_SPACING=26,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.14,MAX_ZOOM=2.4;
-const UNDER_BOX_LABEL_CLEARANCE=22;
+const BOX_WIDTH=186,BOX_MIN_HEIGHT=54,STICKY_HEADER_HEIGHT=48,INITIAL_SPAWN_Y=165,EDGE_CORNER_PAD=12,RESIZE_HANDLE_ZONE=9,STUB_LENGTH=28,STUB_RADIUS=11,MIN_ZOOM=0.14,MAX_ZOOM=2.4;
+let SUBLANE_GAP=132,COL_SIDE_PADDING=64,VERTICAL_BOX_GAP=28,LINK_SLOT_SPACING=26,UNDER_BOX_LABEL_CLEARANCE=22,CORRIDOR_EXTRA_PAD=0;
+
+const SPACING_PRESETS={
+  compact:     {verticalGap:28,colPadding:64, subLaneGap:132,linkSlot:26,underClearance:22,corridorExtra:0},
+  comfortable: {verticalGap:48,colPadding:96, subLaneGap:168,linkSlot:34,underClearance:34,corridorExtra:16},
+  spacious:    {verticalGap:72,colPadding:132,subLaneGap:210,linkSlot:42,underClearance:46,corridorExtra:32}
+};
+
+function applySpacingPreset(mode){
+  const p=SPACING_PRESETS[mode]||SPACING_PRESETS.compact;
+  VERTICAL_BOX_GAP=p.verticalGap;
+  COL_SIDE_PADDING=p.colPadding;
+  SUBLANE_GAP=p.subLaneGap;
+  LINK_SLOT_SPACING=p.linkSlot;
+  UNDER_BOX_LABEL_CLEARANCE=p.underClearance;
+  CORRIDOR_EXTRA_PAD=p.corridorExtra;
+}
 
 function getHeaderTopY(){const hud=document.getElementById('topHud');return hud?Math.max(52,Math.round(hud.getBoundingClientRect().bottom+6)):56;}
 
-let settings={theme:'dark',boxShape:'rounded',boxFill:'card',defaultArrow:'right',showAddButtonsInToolbar:false};
+let settings={theme:'dark',mapSpacing:'compact',boxShape:'rounded',boxFill:'card',defaultArrow:'right',showAddButtonsInToolbar:false};
 function generateCryptographicFileToken(){
   const b=new Uint8Array(32);if(window.crypto&&window.crypto.getRandomValues)window.crypto.getRandomValues(b);
   else for(let i=0;i<32;i++)b[i]=Math.floor(Math.random()*256);
@@ -281,8 +316,11 @@ function applySettingsToUI(){
   document.getElementById('btnAddCol').style.display=settings.showAddButtonsInToolbar?'inline-flex':'none';
   document.getElementById('chkShowToolbarAdd').checked=!!settings.showAddButtonsInToolbar;
   const syncSeg=(id,a,v)=>document.querySelectorAll(`#${id} .seg-btn`).forEach(b=>b.classList.toggle('active',b.getAttribute(a)===v));
-  syncSeg('themeSelector','data-theme',settings.theme);syncSeg('shapeSelector','data-shape',settings.boxShape);
-  syncSeg('fillSelector','data-fill',settings.boxFill);syncSeg('arrowSelector','data-arrow',settings.defaultArrow);
+  if(!settings.mapSpacing)settings.mapSpacing='compact';
+  applySpacingPreset(settings.mapSpacing);
+  syncSeg('themeSelector','data-theme',settings.theme);syncSeg('spacingSelector','data-spacing',settings.mapSpacing);
+  syncSeg('shapeSelector','data-shape',settings.boxShape);syncSeg('fillSelector','data-fill',settings.boxFill);
+  syncSeg('arrowSelector','data-arrow',settings.defaultArrow);
 }
 
 function getPrivateFileChannelKey(){
@@ -712,7 +750,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click Tidy v6.13!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 7-Col Torture Test — Click ✨ Tidy!',true);
   }
 
   function loadMaritimeDemo(){
@@ -805,7 +843,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v6.13!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click ✨ Tidy!',true);
   }
 
   function loadAirportDemo(){
@@ -877,7 +915,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v6.13!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click ✨ Tidy!',true);
   }
 
   function loadStressTestDemo(){
@@ -949,7 +987,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v6.13!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click ✨ Tidy!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1295,7 +1333,7 @@ function performIdempotentTidy(ignorePins=false){
       const deg=s.leftNeighbors.length+s.rightNeighbors.length;
       if(!n.isDisconnected&&deg>=3)n.height=Math.max(n.height,state.columns.length>=6?185:225);
       else if(!n.isDisconnected&&deg>=2&&idx>=3)n.height=Math.max(n.height,state.columns.length>=6?120:205);
-      spineCursor=n.y+n.height+(state.columns.length>=6?42:VERTICAL_BOX_GAP);
+      spineCursor=n.y+n.height+Math.max(VERTICAL_BOX_GAP,state.columns.length>=6?42+CORRIDOR_EXTRA_PAD:VERTICAL_BOX_GAP);
     }
   });
 
@@ -1326,7 +1364,7 @@ function performIdempotentTidy(ignorePins=false){
       let minCorridorClearY=cursorY;
       if(ci===1&&idx===1&&topSkipChainIds.size>0&&lane0.length>=2){
         const topBox=lane0[0];
-        minCorridorClearY=Math.max(cursorY,topBox.y+topBox.height+56);
+        minCorridorClearY=Math.max(cursorY,topBox.y+topBox.height+56+CORRIDOR_EXTRA_PAD);
       }
 
       const adjR=getPerSideNeighbors(n,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0).sort((a,b)=>a.y-b.y);
@@ -1610,9 +1648,9 @@ function performIdempotentTidy(ignorePins=false){
       const midLane0=colListsLane0[leftIdx+1].filter(n=>!n.isDisconnected);
       if(midLane0.length>=2&&topSkipChainIds.has(leftEnd.id)){
         const box0=midLane0[0],box1=midLane0[1];
-        const corridorY=box0.y+box0.height+28;
-        if(box1.y<corridorY+22){
-          box1.y=corridorY+22;
+        const corridorY=box0.y+box0.height+28+Math.round(CORRIDOR_EXTRA_PAD*0.6);
+        if(box1.y<corridorY+22+Math.round(CORRIDOR_EXTRA_PAD*0.6)){
+          box1.y=corridorY+22+Math.round(CORRIDOR_EXTRA_PAD*0.6);
           resolveColumnCollisions(box1.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([box1.id])});
         }
         if(leftEnd.y+leftEnd.height<corridorY+16){
@@ -1884,11 +1922,12 @@ function computeHorizontalLinksAndStubs(cg){
     const lK=lN.id+'_right',rK=rN.id+'_left',ex=[...getU(lK),...getU(rK)];
     const sL=getNodeGlobalX(lN,cg)+BOX_WIDTH,sR=getNodeGlobalX(rN,cg);
 
+    const topBoxClearance=8+Math.round(CORRIDOR_EXTRA_PAD*0.45);
     const isBlockedAt=(cY,underClearance)=>{
       return all.some(ot=>{
         if(ot.id===lN.id||ot.id===rN.id)return false;
         const ox=getNodeGlobalX(ot,cg);
-        return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&cY>=ot.y-8&&cY<=ot.y+ot.height+underClearance;
+        return!(ox+BOX_WIDTH<=sL+4||ox>=sR-4)&&cY>=ot.y-topBoxClearance&&cY<=ot.y+ot.height+underClearance;
       });
     };
 
@@ -1914,7 +1953,7 @@ function computeHorizontalLinksAndStubs(cg){
     // Tier 1: Look for >= 32px separation from any existing link on the same box sides
     for(const cY of sortedValid){
       const mD=ex.length===0?999:Math.min(...ex.map(ey=>Math.abs(ey-cY)));
-      if(mD>=26){bC=mD;bY=cY;break;}
+      if(mD>=LINK_SLOT_SPACING){bC=mD;bY=cY;break;}
       if(mD>bC){bC=mD;bY=cY;}
     }
     // Tier 2: Accept >= 15px if the corridor is constrained (picking the candidate that maximizes distance bC from existing links!)
@@ -2074,19 +2113,60 @@ function draw(){
   all.forEach(n=>{
     const col=state.columns.find(c=>c.id===n.columnId),bCol=n.color||(col?col.color:'#38bdf8');
     const x=getNodeGlobalX(n,cg),y=n.y,w=BOX_WIDTH,h=n.height,sel=state.selectedNodeId===n.id,lSrc=linkingFromNodeId===n.id;
+    const isLight=settings.theme==='light';
+    const bf=settings.boxFill||'card';
+    ctx.save();
+    if(bf==='contrast'||bf==='vivid'||bf==='solid'){
+      ctx.shadowColor=isLight?'rgba(15,23,42,0.18)':'rgba(0,0,0,0.55)';
+      ctx.shadowBlur=sel?16:10;ctx.shadowOffsetY=3;
+    }
     drawRoundedRect(x,y,w,h,cRad);
-    ctx.fillStyle=settings.boxFill==='tinted'?hexToRgba(bCol,sel?0.26:0.14):(settings.boxFill==='outline'?th.bgCanvas:(sel?th.surfaceBoxSel:th.surfaceBox));
+    if(bf==='tinted'){
+      ctx.fillStyle=hexToRgba(bCol,sel?0.30:0.16);
+    }else if(bf==='vivid'){
+      ctx.fillStyle=hexToRgba(bCol,isLight?(sel?0.34:0.24):(sel?0.48:0.36));
+    }else if(bf==='solid'){
+      ctx.fillStyle=hexToRgba(bCol,isLight?(sel?0.92:0.82):(sel?0.88:0.76));
+    }else if(bf==='contrast'){
+      ctx.fillStyle=isLight?(sel?'#dbeafe':'#f1f5f9'):(sel?'#263859':'#1e293b');
+    }else if(bf==='outline'){
+      ctx.fillStyle=th.bgCanvas;
+    }else{
+      ctx.fillStyle=sel?th.surfaceBoxSel:th.surfaceBox;
+    }
     ctx.fill();
-    if(n.isDisconnected){ctx.setLineDash([6,4]);ctx.lineWidth=sel?2.5:1.8;ctx.strokeStyle=sel?'#38bdf8':'#f59e0b';ctx.stroke();ctx.setLineDash([]);}
-    else{ctx.lineWidth=sel||lSrc?2.5:1.6;ctx.strokeStyle=lSrc?'#10b981':(sel?'#38bdf8':bCol);ctx.stroke();}
-    if(settings.boxFill==='card'){drawRoundedRect(x+3,y+6,4,h-12,2);ctx.fillStyle=bCol;ctx.fill();}
+    ctx.restore();
+
+    if(n.isDisconnected){
+      ctx.setLineDash([6,4]);ctx.lineWidth=sel?2.8:2;ctx.strokeStyle=sel?'#38bdf8':'#f59e0b';ctx.stroke();ctx.setLineDash([]);
+    }else{
+      const baseLW=(bf==='contrast'||bf==='vivid'||bf==='solid')?2.3:1.6;
+      ctx.lineWidth=sel||lSrc?3.0:baseLW;
+      ctx.strokeStyle=lSrc?'#10b981':(sel?'#38bdf8':(bf==='solid'?'#ffffff':bCol));
+      ctx.stroke();
+    }
+    if(bf==='card'||bf==='contrast'){
+      drawRoundedRect(x+3,y+6,bf==='contrast'?5.5:4,h-12,2.5);ctx.fillStyle=bCol;ctx.fill();
+    }else if(bf==='vivid'){
+      drawRoundedRect(x+6,y+3,w-12,3.5,2);ctx.fillStyle=bCol;ctx.fill();
+    }
     let bX=x+w-8;ctx.font='600 10px system-ui,sans-serif';ctx.textAlign='right';ctx.textBaseline='top';
-    if(n.isAutoLayoutOptOut){ctx.fillStyle='#38bdf8';ctx.fillText('📌 Pinned',bX,y+7);bX-=54;}
-    else if(n.isManuallyPositioned||n.isManuallyStretched){ctx.fillStyle=th.textSecondary;ctx.fillText('✋ Manual',bX,y+7);bX-=52;}
-    if(n.isDisconnected){ctx.fillStyle='#f59e0b';ctx.fillText('⚠ Unlinked',bX,y+7);}
-    ctx.fillStyle=th.textPrimary;ctx.font='500 12.5px system-ui,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+    const isSolidFill=bf==='solid';
+    if(n.isAutoLayoutOptOut){ctx.fillStyle=isSolidFill?'#ffffff':'#38bdf8';ctx.fillText('📌 Pinned',bX,y+7);bX-=54;}
+    else if(n.isManuallyPositioned||n.isManuallyStretched){ctx.fillStyle=isSolidFill?'rgba(255,255,255,0.9)':th.textSecondary;ctx.fillText('✋ Manual',bX,y+7);bX-=52;}
+    if(n.isDisconnected){ctx.fillStyle=isSolidFill?'#fef08a':'#f59e0b';ctx.fillText('⚠ Unlinked',bX,y+7);}
+    ctx.save();
+    if(isSolidFill){
+      ctx.fillStyle='#ffffff';
+      ctx.shadowColor='rgba(0,0,0,0.65)';ctx.shadowBlur=3;
+    }else{
+      ctx.fillStyle=th.textPrimary;
+    }
+    ctx.font=(bf==='contrast'||bf==='vivid'||bf==='solid')?'600 12.5px system-ui,sans-serif':'500 12.5px system-ui,sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='middle';
     const lns=wrapTextLines(n.text,w-26),lh=16.5,stY=y+h/2-(lns.length*lh)/2+lh/2+4;
     lns.forEach((ln,i)=>ctx.fillText(ln,x+14,stY+i*lh));
+    ctx.restore();
     ctx.fillStyle=sel?'#38bdf8':'rgba(148,163,184,0.38)';
     ctx.fillRect(x+w/2-16,y+3,32,2.5);ctx.fillRect(x+w/2-16,y+h-5.5,32,2.5);
   });
@@ -2578,6 +2658,16 @@ document.getElementById('menuLoadMaritimeStressTest').addEventListener('click',(
 document.getElementById('menuLoadDefenceStressTest').addEventListener('click',()=>{hideAllMenus();loadDefenceTortureDemo();});
 
 document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
+document.querySelectorAll('#spacingSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+  const newSp=b.getAttribute('data-spacing')||'compact';
+  settings.mapSpacing=newSp;
+  applySpacingPreset(newSp);
+  pushUndoState();
+  performIdempotentTidy();
+  saveSettings();
+  saveState();
+  fitScreen();
+}));
 document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
 document.querySelectorAll('#fillSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxFill=b.getAttribute('data-fill');saveSettings();}));
 document.querySelectorAll('#arrowSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{
@@ -2625,6 +2715,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
