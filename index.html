@@ -6,7 +6,12 @@
 <title>BDN Studio — Benefits Dependency Network Mapper</title>
 <meta name="theme-color" content="#090d16">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BDN Studio">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
 :root{--bg-canvas:#090d16;--surface-hud:rgba(15,23,42,0.92);--surface-modal:#0f172a;--surface-box:#0f172a;--surface-box-selected:#17253b;--surface-header:rgba(15,23,42,0.96);--border-hud:#1e293b;--border-focus:#38bdf8;--text-primary:#f8fafc;--text-secondary:#94a3b8;--text-muted:#64748b;--link-stroke:#cbd5e1;--accent:#38bdf8;--amber:#f59e0b;--danger:#ef4444;--success:#10b981}
 *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
@@ -133,6 +138,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuSaveBdn"><span>💾 Save File</span><span class="ctx-kbd">Ctrl+S</span></div>
   <div class="ctx-item" id="menuSaveAsBdn"><span>📥 Save As New File (.bdn.json)...</span><span class="ctx-kbd">Ctrl+Shift+S</span></div>
   <div class="ctx-item" id="menuExportPng"><span>🖼️ Export High-Res PNG Image</span></div>
+  <div class="ctx-item" id="menuInstallPwa"><span>📲 Install App (Desktop / Mobile)</span><span class="ctx-kbd" id="pwaInstallBadge">PWA</span></div>
   <div class="ctx-sep"></div>
   <div class="ctx-label">Columns &amp; Layout</div>
   <div class="ctx-item" id="menuSaveDefaultCols"><span>📌 Save Current Columns as Default</span></div>
@@ -150,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.20</span>
+    <span class="menu-version-badge">v6.21</span>
   </div>
 </div>
 
@@ -220,6 +226,18 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 </div>
 
 <div class="floating-menu" id="contextMenu"></div>
+
+<div class="modal-backdrop" id="pwaInstallModal">
+  <div class="modal-card">
+    <h3 id="pwaModalTitle">📲 Install BDN Studio as an App</h3>
+    <p id="pwaModalBody" style="margin-bottom:12px">Install BDN Studio on your laptop, tablet, or phone for a full-screen workspace, instant launch from your taskbar or home screen, and offline access.</p>
+    <div id="pwaModalSteps" style="font-size:12.5px;color:var(--text-secondary);line-height:1.6;background:rgba(15,23,42,0.55);border:1px solid var(--border-hud);border-radius:8px;padding:12px;margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="hud-btn" id="btnPwaModalClose" type="button">Close</button>
+      <button class="hud-btn active" id="btnPwaModalTrigger" type="button" style="display:none">📲 Install Now</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="conflictModal">
   <div class="modal-card">
@@ -2795,6 +2813,71 @@ document.getElementById('menuOpenBdn').addEventListener('click',openBdnFile);
 document.getElementById('menuSaveBdn').addEventListener('click',()=>saveBdnFile(false));
 document.getElementById('menuSaveAsBdn').addEventListener('click',()=>saveBdnFile(true));
 document.getElementById('menuExportPng').addEventListener('click',exportPngDiagram);
+
+// PWA Service Worker Registration & Cross-Platform Install Prompt Handler (v6.21)
+let deferredPwaPrompt=null;
+const pwaInstallModal=document.getElementById('pwaInstallModal');
+const btnPwaModalTrigger=document.getElementById('btnPwaModalTrigger');
+const pwaInstallBadge=document.getElementById('pwaInstallBadge');
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+function isRunningStandalonePwa(){
+  return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;
+}
+
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredPwaPrompt=e;
+  if(pwaInstallBadge)pwaInstallBadge.textContent='Ready';
+});
+
+window.addEventListener('appinstalled',()=>{
+  deferredPwaPrompt=null;
+  if(pwaInstallBadge)pwaInstallBadge.textContent='Installed';
+  if(pwaInstallModal)pwaInstallModal.style.display='none';
+  updateStatusPill('📲 App Installed!',true);
+});
+
+document.getElementById('menuInstallPwa').addEventListener('click',async()=>{
+  hideAllMenus();
+  if(deferredPwaPrompt){
+    deferredPwaPrompt.prompt();
+    const {outcome}=await deferredPwaPrompt.userChoice;
+    if(outcome==='accepted'){
+      deferredPwaPrompt=null;
+      if(pwaInstallBadge)pwaInstallBadge.textContent='Installed';
+    }
+    return;
+  }
+  const stepsEl=document.getElementById('pwaModalSteps');
+  const titleEl=document.getElementById('pwaModalTitle');
+  if(isRunningStandalonePwa()){
+    titleEl.textContent='✓ BDN Studio is Already Installed';
+    stepsEl.innerHTML='You are currently running <strong>BDN Studio</strong> as an installed standalone application.';
+    btnPwaModalTrigger.style.display='none';
+  }else{
+    titleEl.textContent='📲 Install BDN Studio on Your Device';
+    const ua=navigator.userAgent||'';
+    const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(isIOS){
+      stepsEl.innerHTML='<strong>iPhone / iPad (Safari):</strong><br>1. Tap the <strong>Share</strong> button (square with arrow pointing up) in Safari\'s toolbar.<br>2. Scroll down and tap <strong>Add to Home Screen</strong>.<br>3. Tap <strong>Add</strong> in the top-right corner to launch BDN Studio full-screen.';
+    }else if(/Android/i.test(ua)){
+      stepsEl.innerHTML='<strong>Android (Chrome / Edge):</strong><br>1. Tap the browser menu icon (<strong>⋮</strong>) in the top-right corner.<br>2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.';
+    }else{
+      stepsEl.innerHTML='<strong>Laptop / Desktop (Chrome or Edge):</strong><br>1. Click the <strong>Install BDN Studio</strong> icon (monitor with down-arrow) on the right side of your browser\'s address bar, <em>or</em><br>2. Open the browser menu (<strong>⋮</strong> or <strong>⋯</strong>) &rarr; <strong>Save and share / Apps</strong> &rarr; <strong>Install BDN Studio</strong>.';
+    }
+    btnPwaModalTrigger.style.display='none';
+  }
+  pwaInstallModal.style.display='flex';
+});
+
+document.getElementById('btnPwaModalClose').addEventListener('click',()=>{pwaInstallModal.style.display='none';});
+pwaInstallModal.addEventListener('click',(e)=>{if(e.target===pwaInstallModal)pwaInstallModal.style.display='none';});
 document.getElementById('menuSaveDefaultCols').addEventListener('click',()=>{hideAllMenus();localStorage.setItem(STORAGE_KEY_DEFAULT_COLS,JSON.stringify(state.columns));updateStatusPill('✓ Cols Saved');});
 document.getElementById('menuRestoreFactoryCols').addEventListener('click',()=>{hideAllMenus();localStorage.removeItem(STORAGE_KEY_DEFAULT_COLS);updateStatusPill('↺ Factory Cols');});
 document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAllMenus();pushUndoState();Object.values(state.nodesById).forEach(n=>{n.isAutoLayoutOptOut=false;n.isManuallyPositioned=false;n.isManuallyStretched=false;});performIdempotentTidy(true);saveState();fitScreen();});
@@ -2857,7 +2940,7 @@ window.addEventListener('keydown',(e)=>{
   if((e.ctrlKey||e.metaKey)&&(e.key==='o'||e.key==='O')){e.preventDefault();openBdnFile();return;}
   if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){e.preventDefault();saveBdnFile(e.shiftKey);return;}
   const sN=state.selectedNodeId?state.nodesById[state.selectedNodeId]:null,sL=state.selectedLinkId?state.linksById[state.selectedLinkId]:null;
-  if(e.key==='Escape'){linkingFromNodeId=null;modeBanner.style.display='none';helpPopover.style.display='none';conflictModal.style.display='none';hideAllMenus();draw();return;}
+  if(e.key==='Escape'){linkingFromNodeId=null;modeBanner.style.display='none';helpPopover.style.display='none';conflictModal.style.display='none';if(pwaInstallModal)pwaInstallModal.style.display='none';hideAllMenus();draw();return;}
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();deleteSelected();return;}
   if(e.key==='Enter'){if(document.activeElement&&document.activeElement.tagName==='BUTTON')return;e.preventDefault();addBoxInViewportCenter(e);return;}
   if(e.key==='Tab'&&sN){e.preventDefault();addConnectedLeftNode(sN);return;}
@@ -2881,6 +2964,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 

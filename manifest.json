@@ -1,0 +1,19 @@
+﻿{
+  "name": "BDN Studio — Benefits Dependency Network Mapper",
+  "short_name": "BDN Studio",
+  "description": "Zero-clutter, smooth-scrolling Benefits Dependency Network (BDN) mapper with one-click Zero-Split-Link auto-tidying and near real-time multi-device sync.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
