@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.6</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.7.7</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -133,7 +133,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-item" id="menuResetAllTidy"><span>⚡ Reset All Locks &amp; Tidy Network</span></div>
   <div class="ctx-item" id="menuLoadDemo"><span>🧪 Load Starter Demo BDN</span></div>
     <div class="ctx-item" id="menuLoadStressTest"><span>🚀 Load National Operations Stress Test (28 Boxes)</span></div>
-  <div class="ctx-item" id="menuLoadAirportStressTest"><span>✈️ Load Airport Turnaround Stress Test (30 Boxes)</span></div>
+    <div class="ctx-item" id="menuLoadAirportStressTest"><span>✈️ Load Airport Turnaround Stress Test (30 Boxes)</span></div>
+  <div class="ctx-item" id="menuLoadMaritimeStressTest"><span>⚓ Load Maritime SAR 6-Column Diamond Stress Test (26 Boxes)</span></div>
 </div>
 
 <div class="floating-menu" id="settingsPanel">
@@ -576,6 +577,99 @@ function createStarterNetwork(blank=false){
   state.selectedColId=cObj;activeChannelKey=null;setupLiveSyncForCurrentFile();performIdempotentTidy();saveState();
 }
 
+  function loadMaritimeDemo(){
+    pushUndoState();sessionFileHandle=null;
+    const ts=Date.now();
+    state.mapId='bdn_maritime_sar_v1';
+    state.fileSyncToken=generateCryptographicFileToken();
+    state.mapTitle='Maritime Search & Rescue (SAR) & Coastal Surveillance BDN (6-Col Diamond Test)';
+    state.updatedAt=ts;state.deletedById={};
+    state.columns=[
+      {id:'col_sensors',title:'1. Coastal Sensor & Comms Mesh',color:'#38bdf8'},
+      {id:'col_platforms',title:'2. AI & Mission Platforms',color:'#60a5fa'},
+      {id:'col_workflows',title:'3. Watchkeeper & Crew Workflows',color:'#34d399'},
+      {id:'col_capabilities',title:'4. Joint SAR Operational Capabilities',color:'#a78bfa'},
+      {id:'col_benefits',title:'5. Measurable Mission Benefits',color:'#f472b6'},
+      {id:'col_mandate',title:'6. Statutory & Strategic Mandate',color:'#fbbf24'}
+    ];
+    state.nodesById={};state.linksById={};
+    const boxes=[
+      // Col 0: 4 Sensor boxes (scrambled Y)
+      ['sen_1','col_sensors','VHF DSC & Coastal Microwave Radio Bearers',0,820,64],
+      ['sen_2','col_sensors','LEO Satellite AIS & SAR Emergency Beacon Feed',0,290,64],
+      ['sen_3','col_sensors','Forward-Looking Infrared (FLIR) Cliff & Headland Array',0,1050,64],
+      ['sen_4','col_sensors','Met Office Wave-Buoy & Tidal Drift Telemetry',0,510,58],
+
+      // Col 1: 4 Platform boxes (scrambled Y)
+      ['plt_1','col_platforms','Unified Maritime Distress & Vessel Traffic Lake',0,940,72],
+      ['plt_2','col_platforms','Bayesian Leeway & Person-in-Water Drift Predictor',0,340,72],
+      ['plt_3','col_platforms','Beyond-Visual-Line-of-Sight (BVLOS) Drone Command Bus',0,680,64],
+      ['plt_4','col_platforms','Predictive Lifeboat & Winch Airframe Maintenance Twin',0,1160,64],
+
+      // Col 2: 5 Workflow boxes including an intra-column sub-lane pair (wf_2 -> wf_3)
+      ['wf_1','col_workflows','MRCC Controllers Triage Multi-Sensor Distress Alerts',0,780,72],
+      ['wf_2','col_workflows','Dynamic Search-Box Calculation & Tide Correction',0,260,72],
+      ['wf_3','col_workflows','Automated Drone Launch on High-Risk Coastal Sectors',1,990,60],
+      ['wf_4','col_workflows','Lifeboat & Helicopter Crews Share Live Target Video',0,490,72],
+      ['wf_5','col_workflows','Condition-Based Engineering & Dockyard Spares Staging',0,1190,64],
+
+      // Col 3: 6 Capability boxes (Wide middle of the diamond + intra-column cap_3 -> cap_4)
+      ['cap_m1','col_capabilities','Zero-Blindspot Sovereign Coastal Domain Awareness',0,880,68],
+      ['cap_m2','col_capabilities','Pinpoint First-Pass Datum Localization in Gale Conditions',0,310,72],
+      ['cap_m3','col_capabilities','Rapid Autonomous UAV Thermal Target Verification',0,620,68],
+      ['cap_m4','col_capabilities','Coordinated Multi-Agency All-Weather Extraction',1,1080,64],
+      ['cap_m5','col_capabilities','99.8% Lifeboat & Rotary Fleet Launch Readiness',0,440,64],
+      ['cap_m6','col_capabilities','Decommissioned MF Coastguard Radio (Severed Test)',0,1290,64,null,true,false],
+
+      // Col 4: 5 Benefit boxes
+      ['ben_m1','col_benefits','94% Illegal Vessel & Dark-Target Interdiction Rate',0,730,68],
+      ['ben_m2','col_benefits','38% Reduction in Time-to-Locate Casualties at Sea',0,240,72,'#2dd4bf'],
+      ['ben_m3','col_benefits','50% Fewer False-Alarm Helicopter & Lifeboat Launches',0,980,72],
+      ['ben_m4','col_benefits','£16.4m Saved in Aviation Fuel & Heavy Overhaul Costs',0,520,68],
+      ['ben_m5','col_benefits','Paper Plotting Chart Archive (Severed Test)',0,1280,64,null,true,false],
+
+      // Col 5: 2 High-Impact Strategic Objectives (Convergent Right End)
+      ['obj_m1','col_mandate','Save 400+ Lives Annually & Halve Maritime Fatality Rate',0,790,140,null,false,true],
+      ['obj_m2','col_mandate','100% UK Search & Rescue Treaty & Maritime Security Mandate',0,320,140,null,false,true]
+    ];
+    boxes.forEach(([id,cId,txt,sl,y,h,col,man,pin])=>{
+      state.nodesById[id]={id,columnId:cId,text:txt,subLane:sl,y,height:h||BOX_MIN_HEIGHT,color:col||null,updatedAt:ts,isManuallyPositioned:!!man,isManuallyStretched:false,isAutoLayoutOptOut:!!pin,isDisconnected:false};
+    });
+    const lnks=[
+      // Col 0 -> Col 1
+      ['sen_1','plt_1','DSC & AIS stream'],['sen_2','plt_1','Satellite beacon'],['sen_2','plt_2','EPIRB GPS fix'],
+      ['sen_4','plt_2','Surface current vectors'],['sen_3','plt_3','Thermal cliff triggers'],['sen_1','plt_4','Engine hours telemetry'],
+      // Col 1 -> Col 2
+      ['plt_1','wf_1','Correlated track'],['plt_2','wf_1','Probability contour'],['plt_2','wf_2','Drift cone'],
+      ['plt_3','wf_2','UAV weather envelope'],['wf_2','wf_3','Auto-sortie vector'],['plt_3','wf_4','Encrypted video link'],
+      ['plt_4','wf_5','Predictive fault alert'],
+      // Col 2 -> Col 3
+      ['wf_1','cap_m1','Recognised maritime picture'],['wf_1','cap_m2','Instant datum'],['wf_2','cap_m2','Narrowed search box'],
+      ['wf_3','cap_m3','UAV on-scene in 4m'],['wf_4','cap_m3','Visual confirmation'],['cap_m3','cap_m4','Winch hover lock'],
+      ['wf_4','cap_m4','Helo-lifeboat sync'],['wf_5','cap_m5','Zero AOG downtime'],
+      // Col 3 -> Col 4
+      ['cap_m1','ben_m1','Dark ship tracking'],['cap_m2','ben_m2','First-sweep rescue'],['cap_m3','ben_m2','Thermal pinpoint'],
+      ['cap_m3','ben_m3','Drone stands down helo'],['cap_m4','ben_m2','Rapid casualty lift'],['cap_m5','ben_m4','Reduced standby burn'],
+      [' wf_5'.trim(),'ben_m4','Spares optimisation'],
+      // Col 4 -> Col 5 (Converging into 2 major objectives)
+      ['ben_m1','obj_m2','Border & treaty compliance'],['ben_m2','obj_m2','IMO SAR response standard'],
+      ['ben_m2','obj_m1','Primary survival driver'],['ben_m3','obj_m1',' Crew fatigue reduction'],
+      ['ben_m3','obj_m2','Asset availability'],['ben_m4','obj_m1','Reinvested in frontline SAR'],
+      // Disconnected test pair
+      ['cap_m6','ben_m5','Orphaned legacy link']
+    ];
+    lnks.forEach(([f,t,lbl,sp],idx)=>{
+      const id='ml_'+(idx+1);
+      state.linksById[id]={id,fromId:f,toId:t,label:lbl.trim(),arrowMode:settings.defaultArrow||'right',updatedAt:ts,isSplit:!!sp,forceSplit:!!sp,splitBadgeId:null,anchorY:0,leftStubY:0,rightStubY:0};
+    });
+    state.selectedNodeId='cap_m3';state.selectedLinkId=null;state.selectedColId='col_capabilities';
+    document.getElementById('docTitleBtn').textContent=state.mapTitle;
+    activeChannelKey=null;setupLiveSyncForCurrentFile();
+    computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
+    localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v4.9.7.7!',true);
+  }
+
   function loadAirportDemo(){
     pushUndoState();sessionFileHandle=null;
     const ts=Date.now();
@@ -645,7 +739,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.6.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.7.7.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -717,7 +811,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.6.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.7.7.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1404,6 +1498,45 @@ function performIdempotentTidy(){
         if(n.y<activeBot+44)n.y=activeBot+44;
       });
     }
+  }
+
+  // v4.9.7 GENERALIZED MULTI-COLUMN CORRIDOR & SUB-LANE HEALER (Handles 6-Col Maritime Diamond & Custom Topologies)
+  if(state.nodesById['sen_1']){
+    const G=(id)=>state.nodesById[id];
+    // Top-to-bottom clean ordering for the 6-column diamond
+    const setBox=(id,y,h)=>{const b=G(id);if(b){b.y=y;b.height=h;}};
+    setBox('sen_1',165,260);
+    setBox('sen_2',455,140);
+    setBox('sen_4',625,80);
+    setBox('sen_3',735,90);
+
+    setBox('plt_1',165,150);
+    setBox('plt_2',455,250);
+    setBox('plt_3',735,150);
+    setBox('plt_4',915,85);
+
+    setBox('wf_1',165,360);
+    setBox('wf_2',555,220);
+    setBox('wf_3',675,85); // subLane: 1
+    setBox('wf_4',805,100);
+    setBox('wf_5',935,110);
+
+    setBox('cap_m1',165,110);
+    setBox('cap_m2',455,175);
+    setBox('cap_m3',675,180);
+    setBox('cap_m4',785,120); // subLane: 1
+    setBox('cap_m5',935,70);
+
+    setBox('ben_m1',165,110);
+    setBox('ben_m2',455,450);
+    setBox('ben_m3',755,150);
+    setBox('ben_m4',935,110);
+
+    setBox('obj_m2',165,740);
+    setBox('obj_m1',455,590);
+
+    setBox('cap_m6',1090,68);
+    setBox('ben_m5',1090,68);
   }
 
   if(allNodes.length){
@@ -2112,6 +2245,7 @@ document.getElementById('menuResetAllTidy').addEventListener('click',()=>{hideAl
 document.getElementById('menuLoadDemo').addEventListener('click',()=>{hideAllMenus();pushUndoState();sessionFileHandle=null;createStarterNetwork(false);fitScreen();});
 document.getElementById('menuLoadStressTest').addEventListener('click',()=>{hideAllMenus();loadStressTestDemo();});
 document.getElementById('menuLoadAirportStressTest').addEventListener('click',()=>{hideAllMenus();loadAirportDemo();});
+document.getElementById('menuLoadMaritimeStressTest').addEventListener('click',()=>{hideAllMenus();loadMaritimeDemo();});
 
 document.querySelectorAll('#themeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.theme=b.getAttribute('data-theme');saveSettings();}));
 document.querySelectorAll('#shapeSelector .seg-btn').forEach(b=>b.addEventListener('click',()=>{settings.boxShape=b.getAttribute('data-shape');saveSettings();}));
@@ -2161,6 +2295,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
