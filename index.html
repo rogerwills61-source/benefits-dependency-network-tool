@@ -99,7 +99,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v4.9.8</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (v4.9 Canonical Zero-Split-Link Staircase + Straddle-Pocket + Dual-Partner Solver)" type="button">Tidy v5.0</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -667,7 +667,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v4.9.8!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied 6-Col Maritime Demo — Click Tidy v5.0!',true);
   }
 
   function loadAirportDemo(){
@@ -739,7 +739,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v4.9.8.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied Airport Demo — Click Tidy v5.0.6!',true);
   }
 
   function loadStressTestDemo(){
@@ -811,7 +811,7 @@ function createStarterNetwork(blank=false){
     activeChannelKey=null;setupLiveSyncForCurrentFile();
     computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();
     localStorage.setItem(STORAGE_KEY_STATE,JSON.stringify(state));
-    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v4.9.8.6!',true);
+    sendHelloAnnouncement();fitScreen();updateStatusPill('⚡ Untidied National Ops Demo — Click Tidy v5.0.6!',true);
   }
 
 function addNodeInternal(colId,txt,sl=0,y=INITIAL_SPAWN_Y){
@@ -1442,111 +1442,244 @@ function performIdempotentTidy(){
     });
   }
 
-  // v4.9 POST-LOCK UNOBSTRUCTED CORRIDOR VERIFIER (Heals 'Shared view' & 'Right skill dispatched' above subLane:1 chg_4)
-  // v4.9 ID-AGNOSTIC EXACT GEOMETRY ENGINE (Zero Split Links on Both Stress Test #1 & #2!)
+  // ============================================================================
+  // v5.0 GENERALIZED TOPOLOGICAL CORRIDOR & SUB-LANE SOLVER (ZERO HARDCODED IDs!)
+  // Works on ANY BDN graph topology (5-col, 6-col diamond, or custom user maps)
+  // ============================================================================
   {
-    const hasEna = !!state.nodesById['ena_1'];
-    const nEna1 = state.nodesById[hasEna ? 'ena_1' : 'air_1'];
-    const nEna2 = state.nodesById[hasEna ? 'ena_2' : 'air_2'];
-    const nEna3 = state.nodesById[hasEna ? 'ena_3' : 'air_3'];
-    const nEna5 = state.nodesById[hasEna ? 'ena_5' : 'air_5'];
-    const nChg1 = state.nodesById[hasEna ? 'chg_1' : 'ops_1'];
-    const nChg2 = state.nodesById[hasEna ? 'chg_2' : 'ops_2'];
-    const nChg3 = state.nodesById[hasEna ? 'chg_3' : 'ops_3'];
-    const nChg4 = state.nodesById[hasEna ? 'chg_4' : 'ops_4'];
-    const nCap2 = state.nodesById[hasEna ? 'cap_2' : 'cap_b'];
-    const nCap3 = state.nodesById[hasEna ? 'cap_3' : 'cap_c'];
-    const nBen2 = state.nodesById[hasEna ? 'ben_2' : 'ben_b'];
-    const nBen3 = state.nodesById[hasEna ? 'ben_3' : 'ben_c'];
-    const nBen4 = state.nodesById[hasEna ? 'ben_4' : 'ben_d'];
-    const nObj2 = state.nodesById[hasEna ? 'obj_2' : 'obj_b'];
-    const nObj3 = state.nodesById[hasEna ? 'obj_3' : 'obj_c'];
+    const getColIdx=(n)=>cg[n.columnId]?.colIndex??0;
+    const getLaneNodes=(colId,sl)=>allNodes.filter(n=>n.columnId===colId&&!n.isDisconnected&&(n.subLane||0)===sl).sort((a,b)=>(a._tidyOrder??0)-(b._tidyOrder??0));
 
-    // 1. Exact v4.2 Shared view overlap lock
-    if(nChg1&&nCap2){
-      const reqBottom=nCap2.y+EDGE_CORNER_PAD*2+22;
-      if(nChg1.y+nChg1.height<reqBottom)nChg1.height=reqBottom-nChg1.y;
-      if(nChg2&&nChg2.y<nChg1.y+nChg1.height+28)nChg2.y=nChg1.y+nChg1.height+28;
-      if(nEna1&&nChg2&&nEna1.y+nEna1.height<nChg2.y+36)nEna1.height=(nChg2.y+36)-nEna1.y;
+    // PASS A: Generalized Right-to-Left Barycenter & Span Alignment for arbitrary column counts
+    // Ensures multi-column networks (like 6-col diamonds) align upstream columns to downstream targets
+    for(let sweep=0;sweep<2;sweep++){
+      // Left-to-right pass for columns right of spine
+      for(let ci=spineIdx+1;ci<state.columns.length;ci++){
+        const col=state.columns[ci];
+        const l0=getLaneNodes(col.id,0);
+        let curY=INITIAL_SPAWN_Y;
+        l0.forEach((n,idx)=>{
+          if(idx===0&&topSkipChainIds.has(n.id)){
+            const lNbs=getPerSideNeighbors(n,cg,true,true).leftNeighbors.map(x=>x.neighbor);
+            if(lNbs.length){
+              n.y=Math.max(INITIAL_SPAWN_Y,Math.min(...lNbs.map(nb=>nb.y)));
+              n.height=Math.max(n.height,(Math.max(...lNbs.map(nb=>nb.y+nb.height)))-n.y);
+            }
+            curY=n.y+n.height+VERTICAL_BOX_GAP;
+            return;
+          }
+          const lNbs=getPerSideNeighbors(n,cg,true,true).leftNeighbors.map(x=>x.neighbor).sort((a,b)=>a.y-b.y);
+          if(lNbs.length){
+            const first=lNbs[0],last=lNbs[lNbs.length-1];
+            const desTop=Math.max(curY,Math.min(first.y+12,first.y+first.height-EDGE_CORNER_PAD*2-14));
+            const desBot=Math.max(desTop+n.height,last.y+EDGE_CORNER_PAD*2+24);
+            n.y=desTop;
+            n.height=Math.max(n.height,desBot-n.y);
+          }else{
+            n.y=curY;
+          }
+          curY=n.y+n.height+VERTICAL_BOX_GAP;
+        });
+      }
     }
 
-    // 2. Exact v4.2 Right skill dispatched & subLane:1 pocket lock
-    if(nChg2&&nCap3&&nChg4){
-      if(nEna3&&nEna1)nEna3.y=Math.max(nEna3.y,nEna1.y+nEna1.height+24);
-      const corridorBottom=Math.max(nCap3.y+EDGE_CORNER_PAD*2+24,(nEna3?nEna3.y+38:0));
-      if(nChg2.y+nChg2.height<corridorBottom)nChg2.height=corridorBottom-nChg2.y;
-      const pocketY=Math.max(nCap3.y+EDGE_CORNER_PAD+26,(nEna3?nEna3.y+42:0));
-      nChg4.y=pocketY;
-      if(nEna5)nEna5.y=pocketY;
-      if(nEna3&&nEna5){
-        const reqEna3Bot=nEna5.y+nEna5.height+48;
-        if(nEna3.y+nEna3.height<reqEna3Bot)nEna3.height=reqEna3Bot-nEna3.y;
-      }
-      if(nChg3&&nEna5){
-        const minChg3Y=Math.max(nChg2.y+nChg2.height+28,nEna5.y+nEna5.height+12);
-        if(nChg3.y<minChg3Y)nChg3.y=minChg3Y;
-        if(nChg4.y+nChg4.height<nChg3.y+38)nChg4.height=(nChg3.y+38)-nChg4.y;
-        if(nEna3&&nEna3.y+nEna3.height<nChg3.y+38)nEna3.height=(nChg3.y+38)-nEna3.y;
-      }
-      if(nChg3&&nCap3&&nCap3.y+nCap3.height<nChg3.y+44)nCap3.height=(nChg3.y+44)-nCap3.y;
-      if(nObj3&&nBen4&&nBen2){
-        nObj3.y=nBen4.y;
-        nObj3.height=(nBen2.y+nBen2.height)-nObj3.y;
-      }
-      const activeBot=Math.max(...allNodes.filter(n=>!n.isDisconnected).map(n=>n.y+n.height));
-      allNodes.filter(n=>n.isDisconnected).forEach(n=>{
-        if(n.y<activeBot+44)n.y=activeBot+44;
+    // PASS B: Generalized Sub-Lane Pocket & Obstacle Clearance Solver
+    // Handles ANY subLane:1 node (whether in Col 0, Col 1, Col 2, or Col 3)
+    state.columns.forEach((col,ci)=>{
+      if(ci>=state.columns.length-1)return;
+      const l0=getLaneNodes(col.id,0);
+      const subNodes=allNodes.filter(n=>n.columnId===col.id&&!n.isDisconnected&&(n.subLane||0)>0);
+
+      subNodes.forEach(sNode=>{
+        const sides=getPerSideNeighbors(sNode,cg,true,true);
+        const allNbs=[...sides.leftNeighbors.map(x=>x.neighbor),...sides.rightNeighbors.map(x=>x.neighbor)];
+        const sameColPartner=allNbs.find(nb=>nb.columnId===sNode.columnId&&(nb.subLane||0)===0);
+        const rightColPartners=allNbs.filter(nb=>getColIdx(nb)>ci).sort((a,b)=>a.y-b.y);
+        const leftColPartners=allNbs.filter(nb=>getColIdx(nb)<ci).sort((a,b)=>a.y-b.y);
+
+        if(sameColPartner&&rightColPartners.length){
+          const pIdx=l0.findIndex(x=>x.id===sameColPartner.id);
+          const rTarget=rightColPartners[0];
+
+          // Case 1: sameColPartner ALSO links directly to a right-column box (e.g. cap_m3 -> ben_m3 while cap_m3 -> cap_m4 -> ben_m3, or wf_2 -> cap_m2)
+          const partnerRightNbs=getPerSideNeighbors(sameColPartner,cg,true,true).rightNeighbors
+            .map(x=>x.neighbor).filter(nb=>getColIdx(nb)>ci).sort((a,b)=>a.y-b.y);
+
+          if(pIdx===1&&leftColPartners.length===0&&rightColPartners.length===1&&partnerRightNbs.length>=1){
+            // Top-of-column dual partner (e.g. first subLane:1 feeder at top of column)
+            const reqTop=Math.min(sameColPartner.y-12,rTarget.y+rTarget.height-EDGE_CORNER_PAD*2-14);
+            const reqBot=Math.max(reqTop+64,sameColPartner.y+EDGE_CORNER_PAD*2+14);
+            sNode.y=reqTop;
+            sNode.height=reqBot-reqTop;
+            if(sameColPartner.y+sameColPartner.height<sNode.y+sNode.height+48){
+              sameColPartner.height=(sNode.y+sNode.height+48)-sameColPartner.y;
+            }
+          }else{
+            // Mid-column sub-lane pocket:
+            // If sameColPartner links directly to the SAME right target (or a target above sNode),
+            // keep a 52px unobstructed horizontal corridor above sNode so sameColPartner's direct link is NEVER blocked by sNode!
+            const sharedOrUpperRight=partnerRightNbs.filter(nb=>nb.y<=rTarget.y+20);
+            if(sharedOrUpperRight.length){
+              const corrTarget=sharedOrUpperRight[sharedOrUpperRight.length-1];
+              const corridorTop=Math.max(sameColPartner.y+EDGE_CORNER_PAD,corrTarget.y+EDGE_CORNER_PAD);
+              const minSNodeY=corridorTop+48; // 48px clear corridor above sNode!
+              sNode.y=Math.max(sNode.y,minSNodeY);
+              if(sameColPartner.y+sameColPartner.height<sNode.y+38){
+                sameColPartner.height=(sNode.y+38)-sameColPartner.y;
+              }
+              if(rTarget.y+rTarget.height<sNode.y+sNode.height){
+                rTarget.height=(sNode.y+sNode.height)-rTarget.y;
+              }
+              // Ensure left-column feeders into sNode or sameColPartner also overlap cleanly
+              leftColPartners.forEach(lNb=>{
+                if(lNb.y+lNb.height<sNode.y+36)lNb.height=(sNode.y+36)-lNb.y;
+              });
+            }
+          }
+          resolveColumnCollisions(col.id,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameColPartner.id])});
+          resolveColumnCollisions(rTarget.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rTarget.id])});
+        }
+      });
+    });
+
+    // PASS C: Generalized Corridor Unobstructed Solver for ALL Solid Links
+    // Iterates over every link in the network; if a link fails vertical overlap or is blocked by a subLane:1 box,
+    // it stretches the endpoints within safe column bounds or shifts the subLane:1 pocket to clear the corridor.
+    for(let iter=0;iter<4;iter++){
+      Object.values(state.linksById).forEach(l=>{
+        const nA=state.nodesById[l.fromId],nB=state.nodesById[l.toId];
+        if(!nA||!nB||nA.isDisconnected||nB.isDisconnected)return;
+        const cA=getColIdx(nA),cB=getColIdx(nB);
+        const lN=cA<=cB&&(cA<cB||(nA.subLane||0)<=(nB.subLane||0))?nA:nB;
+        const rN=lN===nA?nB:nA;
+
+        // 1. Ensure vertical overlap >= 28px between lN and rN
+        const oT=Math.max(lN.y+EDGE_CORNER_PAD,rN.y+EDGE_CORNER_PAD);
+        const oB=Math.min(lN.y+lN.height-EDGE_CORNER_PAD,rN.y+rN.height-EDGE_CORNER_PAD);
+        if(oB-oT<18){
+          const upper=lN.y<=rN.y?lN:rN,lower=upper===lN?rN:lN;
+          const uLane=getLaneNodes(upper.columnId,upper.subLane||0);
+          const reqBot=lower.y+EDGE_CORNER_PAD*2+22;
+          const{safeBottom:sB}=clampStretchToColumnClashes(upper,upper.y,reqBot,uLane);
+          if(sB-upper.y>upper.height)upper.height=sB-upper.y;
+
+          const oT2=Math.max(lN.y+EDGE_CORNER_PAD,rN.y+EDGE_CORNER_PAD);
+          const oB2=Math.min(lN.y+lN.height-EDGE_CORNER_PAD,rN.y+rN.height-EDGE_CORNER_PAD);
+          if(oB2-oT2<18){
+            const lLane=getLaneNodes(lower.columnId,lower.subLane||0);
+            const reqTop=upper.y+upper.height-EDGE_CORNER_PAD*2-22;
+            const{safeTop:sT}=clampStretchToColumnClashes(lower,reqTop,lower.y+lower.height,lLane);
+            if(sT<lower.y){
+              const oldB=lower.y+lower.height;
+              lower.y=sT;lower.height=oldB-sT;
+            }else if(!lower.isAutoLayoutOptOut){
+              // Push upper down or lower's neighbours down to create overlap
+              upper.height=Math.max(upper.height,reqBot-upper.y);
+              resolveColumnCollisions(upper.columnId,upper.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([upper.id])});
+            }
+          }
+        }
+
+        // 2. Check if an intermediate box (e.g. a subLane:1 box or middle-column box) blocks the horizontal corridor between lN and rN
+        const sL=getNodeGlobalX(lN,cg)+BOX_WIDTH,sR=getNodeGlobalX(rN,cg);
+        const curOT=Math.max(lN.y+EDGE_CORNER_PAD,rN.y+EDGE_CORNER_PAD);
+        const curOB=Math.min(lN.y+lN.height-EDGE_CORNER_PAD,rN.y+rN.height-EDGE_CORNER_PAD);
+        if(curOB>=curOT){
+          const blockers=allNodes.filter(ot=>{
+            if(ot.id===lN.id||ot.id===rN.id||ot.isDisconnected)return false;
+            const ox=getNodeGlobalX(ot,cg);
+            if(ox+BOX_WIDTH<=sL+4||ox>=sR-4)return false;
+            // Does ot block the entire [curOT, curOB] vertical window?
+            return(ot.y-10<=curOT+4)&&(ot.y+ot.height+UNDER_BOX_LABEL_CLEARANCE>=curOB-4);
+          });
+
+          blockers.forEach(blk=>{
+            if((blk.subLane||0)>0){
+              // Blocker is a sub-lane box! Decide whether to route ABOVE blk or BELOW blk:
+              const blkPartners=getPerSideNeighbors(blk,cg,true,true);
+              const allBlkNbs=[...blkPartners.leftNeighbors.map(x=>x.neighbor),...blkPartners.rightNeighbors.map(x=>x.neighbor)];
+              const avgPartnerY=allBlkNbs.length?allBlkNbs.reduce((s,x)=>s+x.y+x.height/2,0)/allBlkNbs.length:blk.y;
+              const lMid=(lN.y+lN.height/2+rN.y+rN.height/2)/2;
+
+              if(lMid<=avgPartnerY){
+                // Route ABOVE blk: push blk down so curOT + 28 <= blk.y - 10, and stretch lN/rN if needed
+                const neededBlkY=curOT+36;
+                if(blk.y<neededBlkY){
+                  blk.y=neededBlkY;
+                }
+                if(lN.y+lN.height<blk.y+38)lN.height=(blk.y+38)-lN.y;
+                if(rN.y+rN.height<blk.y+blk.height)rN.height=(blk.y+blk.height)-rN.y;
+              }else{
+                // Route BELOW blk: stretch lN and rN below blk.y + blk.height + 42
+                const neededBottom=blk.y+blk.height+44;
+                if(lN.y+lN.height<neededBottom){
+                  lN.height=neededBottom-lN.y;
+                  resolveColumnCollisions(lN.columnId,lN.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lN.id])});
+                }
+                if(rN.y+rN.height<neededBottom){
+                  if(rN.y>blk.y+blk.height+12)rN.y=blk.y+blk.height+10;
+                  rN.height=Math.max(rN.height,neededBottom-rN.y);
+                  resolveColumnCollisions(rN.columnId,rN.subLane||0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rN.id])});
+                }
+              }
+            }else{
+              // Blocker is a lane 0 box in an intermediate column (skip-link!):
+              // Open a 48px corridor either above or below blk
+              const midLane=getLaneNodes(blk.columnId,0);
+              const bIdx=midLane.findIndex(x=>x.id===blk.id);
+              if(bIdx===0){
+                // Open corridor below first box
+                const corrY=blk.y+blk.height+26;
+                if(midLane[1]&&midLane[1].y<corrY+24){
+                  midLane[1].y=corrY+24;
+                  resolveColumnCollisions(blk.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([midLane[1].id])});
+                }
+                if(lN.y+lN.height<corrY+16)lN.height=(corrY+16)-lN.y;
+                if(rN.y>corrY-16){const ob=rN.y+rN.height;rN.y=corrY-16;rN.height=Math.max(rN.height,ob-rN.y);}
+              }else if(bIdx===midLane.length-1){
+                // Bottom box in intermediate column: shrink or shift up slightly so skip-link routes underneath it
+                const corrY=blk.y+blk.height+24;
+                if(lN.y+lN.height<corrY+16){
+                  lN.height=(corrY+16)-lN.y;
+                  resolveColumnCollisions(lN.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([lN.id])});
+                }
+                if(rN.y+rN.height<corrY+16){
+                  rN.height=(corrY+16)-rN.y;
+                  resolveColumnCollisions(rN.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rN.id])});
+                }
+              }
+            }
+          });
+        }
+      });
+
+      // Enforce strict non-overlapping in every column and sub-lane after each pass
+      state.columns.forEach(col=>{
+        resolveColumnCollisions(col.id,0,{preserveTidyOrder:true});
+        resolveColumnCollisions(col.id,1,{preserveTidyOrder:true});
       });
     }
-  }
 
-  // v4.9.8 ZERO-OVERLAP 6-COLUMN DIAMOND SOLVER (Zero Split Links & Zero Box Collisions!)
-  if(state.nodesById['sen_1']){
-    const setBox=(id,sl,y,h)=>{
-      const b=state.nodesById[id];
-      if(b){b.subLane=sl;b.y=y;b.height=h;}
-    };
-    // Col 0: 1. Coastal Sensor & Comms Mesh (All subLane 0, strictly non-overlapping with >= 28px gaps)
-    setBox('sen_1',0,165,110); // 165..275 -> links to plt_1
-    setBox('sen_2',0,305,175); // 305..480 -> links to plt_1 (top) and plt_2 (bottom)
-    setBox('sen_4',0,510,95);  // 510..605 -> links to plt_2
-    setBox('sen_3',0,635,335); // 635..970 -> links to plt_3 (top) and plt_4 (bottom)
+    // PASS D: Re-span any subLane:1 Objective in the final column to match its updated left neighbors
+    if(lastCol){
+      allNodes.filter(n=>n.columnId===lastCol.id&&!n.isDisconnected&&(n.subLane||0)>0).forEach(n=>{
+        const nbs=getPerSideNeighbors(n,cg,true,true).leftNeighbors.map(x=>x.neighbor);
+        if(nbs.length){
+          const minT=Math.min(...nbs.map(nb=>nb.y));
+          const maxB=Math.max(...nbs.map(nb=>nb.y+nb.height));
+          n.y=minT;
+          n.height=Math.max(n.height,maxB-minT);
+        }
+      });
+    }
 
-    // Col 1: 2. AI & Mission Platforms (All subLane 0, strictly non-overlapping)
-    setBox('plt_1',0,165,195); // 165..360 -> overlaps sen_1 (165..275) & sen_2 (305..360); links to wf_1
-    setBox('plt_2',0,420,200); // 420..620 -> overlaps sen_2 (420..480) & sen_4 (510..605); links to wf_1 & wf_2
-    setBox('plt_3',0,650,200); // 650..850 -> overlaps sen_3; links to wf_2 & wf_4
-    setBox('plt_4',0,880,115); // 880..995 -> overlaps sen_3 (880..970); links to wf_5
-
-    // Col 2: 3. Watchkeeper & Crew Workflows (wf_3 in subLane 1 pocket; lane 0 strictly non-overlapping)
-    setBox('wf_1',0,165,305);  // 165..470 -> overlaps plt_1 & plt_2; links to cap_m1 & cap_m2
-    setBox('wf_2',0,500,205);  // 500..705 -> overlaps plt_2 & plt_3; links to cap_m2 & wf_3
-    setBox('wf_3',1,635,90);   // 635..725 (subLane 1) -> overlaps wf_2 & cap_m3
-    setBox('wf_4',0,745,120);  // 745..865 -> overlaps plt_3, cap_m3, & cap_m4
-    setBox('wf_5',0,895,125);  // 895..1020 -> overlaps plt_4, cap_m5, & ben_m4 (clear corridor below cap_m5!)
-
-    // Col 3: 4. Joint SAR Operational Capabilities (cap_m4 in subLane 1; lane 0 strictly non-overlapping)
-    setBox('cap_m1',0,165,115); // 165..280 -> overlaps wf_1 & ben_m1
-    setBox('cap_m2',0,395,165); // 395..560 -> overlaps wf_1, wf_2, & ben_m2
-    setBox('cap_m3',0,635,175); // 635..810 -> overlaps wf_3, wf_4, cap_m4, ben_m2, & ben_m3
-    setBox('cap_m4',1,750,115); // 750..865 (subLane 1) -> overlaps cap_m3, wf_4, & ben_m2 (via lower extension)
-    setBox('cap_m5',0,895,80);  // 895..975 -> leaves 975..1020 open for wf_5 -> ben_m4 skip link!
-
-    // Col 4: 5. Measurable Mission Benefits (All subLane 0, strictly non-overlapping!)
-    setBox('ben_m1',0,165,115); // 165..280 -> links to obj_m2
-    setBox('ben_m2',0,395,305); // 395..700 -> overlaps cap_m2 & cap_m3; links to obj_m2 & obj_m1
-    setBox('ben_m3',0,730,145); // 730..875 -> overlaps cap_m3 & cap_m4; links to obj_m2 & obj_m1
-    setBox('ben_m4',0,905,120); // 905..1025 -> overlaps cap_m5 (895..975) & wf_5 corridor (985..1020); links to obj_m1
-
-    // Col 5: 6. Statutory & Strategic Mandate (Both in subLane 0, strictly non-overlapping!)
-    // obj_m2 sits on top (165..615) and receives ben_m1 (165..280) and ben_m2 (395..615)
-    // obj_m1 sits below (645..1025) and receives ben_m2 (645..700), ben_m3 (730..875), and ben_m4 (905..1025)
-    setBox('obj_m2',0,165,450); // 165..615
-    setBox('obj_m1',0,645,380); // 645..1025
-
-    // Disconnected test pair cleanly at the bottom
-    setBox('cap_m6',0,1085,68);
-    setBox('ben_m5',0,1085,68);
+    // PASS E: Place disconnected test boxes neatly at the bottom of their columns
+    const activeNodes=allNodes.filter(n=>!n.isDisconnected);
+    const activeBot=activeNodes.length?Math.max(...activeNodes.map(n=>n.y+n.height)):800;
+    allNodes.filter(n=>n.isDisconnected).forEach(n=>{
+      n.subLane=0;
+      n.y=activeBot+48;
+    });
   }
 
   if(allNodes.length){
@@ -2305,6 +2438,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
