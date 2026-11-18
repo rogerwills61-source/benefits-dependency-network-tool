@@ -150,7 +150,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.19</span>
+    <span class="menu-version-badge">v6.20</span>
   </div>
 </div>
 
@@ -1794,14 +1794,22 @@ function performIdempotentTidy(ignorePins=false){
       sameP.y=Math.max(sameP.y,minSamePY);
       resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set(prevBox?[prevBox.id,sameP.id]:[sameP.id])});
 
-      // 4. Stretch n and rightP to overlap sameP cleanly
-      if(n.y+n.height<sameP.y+42)n.height=(sameP.y+42)-n.y;
-      if(rightP.y+rightP.height<sameP.y+46){
-        rightP.height=(sameP.y+46)-rightP.y;
+      // 4. Cap n's bottom at sameP.y + 38 so n overlaps sameP for their intra-column link, while leaving an open under-pocket corridor below n!
+      n.height=Math.max(BOX_MIN_HEIGHT,(sameP.y+38)-n.y);
+      const underPocketCorridorBot=n.y+n.height+UNDER_BOX_LABEL_CLEARANCE+26;
+
+      // 5. Extend both sameP and rightP down to underPocketCorridorBot so sameP -> rightP ("92% first fix" / "99.4% bag load")
+      // has a guaranteed 26px unobstructed horizontal corridor underneath n!
+      if(sameP.y+sameP.height<underPocketCorridorBot){
+        sameP.height=underPocketCorridorBot-sameP.y;
+        resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set(prevBox?[prevBox.id,sameP.id]:[sameP.id])});
+      }
+      if(rightP.y+rightP.height<underPocketCorridorBot){
+        rightP.height=underPocketCorridorBot-rightP.y;
         resolveColumnCollisions(rightP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([rightP.id])});
       }
 
-      // 5. Stretch straddle-feeder l0Box (ena_3) in Column 1 down past leftSubFeeder to overlap sameP by >= 44px!
+      // 6. Stretch straddle-feeder l0Box (ena_3) in Column 1 down past leftSubFeeder to overlap sameP cleanly!
       feederLane0.forEach(l0Box=>{
         const rNbs=getPerSideNeighbors(l0Box,cg,true,true).rightNeighbors.map(x=>x.neighbor).filter(nb=>(nb.subLane||0)===0);
         if(rNbs.includes(sameP)){
@@ -1812,7 +1820,7 @@ function performIdempotentTidy(ignorePins=false){
           }
           if(sameP.y+sameP.height<reqBot){
             sameP.height=reqBot-sameP.y;
-            resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set([sameP.id])});
+            resolveColumnCollisions(sameP.columnId,0,{preserveTidyOrder:true,primaryAnchorSet:new Set(prevBox?[prevBox.id,sameP.id]:[sameP.id])});
           }
         }
       });
@@ -2873,6 +2881,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
