@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'bdn-studio-cache-v6.21';
+﻿const CACHE_NAME = 'bdn-studio-cache-v6.22';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -30,3 +30,4 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request).then((res) => res || caches.match('./index.html')))
   );
 });
+

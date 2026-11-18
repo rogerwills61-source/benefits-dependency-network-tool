@@ -111,7 +111,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <span class="status-pill" id="saveStatus" title="Self-Healing Sub-50ms P2P + WebSocket Sync">✓ Saved</span>
   </div>
   <div class="hud-island" id="rightIsland">
-    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network (Zero-Split-Link Staircase + Straddle-Pocket + Skip-Corridor Solver)" type="button">✨ Tidy</button>
+    <button class="hud-btn" id="btnTidyKeepPins" title="Tidy Network" type="button">✨ Tidy</button>
     <button class="hud-btn" id="btnFit" title="Fit Entire BDN to Screen" type="button">Fit</button>
     <button class="hud-btn icon-only" id="btnHelp" title="Hover for Keyboard Shortcuts & BDN Guide" type="button" style="border-radius:50%;font-weight:700">?</button>
   </div>
@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.21</span>
+    <span class="menu-version-badge">v6.22</span>
   </div>
 </div>
 
@@ -267,10 +267,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="help-row"><span>Edit Box / Link Annotation / Column</span><kbd>F2 / DblClick</kbd></div>
   <div class="help-row"><span>Cycle Link Arrowhead Direction</span><kbd>A</kbd></div>
   <div class="help-row"><span>Toggle Split Stub vs Direct Link</span><kbd>S</kbd></div>
-  <div class="help-row"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
-  <div style="margin-top:8px;color:var(--text-muted);line-height:1.45">
-    • <strong>v4.9 Zero-Split-Link Solver:</strong> Combines the 56px skip-link corridor (`ena_6 -> cap_1`), dual-partner span (`ena_2 -> chg_1`), straddle-pocket stretch (`ena_3` below `ena_5`), open-corridor label centering, and instant `::` collision push.
-  </div>
+  <div class="help-row" style="border-bottom:none"><span>Delete Selected Box or Link</span><kbd>Del / Backspace</kbd></div>
 </div>
 
 <script>
@@ -2964,6 +2961,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
