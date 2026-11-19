@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.24</span>
+    <span class="menu-version-badge">v6.25</span>
   </div>
 </div>
 
@@ -735,7 +735,7 @@ function getDefaultColumns(){
 
 function computeColumnGeometries(){
   const cg={},cnt=Math.max(1,state.columns.length),z=state.camera.zoom||1,mob=window.innerWidth<=820;
-  const minW=mob?290:Math.max(290,Math.floor((window.innerWidth/Math.min(1,z))/cnt));
+  const minW=mob?290:300;
   let rx=0;
   state.columns.forEach((col,idx)=>{
     const sx=rx,cNodes=Object.values(state.nodesById).filter(n=>n.columnId===col.id);
@@ -3136,6 +3136,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
