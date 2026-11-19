@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.25</span>
+    <span class="menu-version-badge">v6.26</span>
   </div>
 </div>
 
@@ -3106,6 +3106,16 @@ document.getElementById('btnTidyKeepPins').addEventListener('click',()=>{pushUnd
 document.getElementById('btnFit').addEventListener('click',fitScreen);
 
 window.addEventListener('keydown',(e)=>{
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'||ae.isContentEditable)){
+    if(e.key==='Escape'&&ae.closest('#metaEditorModal')){editingMetaTarget=null;document.getElementById('metaEditorModal').style.display='none';}
+    return;
+  }
+  const metaModalEl=document.getElementById('metaEditorModal');
+  if(metaModalEl&&metaModalEl.style.display==='flex'){
+    if(e.key==='Escape'){editingMetaTarget=null;metaModalEl.style.display='none';}
+    return;
+  }
   if(inlineEditor.style.display==='block'||Date.now()-lastEditorCloseTime<350)return;
   if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){e.preventDefault();performUndo();return;}
   if((e.ctrlKey||e.metaKey)&&((e.key==='y'||e.key==='Y')||(e.shiftKey&&(e.key==='z'||e.key==='Z')))){e.preventDefault();performRedo();return;}
@@ -3136,6 +3146,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
