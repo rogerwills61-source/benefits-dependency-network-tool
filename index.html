@@ -129,7 +129,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div id="modeBanner">Link Mode: Tap target box to connect (Tap empty space to cancel)</div>
 <div id="canvasContainer"><canvas id="bdnCanvas"></canvas></div>
 <textarea id="inlineEditor" rows="2"></textarea>
-<input type="file" id="hiddenFileInput" accept=".json,.bdn.json,application/json" style="display:none" />
+<input type="file" id="hiddenFileInput" accept="application/json,.json" style="display:none" />
 
 <div class="floating-menu" id="fileMenu">
   <div class="ctx-label">File &amp; Cloud Storage</div>
@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.22</span>
+    <span class="menu-version-badge">v6.23</span>
   </div>
 </div>
 
@@ -370,15 +370,33 @@ function applySettingsToUI(){
 }
 
 function getPrivateFileChannelKey(){
-  if(!state.mapId||!state.fileSyncToken||state.fileSyncToken.length<32)return null;
+  if(!state.mapId||!state.fileSyncToken||typeof state.fileSyncToken!=='string'||state.fileSyncToken.length<32)return null;
   return 'bdn_v26_'+state.mapId.replace(/[^a-zA-Z0-9]/g,'')+'_'+state.fileSyncToken.slice(0,40);
+}
+function deriveDeterministicLegacyToken(p){
+  const seed=[
+    String(p?.mapId||'legacy_bdn'),
+    ...(Array.isArray(p?.columns)?p.columns.map(c=>String(c?.id||'')).sort():[]),
+    ...Object.keys(p?.nodesById||{}).sort(),
+    ...Object.keys(p?.linksById||{}).sort()
+  ].join('|');
+  let h1=0x811c9dc5>>>0,h2=0x01000193>>>0,h3=0x9e3779b9>>>0,h4=0x85ebca6b>>>0;
+  for(let i=0;i<seed.length;i++){
+    const ch=seed.charCodeAt(i);
+    h1=Math.imul(h1^ch,0x01000193)>>>0;
+    h2=Math.imul(h2^(ch+i),0x85ebca6b)>>>0;
+    h3=Math.imul(h3^(ch*31+i),0xc2b2ae35)>>>0;
+    h4=Math.imul(h4^(ch^((i<<3)&0xff)),0x27d4eb2f)>>>0;
+  }
+  const parts=[h1,h2,h3,h4].map(n=>n.toString(16).padStart(8,'0'));
+  return (parts.join('')+parts.slice().reverse().join('')).slice(0,64);
 }
 function encodeMqttLength(len){const o=[];do{let d=len%128;len=Math.floor(len/128);if(len>0)d|=128;o.push(d);}while(len>0);return o;}
 function encodeMqttUTF8(s){const b=new TextEncoder().encode(s);return[(b.length>>8)&0xff,b.length&0xff,...b];}
 function buildMqttConnectPacket(cid){const b=[0x00,0x04,0x4d,0x51,0x54,0x54,0x04,0x02,0x00,0x28,...encodeMqttUTF8(cid)];return new Uint8Array([0x10,...encodeMqttLength(b.length),...b]);}
 function buildMqttSubscribePacket(t){const b=[0x00,0x01,...encodeMqttUTF8(t),0x00];return new Uint8Array([0x82,...encodeMqttLength(b.length),...b]);}
-function buildMqttPublishPacket(t,p){
-  const tb=encodeMqttUTF8(t),pb=new TextEncoder().encode(p),rl=tb.length+pb.length,h=[0x30,...encodeMqttLength(rl)],pkt=new Uint8Array(h.length+rl);
+function buildMqttPublishPacket(t,p,retain=false){
+  const tb=encodeMqttUTF8(t),pb=new TextEncoder().encode(p),rl=tb.length+pb.length,ctrl=retain?0x31:0x30,h=[ctrl,...encodeMqttLength(rl)],pkt=new Uint8Array(h.length+rl);
   pkt.set(h,0);pkt.set(tb,h.length);pkt.set(pb,h.length+tb.length);return pkt;
 }
 function parseMqttPublishPackets(buf){
@@ -393,17 +411,47 @@ function parseMqttPublishPackets(buf){
   return msgs;
 }
 
+let lastSentSyncHash='';
+let isOpeningFilePicker=false;
+let suppressWakeSyncUntil=0;
+
+function computeSyncStateSignature(obj){
+  const s=obj?.state||obj||{};
+  return JSON.stringify({
+    mapId:s.mapId||'',
+    mapTitle:s.mapTitle||'',
+    updatedAt:s.updatedAt||0,
+    deletedById:s.deletedById||{},
+    columns:s.columns||[],
+    nodesById:s.nodesById||{},
+    linksById:s.linksById||{}
+  });
+}
+
 function connectAndMaintainMqttBroker(wsUrl,topic){
-  if(mqttClients[wsUrl]){clearTimeout(mqttClients[wsUrl].reconnectTimer);clearInterval(mqttClients[wsUrl].pingTimer);try{mqttClients[wsUrl].ws.close();}catch(e){}}
-  const entry={ws:null,pingTimer:null,reconnectTimer:null,connected:false};
+  const existing=mqttClients[wsUrl];
+  if(existing&&existing.ws&&existing.ws.readyState===WebSocket.OPEN&&existing.connected){
+    existing.topic=topic;
+    try{existing.ws.send(buildMqttSubscribePacket(topic));}catch(e){}
+    return;
+  }
+  if(existing){clearTimeout(existing.reconnectTimer);clearInterval(existing.pingTimer);try{existing.ws.close();}catch(e){}}
+  const entry={ws:null,pingTimer:null,reconnectTimer:null,connected:false,topic};
   mqttClients[wsUrl]=entry;
-  const sched=()=>{entry.connected=false;clearInterval(entry.pingTimer);clearTimeout(entry.reconnectTimer);entry.reconnectTimer=setTimeout(()=>{if(activeChannelKey===topic)connectAndMaintainMqttBroker(wsUrl,topic);},1600);};
+  const sched=()=>{entry.connected=false;clearInterval(entry.pingTimer);clearTimeout(entry.reconnectTimer);entry.reconnectTimer=setTimeout(()=>{const cur=activeChannelKey||entry.topic;if(cur)connectAndMaintainMqttBroker(wsUrl,cur);},1600);};
   try{
     const ws=new WebSocket(wsUrl,'mqtt');ws.binaryType='arraybuffer';entry.ws=ws;
     ws.onopen=()=>ws.send(buildMqttConnectPacket('bdn_'+Math.random().toString(36).slice(2,10)));
     ws.onmessage=(ev)=>{
       const a=new Uint8Array(ev.data),pt=a[0]&0xf0;
-      if(pt===0x20)ws.send(buildMqttSubscribePacket(topic));
+      const curTopic=activeChannelKey||entry.topic;
+      if(pt===0x20){
+        if(curTopic)ws.send(buildMqttSubscribePacket(curTopic));
+        if(curTopic){
+          const helloMsg={type:'HELLO',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()};
+          try{ws.send(buildMqttPublishPacket(curTopic,JSON.stringify(helloMsg),true));}catch(e){}
+        }
+      }
       else if(pt===0x90){entry.connected=true;sendHelloAnnouncement();setTimeout(sendHelloAnnouncement,400);}
       else if(pt===0x30){entry.connected=true;parseMqttPublishPackets(ev.data).forEach(r=>{try{handleIncomingSyncPacket(JSON.parse(r));}catch(e){}});}
     };
@@ -477,49 +525,94 @@ function handleIncomingSyncPacket(pkt){
 function buildSyncStateObject(){
   return{mapId:state.mapId,fileSyncToken:state.fileSyncToken,mapTitle:state.mapTitle,updatedAt:state.updatedAt,deletedById:state.deletedById||{},columns:state.columns,nodesById:state.nodesById,linksById:state.linksById};
 }
-function sendOverMqttOnly(obj){
-  if(!activeChannelKey)return;
-  const pkt=buildMqttPublishPacket(activeChannelKey,JSON.stringify(obj));
-  Object.values(mqttClients).forEach(e=>{if(e.ws&&e.ws.readyState===WebSocket.OPEN&&e.connected){try{e.ws.send(pkt);}catch(err){}}});
+function sendOverMqttOnly(obj,retain=false){
+  if(!activeChannelKey)return false;
+  const pkt=buildMqttPublishPacket(activeChannelKey,JSON.stringify(obj),retain);
+  let sentCount=0;
+  Object.values(mqttClients).forEach(e=>{if(e.ws&&e.ws.readyState===WebSocket.OPEN&&e.connected){try{e.ws.send(pkt);sentCount++;}catch(err){}}});
+  return sentCount>0;
 }
 function sendHelloAnnouncement(){
   const msg={type:'HELLO',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()};
-  if(broadcastChannel){try{broadcastChannel.postMessage(msg);}catch(e){}}
-  sendOverMqttOnly(msg);
+  let sent=false;
+  if(broadcastChannel){try{broadcastChannel.postMessage(msg);sent=true;}catch(e){}}
+  if(sendOverMqttOnly(msg,true))sent=true;
+  if(sent)lastSentSyncHash=computeSyncStateSignature(msg);
+  return sent;
 }
 function sendSignalingOrStateMessage(obj){
   const raw=JSON.stringify(obj);
-  if(broadcastChannel){try{broadcastChannel.postMessage(obj);}catch(e){}}
-  Object.values(rtcDataChannels).forEach(dc=>{if(dc&&dc.readyState==='open'){try{dc.send(raw);}catch(e){}}});
-  sendOverMqttOnly(obj);
+  let sent=false;
+  if(broadcastChannel){try{broadcastChannel.postMessage(obj);sent=true;}catch(e){}}
+  Object.values(rtcDataChannels).forEach(dc=>{if(dc&&dc.readyState==='open'){try{dc.send(raw);sent=true;}catch(e){}}});
+  if(sendOverMqttOnly(obj,obj&&obj.type==='STATE_SYNC'))sent=true;
+  if(sent&&obj&&obj.type==='STATE_SYNC')lastSentSyncHash=computeSyncStateSignature(obj);
+  return sent;
 }
 
 function setupLiveSyncForCurrentFile(){
-  const ck=getPrivateFileChannelKey();if(!ck)return;activeChannelKey=ck;
+  const ck=getPrivateFileChannelKey();if(!ck)return;
+  const topicChanged=activeChannelKey&&activeChannelKey!==ck;
+  activeChannelKey=ck;
   if(broadcastChannel){try{broadcastChannel.close();}catch(e){}}
   if('BroadcastChannel' in window){broadcastChannel=new BroadcastChannel(ck);broadcastChannel.onmessage=(ev)=>{if(ev.data)handleIncomingSyncPacket(ev.data);};}
   Object.keys(rtcPeers).forEach(pid=>cleanupDeadRtcPeer(pid));rtcPeers={};rtcDataChannels={};
-  MQTT_BROKERS.forEach(u=>connectAndMaintainMqttBroker(u,ck));
+  MQTT_BROKERS.forEach(u=>{
+    const e=mqttClients[u];
+    if(topicChanged&&e&&e.ws&&e.ws.readyState===WebSocket.OPEN&&e.connected){
+      e.topic=ck;
+      try{e.ws.send(buildMqttSubscribePacket(ck));}catch(err){}
+      const helloMsg={type:'HELLO',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()};
+      try{e.ws.send(buildMqttPublishPacket(ck,JSON.stringify(helloMsg),true));}catch(err){}
+    }else{
+      connectAndMaintainMqttBroker(u,ck);
+    }
+  });
   clearInterval(discoveryBeaconTimer);
   discoveryBeaconTimer=setInterval(()=>{
+    if(isOpeningFilePicker||Date.now()<suppressWakeSyncUntil)return;
     MQTT_BROKERS.forEach(u=>{const e=mqttClients[u];if(!e||!e.ws||e.ws.readyState===WebSocket.CLOSED)connectAndMaintainMqttBroker(u,activeChannelKey);});
     const openDcs=Object.values(rtcDataChannels).filter(dc=>dc&&dc.readyState==='open');
     if(openDcs.length===0)sendHelloAnnouncement();
-    else{const ka=JSON.stringify({type:'STATE_SYNC',senderId:instanceClientId,state:buildSyncStateObject()});openDcs.forEach(dc=>{try{dc.send(ka);}catch(e){}});}
+    else{const kaObj={type:'STATE_SYNC',senderId:instanceClientId,state:buildSyncStateObject()};const ka=JSON.stringify(kaObj);openDcs.forEach(dc=>{try{dc.send(ka);}catch(e){}});}
   },2500);
 }
 
-document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&activeChannelKey){
-    MQTT_BROKERS.forEach(u=>{const e=mqttClients[u];if(!e||!e.ws||e.ws.readyState!==WebSocket.OPEN)connectAndMaintainMqttBroker(u,activeChannelKey);});
+function triggerWakeSyncIfAllowed(forceMqtt=false){
+  if(isOpeningFilePicker){
+    isOpeningFilePicker=false;
+    suppressWakeSyncUntil=Date.now()+1500;
+    return;
+  }
+  if(Date.now()<suppressWakeSyncUntil)return;
+  if(activeChannelKey){
+    if(forceMqtt){
+      MQTT_BROKERS.forEach(u=>connectAndMaintainMqttBroker(u,activeChannelKey));
+    }else{
+      MQTT_BROKERS.forEach(u=>{const e=mqttClients[u];if(!e||!e.ws||e.ws.readyState!==WebSocket.OPEN)connectAndMaintainMqttBroker(u,activeChannelKey);});
+    }
     sendHelloAnnouncement();
   }
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')triggerWakeSyncIfAllowed(false);
 });
-window.addEventListener('online',()=>{if(activeChannelKey){MQTT_BROKERS.forEach(u=>connectAndMaintainMqttBroker(u,activeChannelKey));sendHelloAnnouncement();}});
-function broadcastCRDTUpdate(){sendSignalingOrStateMessage({type:'STATE_SYNC',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()});}
+window.addEventListener('focus',()=>{
+  if(isOpeningFilePicker)triggerWakeSyncIfAllowed(false);
+});
+window.addEventListener('online',()=>triggerWakeSyncIfAllowed(true));
+function broadcastCRDTUpdate(){
+  const payload={type:'STATE_SYNC',senderId:instanceClientId,timestamp:Date.now(),state:buildSyncStateObject()};
+  const sig=computeSyncStateSignature(payload);
+  const openDcs=Object.values(rtcDataChannels).filter(dc=>dc&&dc.readyState==='open');
+  const openMqtt=Object.values(mqttClients).some(e=>e.ws&&e.ws.readyState===WebSocket.OPEN&&e.connected);
+  if(sig===lastSentSyncHash&&(openDcs.length>0||openMqtt))return;
+  sendSignalingOrStateMessage(payload);
+}
 
 function mergeIncomingCRDTState(inc,badge='⚡ Synced'){
-  if(!inc||inc.mapId!==state.mapId||inc.fileSyncToken!==state.fileSyncToken)return;
+  if(!inc||!state.fileSyncToken||!inc.fileSyncToken||inc.mapId!==state.mapId||inc.fileSyncToken!==state.fileSyncToken)return;
   let changed=false;
   const md=Object.assign({},state.deletedById||{});
   Object.entries(inc.deletedById||{}).forEach(([id,ts])=>{
@@ -553,9 +646,14 @@ async function openBdnFile(){
       sessionFileHandle=h;const f=await h.getFile();lastFileModifiedTime=f.lastModified;loadBdnJsonString(await f.text(),f.name);return;
     }catch(err){if(err&&err.name==='AbortError')return;}
   }
-  document.getElementById('hiddenFileInput').click();
+  isOpeningFilePicker=true;
+  const inp=document.getElementById('hiddenFileInput');
+  inp.value='';
+  inp.click();
 }
 document.getElementById('hiddenFileInput').addEventListener('change',async(e)=>{
+  isOpeningFilePicker=false;
+  suppressWakeSyncUntil=Date.now()+1500;
   const f=e.target.files?.[0];if(!f)return;sessionFileHandle=null;loadBdnJsonString(await f.text(),f.name);e.target.value='';
 });
 
@@ -564,10 +662,14 @@ function loadBdnJsonString(str,fn=''){
     const p=JSON.parse(str);if(!p||!Array.isArray(p.columns)||!p.nodesById){alert('Invalid BDN file format.');return;}
     pushUndoState();
     state.mapId=p.mapId||('bdn_'+Math.random().toString(36).slice(2,10));
-    state.fileSyncToken=(p.fileSyncToken&&p.fileSyncToken.length>=32)?p.fileSyncToken:generateCryptographicFileToken();
+    state.fileSyncToken=(p.fileSyncToken&&typeof p.fileSyncToken==='string'&&p.fileSyncToken.length>=32)?p.fileSyncToken:deriveDeterministicLegacyToken(p);
     state.mapTitle=p.mapTitle||fn.replace(/(\.bdn)?\.json$/i,'')||'Untitled BDN';
-    state.updatedAt=p.updatedAt||Date.now();state.deletedById=p.deletedById||{};
+    const baseTs=p.updatedAt||Date.now();
+    state.updatedAt=baseTs;state.deletedById=p.deletedById||{};
+    Object.values(p.nodesById).forEach(n=>{if(n&&!n.updatedAt)n.updatedAt=baseTs;});
+    Object.values(p.linksById||{}).forEach(l=>{if(l&&!l.updatedAt)l.updatedAt=baseTs;});
     state.columns=p.columns;state.nodesById=p.nodesById;state.linksById=p.linksById||{};
+    lastSentSyncHash='';
     state.selectedNodeId=null;state.selectedLinkId=null;state.selectedColId=state.columns[0]?.id||null;
     document.getElementById('docTitleBtn').textContent=state.mapTitle;
     activeChannelKey=null;setupLiveSyncForCurrentFile();
@@ -1076,7 +1178,7 @@ function loadState(){
       const p=JSON.parse(r);
       if(p&&Array.isArray(p.columns)&&p.columns.length&&p.nodesById){
         state=Object.assign(state,p);
-        if(!state.fileSyncToken||state.fileSyncToken.length<32)state.fileSyncToken=generateCryptographicFileToken();
+        if(!state.fileSyncToken||typeof state.fileSyncToken!=='string'||state.fileSyncToken.length<32)state.fileSyncToken=deriveDeterministicLegacyToken(p);
         const vc=new Set(state.columns.map(c=>c.id)),fb=state.columns[state.columns.length-1].id;
         Object.values(state.nodesById).forEach(n=>{if(!vc.has(n.columnId))n.columnId=fb;delete n.dragTempX;});
         document.getElementById('docTitleBtn').textContent=state.mapTitle||'Untitled BDN';
@@ -2961,6 +3063,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
