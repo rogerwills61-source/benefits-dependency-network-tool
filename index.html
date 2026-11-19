@@ -2949,9 +2949,10 @@ function fitScreen(){
   const hBot=getHeaderTopY()+STICKY_HEADER_HEIGHT;
   const avW=Math.max(240,window.innerWidth-24);
   const avH=Math.max(180,window.innerHeight-hBot-(window.innerWidth<=820?72:24));
-  const fZ=Math.min(1,Math.max(MIN_ZOOM,Math.min(avW/tW,avH/cH)));
+  const fitRatio=Math.min(avW/tW,avH/cH);
+  const fZ=Math.min(1,Math.max(0.05,fitRatio));
   state.camera.zoom=fZ;
-  state.camera.x=Math.max(12,(window.innerWidth-worldW*fZ)/2);
+  state.camera.x=(window.innerWidth-worldW*fZ)/2;
   state.camera.y=hBot+20-minT*fZ;
   computeHorizontalLinksAndStubs(computeColumnGeometries());
   clampCameraBounds();
@@ -3135,6 +3136,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
