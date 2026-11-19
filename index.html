@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.23</span>
+    <span class="menu-version-badge">v6.24</span>
   </div>
 </div>
 
@@ -235,6 +235,24 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     <div class="modal-actions">
       <button class="hud-btn" id="btnPwaModalClose" type="button">Close</button>
       <button class="hud-btn active" id="btnPwaModalTrigger" type="button" style="display:none">📲 Install Now</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="metaEditorModal">
+  <div class="modal-card">
+    <h3 id="metaModalTitle">📝 Notes &amp; URL</h3>
+    <div class="setting-group" style="margin-top:10px">
+      <span class="setting-label">URL / Reference Link</span>
+      <input type="url" id="metaUrlInput" placeholder="https://..." style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-hud);background:var(--bg-canvas);color:var(--text-primary);font-size:12px" />
+    </div>
+    <div class="setting-group" style="margin-top:10px">
+      <span class="setting-label">Notes</span>
+      <textarea id="metaNotesInput" rows="5" placeholder="Add supporting notes, assumptions, or evidence..." style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-hud);background:var(--bg-canvas);color:var(--text-primary);font-size:12px;resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="hud-btn" id="btnMetaCancel" type="button">Cancel</button>
+      <button class="hud-btn active" id="btnMetaSave" type="button">Save</button>
     </div>
   </div>
 </div>
@@ -2773,6 +2791,8 @@ function openContextMenuAtPoint(sX,sY){
     const n=hit.node;state.selectedNodeId=n.id;draw();
     showContextMenu(sX,sY,[
       {label:'✎ Edit Box Text',kbd:'F2',action:()=>openInlineEditor('node',n.id,sX,sY,n.text)},
+      {label:'📝 Edit Notes & URL',action:()=>openMetaEditor('node',n.id)},
+      ...(n.url?[{label:'🔗 Open URL',action:()=>openExternalUrlSafe(n.url)}]:[]),
       {label:'🔗 Start Link From Box',kbd:'L',action:()=>startLinkMode(n.id)},
       {label:'⬅ Add Connected Box to Left Column',kbd:'Tab',action:()=>addConnectedLeftNode(n)},
       {sep:true},{header:'Box Colour Override'},
@@ -2790,6 +2810,8 @@ function openContextMenuAtPoint(sX,sY){
     const l=hit.link;state.selectedLinkId=l.id;draw();
     showContextMenu(sX,sY,[
       {label:'✎ Edit Link Annotation',kbd:'F2',action:()=>openInlineEditor('link',l.id,sX,sY,l.label)},
+      {label:'📝 Edit Notes & URL',action:()=>openMetaEditor('link',l.id)},
+      ...(l.url?[{label:'🔗 Open URL',action:()=>openExternalUrlSafe(l.url)}]:[]),
       {label:'⇄ Cycle Arrowhead Direction',kbd:'A',action:()=>cycleLinkArrow(l)},
       {label:l.forceSplit?'Heal Split Link to Straight Line':'Convert to Split Link Stubs (①—①)',kbd:'S',action:()=>toggleForceSplit(l)},
       {sep:true},{label:'🗑 Delete Link',kbd:'Del',danger:true,action:()=>deleteSelected()}
@@ -2877,13 +2899,63 @@ function deleteSelected(){
   }else return;
   computeHorizontalLinksAndStubs(computeColumnGeometries());updateDisconnectedIndicators();saveState();draw();
 }
+let editingMetaTarget=null;
+function openExternalUrlSafe(rawUrl){
+  if(!rawUrl)return;
+  const trimmed=String(rawUrl).trim();
+  const safe=/^https?:\/\//i.test(trimmed)?trimmed:(/^[a-z0-9.-]+\.[a-z]{2,}/i.test(trimmed)?'https://'+trimmed:'');
+  if(safe)window.open(safe,'_blank','noopener,noreferrer');
+}
+function openMetaEditor(kind,id){
+  const item=kind==='node'?state.nodesById[id]:state.linksById[id];
+  if(!item)return;
+  editingMetaTarget={kind,id};
+  document.getElementById('metaModalTitle').textContent=kind==='node'?`📝 Box Notes & URL — ${item.text||'Box'}`:`📝 Link Notes & URL — ${item.label||'Link'}`;
+  document.getElementById('metaUrlInput').value=item.url||'';
+  document.getElementById('metaNotesInput').value=item.notes||'';
+  document.getElementById('metaEditorModal').style.display='flex';
+  setTimeout(()=>document.getElementById('metaUrlInput').focus(),20);
+}
+document.getElementById('btnMetaCancel').addEventListener('click',()=>{
+  editingMetaTarget=null;
+  document.getElementById('metaEditorModal').style.display='none';
+});
+document.getElementById('btnMetaSave').addEventListener('click',()=>{
+  if(!editingMetaTarget)return;
+  const {kind,id}=editingMetaTarget;
+  const item=kind==='node'?state.nodesById[id]:state.linksById[id];
+  if(item){
+    pushUndoState();
+    item.url=document.getElementById('metaUrlInput').value.trim();
+    item.notes=document.getElementById('metaNotesInput').value;
+    item.updatedAt=Date.now();
+    state.updatedAt=Date.now();
+    saveState();
+    draw();
+  }
+  editingMetaTarget=null;
+  document.getElementById('metaEditorModal').style.display='none';
+});
+
 function fitScreen(){
-  state.camera.zoom=1;const cg=computeColumnGeometries(),tW=(cg._totalWorldWidth||1160)+48,all=Object.values(state.nodesById);
-  const minT=all.length?Math.min(...all.map(n=>n.y)):INITIAL_SPAWN_Y,maxB=all.length?Math.max(...all.map(n=>n.y+n.height)):500;
-  const cH=Math.max(200,maxB-minT+90),hBot=getHeaderTopY()+STICKY_HEADER_HEIGHT,avH=Math.max(180,window.innerHeight-hBot-(window.innerWidth<=820?72:20));
-  const fZ=Math.min(1,Math.max(MIN_ZOOM,Math.min(window.innerWidth/tW,avH/cH)));
-  state.camera.zoom=fZ;state.camera.x=(window.innerWidth-(cg._totalWorldWidth||1160)*fZ)/2;state.camera.y=hBot+20-minT*fZ;
-  computeHorizontalLinksAndStubs(computeColumnGeometries());clampCameraBounds();draw();
+  state.camera.zoom=1;
+  const cg=computeColumnGeometries();
+  const worldW=cg._totalWorldWidth||Math.max(1160,state.columns.length*300);
+  const tW=worldW+64;
+  const all=Object.values(state.nodesById);
+  const minT=all.length?Math.min(...all.map(n=>n.y)):INITIAL_SPAWN_Y;
+  const maxB=all.length?Math.max(...all.map(n=>n.y+n.height)):500;
+  const cH=Math.max(200,maxB-minT+100);
+  const hBot=getHeaderTopY()+STICKY_HEADER_HEIGHT;
+  const avW=Math.max(240,window.innerWidth-24);
+  const avH=Math.max(180,window.innerHeight-hBot-(window.innerWidth<=820?72:24));
+  const fZ=Math.min(1,Math.max(MIN_ZOOM,Math.min(avW/tW,avH/cH)));
+  state.camera.zoom=fZ;
+  state.camera.x=Math.max(12,(window.innerWidth-worldW*fZ)/2);
+  state.camera.y=hBot+20-minT*fZ;
+  computeHorizontalLinksAndStubs(computeColumnGeometries());
+  clampCameraBounds();
+  draw();
 }
 
 document.getElementById('btnMenu').addEventListener('click',(e)=>{e.stopPropagation();const v=fileMenu.style.display==='flex';hideAllMenus();if(!v)placeFloatingElement(fileMenu,12,getHeaderTopY()-4);});
@@ -3063,6 +3135,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
