@@ -156,7 +156,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   <div class="ctx-sep"></div>
   <div class="menu-version-footer">
     <span>BDN Studio Engine</span>
-    <span class="menu-version-badge">v6.26</span>
+    <span class="menu-version-badge">v6.27</span>
   </div>
 </div>
 
@@ -2362,16 +2362,19 @@ function draw(){
       ctx.strokeStyle=sCol;ctx.lineWidth=sel?2.8:2;ctx.beginPath();ctx.moveTo(sX,y);ctx.lineTo(eX,y);ctx.stroke();
       if(l.arrowMode==='right'||l.arrowMode==='both')drawArrowhead(eX,y,1,sCol);
       if(l.arrowMode==='left'||l.arrowMode==='both')drawArrowhead(sX,y,-1,sCol);
-      if(l.label){
+      const lHasNote=!!(l.notes&&String(l.notes).trim()),lHasUrl=!!(l.url&&String(l.url).trim());
+      const lMetaBadge=(lHasNote?'📝':'')+(lHasUrl?'🔗':'');
+      const lDispLabel=((l.label||'')+(lMetaBadge?(' '+lMetaBadge):'')).trim();
+      if(lDispLabel){
         const{midX:mX,availW:avW}=getBestLabelSpan(sX,eX,y,lN,rN,all,cg);
         ctx.font='600 10.5px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-        const lns=wrapTextLines(l.label,avW),lh=12.5,bLY=y-9,tLY=bLY-(lns.length-1)*lh;
+        const lns=wrapTextLines(lDispLabel,avW),lh=12.5,bLY=y-9,tLY=bLY-(lns.length-1)*lh;
         const maxLW=Math.max(...lns.map(ln=>ctx.measureText(ln).width));
         const padX=5,padY=2.5,boxH=lns.length*lh+padY*2,boxY=tLY-lh/2-padY;
         ctx.fillStyle=th.bgCanvas;ctx.globalAlpha=0.88;
         drawRoundedRect(mX-maxLW/2-padX,boxY,maxLW+padX*2,boxH,4);ctx.fill();
         ctx.globalAlpha=1;
-        ctx.lineWidth=4;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=sel?'#38bdf8':th.textPrimary;
+        ctx.lineWidth=4;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=sel?'#38bdf8':(lMetaBadge?'#38bdf8':th.textPrimary);
         lns.forEach((ln,i)=>{const ly=tLY+i*lh;ctx.strokeText(ln,mX,ly);ctx.fillText(ln,mX,ly);});
       }
     }else{
@@ -2384,9 +2387,12 @@ function draw(){
       ctx.beginPath();ctx.moveTo(xRS,yR);ctx.lineTo(xRC+STUB_RADIUS,yR);ctx.stroke();
       ctx.fillStyle=th.surfaceBox;ctx.beginPath();ctx.arc(xRC,yR,STUB_RADIUS,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.fillStyle=stC;ctx.fillText(l.splitBadgeId||'?',xRC,yR);
-      if(l.label){
-        ctx.font='500 10px system-ui,sans-serif';ctx.lineWidth=5;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=th.textSecondary;
-        ctx.strokeText(l.label,xLC,yL-17);ctx.fillText(l.label,xLC,yL-17);ctx.strokeText(l.label,xRC,yR-17);ctx.fillText(l.label,xRC,yR-17);
+      const lHasNote=!!(l.notes&&String(l.notes).trim()),lHasUrl=!!(l.url&&String(l.url).trim());
+      const lMetaBadge=(lHasNote?'📝':'')+(lHasUrl?'🔗':'');
+      const lDispLabel=((l.label||'')+(lMetaBadge?(' '+lMetaBadge):'')).trim();
+      if(lDispLabel){
+        ctx.font='500 10px system-ui,sans-serif';ctx.lineWidth=5;ctx.strokeStyle=th.bgCanvas;ctx.fillStyle=lMetaBadge?'#38bdf8':th.textSecondary;
+        ctx.strokeText(lDispLabel,xLC,yL-17);ctx.fillText(lDispLabel,xLC,yL-17);ctx.strokeText(lDispLabel,xRC,yR-17);ctx.fillText(lDispLabel,xRC,yR-17);
       }
     }
   });
@@ -2436,7 +2442,13 @@ function draw(){
     const isSolidFill=bf==='solid';
     if(n.isAutoLayoutOptOut){ctx.fillStyle=isSolidFill?'#ffffff':'#38bdf8';ctx.fillText('📌 Pinned',bX,y+7);bX-=54;}
     else if(n.isManuallyPositioned||n.isManuallyStretched){ctx.fillStyle=isSolidFill?'rgba(255,255,255,0.9)':th.textSecondary;ctx.fillText('✋ Manual',bX,y+7);bX-=52;}
-    if(n.isDisconnected){ctx.fillStyle=isSolidFill?'#fef08a':'#f59e0b';ctx.fillText('⚠ Unlinked',bX,y+7);}
+    if(n.isDisconnected){ctx.fillStyle=isSolidFill?'#fef08a':'#f59e0b';ctx.fillText('⚠ Unlinked',bX,y+7);bX-=58;}
+    const nHasNote=!!(n.notes&&String(n.notes).trim()),nHasUrl=!!(n.url&&String(n.url).trim());
+    if(nHasNote||nHasUrl){
+      const nMeta=(nHasNote?'📝':'')+(nHasUrl?'🔗':'');
+      ctx.fillStyle=isSolidFill?'#ffffff':'#38bdf8';
+      ctx.fillText(nMeta,bX,y+7);
+    }
     ctx.save();
     if(isSolidFill){
       ctx.fillStyle='#ffffff';
@@ -3146,6 +3158,7 @@ loadSettings();loadState();updateUndoRedoButtons();resizeCanvas();fitScreen();
 </script>
 </body>
 </html>
+
 
 
 
